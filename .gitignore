@@ -1,0 +1,3 @@
+.pod/
+__pycache__/
+*.pyc

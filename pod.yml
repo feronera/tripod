@@ -1,0 +1,11 @@
+# pod.yml: สมาชิกของ pod (รูปแบบ key: value บรรทัดละหนึ่งค่า)
+# อีเมลต้องตรงกับ `git config user.email` ของแต่ละคน และ SuperBiz กับ SuperDev ต้องเป็นคนละอีเมล
+superbiz_name: SuperBiz Example
+superbiz_email: biz@example.com
+superdev_name: SuperDev Example
+superdev_email: dev@example.com
+# ผู้อนุมัติเพิ่มสำหรับงาน Risk: high (gate 2 และ gate 4)
+escalation_name: Lead Example
+escalation_email: lead@example.com
+# จำนวน change ที่เปิดพร้อมกันได้ (ผ่าน gate 1 แล้วแต่ยังไม่ผ่าน gate 4)
+wip_limit: 2

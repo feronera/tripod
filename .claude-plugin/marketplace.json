@@ -1,0 +1,20 @@
+{
+  "name": "adlc-pod",
+  "owner": { "name": "HarmonyX" },
+  "metadata": {
+    "description": "SuperBiz x SuperDev: two-person agentic delivery pod for the ADLC workshop",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "superbiz",
+      "source": "./plugins/superbiz",
+      "description": "PO, PM, BA and Designer skills for the SuperBiz seat: intent, ux-brief, spec, acceptance, release notes. Edits docs/ only."
+    },
+    {
+      "name": "superdev",
+      "source": "./plugins/superdev",
+      "description": "SA, Dev, QA, Deploy and maintenance skills for the SuperDev seat: plan, test-first, review, release, incident. Guards tests, gates and kill switch."
+    }
+  ]
+}
