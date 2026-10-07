@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # PreToolUse (Write|Edit|MultiEdit|NotebookEdit): SuperBiz may edit only files under docs/.
+# In a project without pod.yml or scripts/gate-check.sh (no pod kit) it allows with a note.
 set -euo pipefail
 INPUT="$(cat)"
-# Prints "<project-dir>\t<path relative to project>" for the target file.
-REL="$(printf '%s' "$INPUT" | python3 -c '
+# Prints the project dir, then the target path relative to it.
+OUT="$(printf '%s' "$INPUT" | python3 -c '
 import json, os, sys
 data = json.load(sys.stdin)
 ti = data.get("tool_input") or {}
 target = ti.get("file_path") or ti.get("notebook_path") or ""
 root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd()
 root = os.path.realpath(root)
+print(root)
 if not target:
     print("")
     sys.exit(0)
@@ -19,6 +21,12 @@ target = os.path.normpath(target)
 parent = os.path.realpath(os.path.dirname(target))
 print(os.path.relpath(os.path.join(parent, os.path.basename(target)), root))
 ')"
+ROOT="$(printf '%s\n' "$OUT" | sed -n 1p)"
+REL="$(printf '%s\n' "$OUT" | sed -n 2p)"
+if [ ! -f "$ROOT/pod.yml" ] || [ ! -f "$ROOT/scripts/gate-check.sh" ]; then
+  echo "ไม่พบ pod kit ใน project นี้ (ไม่มี pod.yml หรือ scripts/gate-check.sh) hook biz-scope จึงไม่ทำงาน" >&2
+  exit 0
+fi
 case "$REL" in
   docs/*) exit 0 ;;
 esac

@@ -1,24 +1,9 @@
-PYTHON ?= python3
+include pod.mk
 
 .PHONY: setup test strength check metrics
 
-setup:
-	@command -v $(PYTHON) >/dev/null || { echo "ต้องติดตั้ง python3"; exit 1; }
-	@command -v git >/dev/null || { echo "ต้องติดตั้ง git"; exit 1; }
-	@chmod +x scripts/*.sh plugins/*/hooks/*.sh
-	@mkdir -p .pod docs/changes
-	@echo "พร้อมใช้งาน: แก้อีเมลใน pod.yml ให้ตรงกับ git config user.email ของแต่ละคน"
-
-test:
-	$(PYTHON) -m unittest discover -s tests -t . -v
-
-strength:
-	scripts/test-strength.sh
-
-check: test strength
-	scripts/sync-codeowners.sh --check
-	scripts/gate-check.sh --all
-
-metrics:
-	@test -n "$(CHANGE)" || { echo "usage: make metrics CHANGE=docs/changes/001-slug"; exit 2; }
-	scripts/metrics.sh $(CHANGE)
+setup: pod-setup
+test: pod-test
+strength: pod-strength
+check: pod-check
+metrics: pod-metrics

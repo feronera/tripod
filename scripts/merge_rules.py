@@ -92,10 +92,9 @@ def completed_changes(cfg, exclude):
     return sorted(done, reverse=True)
 
 
-def run_tests():
-    res = subprocess.run([sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."],
-                         cwd=ROOT, capture_output=True, text=True)
-    return res.returncode == 0
+def run_tests(cfg):
+    ok, _, _, _ = lib.run_test_cmd(cfg, ROOT, capture=True)
+    return ok
 
 
 def run_strength():
@@ -142,30 +141,35 @@ def auto_merge_reasons(change_dir, base, cfg):
         if not review_matches_head(change_dir, review.get("reviewed_head", "")):
             reasons.append("review.md ตรวจ commit %s แต่ HEAD คือ %s โค้ดเปลี่ยนหลัง review ให้ review ใหม่"
                            % (review.get("reviewed_head", "-")[:12] or "-", head_sha()[:12]))
-    # 6. tests and test strength
-    if not run_tests():
-        reasons.append("make test ไม่ผ่าน")
-    strong, out = run_strength()
-    if not strong:
-        weak = [line.split()[1] for line in out if line.startswith("WEAK ")]
-        reasons.append("test-strength ไม่ผ่าน: %s" % (", ".join(weak) or "ดูผลจาก scripts/test-strength.sh"))
+    # 6. tests and test strength (auto-merge needs a measured strength)
+    tests_dir = cfg["tests_dir"]
+    if not run_tests(cfg):
+        reasons.append("make test ไม่ผ่าน (test_cmd: %s)" % cfg["test_cmd"])
+    if cfg["strength"] == "off":
+        reasons.append("test-strength ปิดอยู่ จึง merge อัตโนมัติไม่ได้")
+    else:
+        strong, out = run_strength()
+        if not strong:
+            weak = [line.split()[1] for line in out if line.startswith("WEAK ")]
+            reasons.append("test-strength ไม่ผ่าน: %s"
+                           % (", ".join(weak) or "ดูผลจาก scripts/test-strength.sh"))
     # 7. tests may only be added
-    deleted = sum(d or 0 for _, d, _ in numstat(base, "tests"))
+    deleted = sum(d or 0 for _, d, _ in numstat(base, tests_dir))
     if deleted:
-        reasons.append("มีการลบหรือแก้บรรทัดใน tests/ %d บรรทัด (merge อัตโนมัติอนุญาตเฉพาะการเพิ่ม test)"
-                       % deleted)
-    # 8. diff size outside docs/ and tests/
+        reasons.append("มีการลบหรือแก้บรรทัดใน %s/ %d บรรทัด (merge อัตโนมัติอนุญาตเฉพาะการเพิ่ม test)"
+                       % (tests_dir, deleted))
+    # 8. diff size outside docs/ and tests_dir
     size = 0
     for added, removed, path in numstat(base):
-        if path.startswith("docs/") or path.startswith("tests/"):
+        if path.startswith("docs/") or path.startswith(tests_dir + "/"):
             continue
         if added is None or removed is None:
             size += cfg["auto_merge_max_lines"] + 1  # binary file: never auto
         else:
             size += added + removed
     if size > cfg["auto_merge_max_lines"]:
-        reasons.append("แก้โค้ดนอก docs/ และ tests/ %d บรรทัด เกิน auto_merge_max_lines (%d)"
-                       % (size, cfg["auto_merge_max_lines"]))
+        reasons.append("แก้โค้ดนอก docs/ และ %s/ %d บรรทัด เกิน auto_merge_max_lines (%d)"
+                       % (tests_dir, size, cfg["auto_merge_max_lines"]))
     # 9. track record
     if lib.reverts(entries):
         reasons.append("change นี้มีบันทึก revert")

@@ -18,3 +18,9 @@ auto_merge: off            # off | low
 auto_merge_max_lines: 200
 auto_merge_min_track: 10   # recent completed changes with no revert needed before auto-merge is allowed
 acceptance_hours: 48
+# stack ของ project ดู docs/test-strength.md
+test_cmd: python3 -m unittest discover -s tests -t . -v
+code_dirs: app             # โฟลเดอร์โค้ด คั่นด้วยช่องว่าง (ใช้กับ test-strength แบบ python)
+tests_dir: tests           # โฟลเดอร์ test (hook protect-tests และกฎห้ามลบบรรทัดใน test)
+strength: python           # python | off | cmd
+strength_cmd:              # ใช้เมื่อ strength: cmd คำสั่งที่ exit 1 เมื่อพบ test อ่อน

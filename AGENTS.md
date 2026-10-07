@@ -44,12 +44,12 @@
 
 ## Stack
 - Python 3 standard library เท่านั้น ห้ามเพิ่ม dependency
-- โค้ดอยู่ใน `app/` test อยู่ใน `tests/` (unittest)
+- โค้ดอยู่ใน `app/` test อยู่ใน `tests/` (unittest) ตามค่า `code_dirs` และ `tests_dir` ใน `pod.yml`
 
 ## Commands
 - `make setup`: ตรวจเครื่องมือ และเตรียมโฟลเดอร์ `.pod/`
-- `make test`: รัน unit test ทั้งหมด
-- `make strength`: `scripts/test-strength.sh` หา test ที่ยังผ่านแม้ทุกฟังก์ชันใน app/ คืนค่า None
+- `make test`: รัน `test_cmd` ใน `pod.yml` (unit test ทั้งหมด)
+- `make strength`: `scripts/test-strength.sh` หา test ที่ยังผ่านแม้ทุกฟังก์ชันใน app/ คืนค่า None (ดู `docs/test-strength.md`)
 - `make check`: test, strength, ตรวจ CODEOWNERS และ `scripts/gate-check.sh --all` (CI ใช้คำสั่งนี้)
 - `scripts/auto-merge-check.sh <dir> [--base main] [--record]`: ALLOW หรือ DENY สำหรับ merge อัตโนมัติ
 - `scripts/release-check.sh <dir>`: พร้อมปล่อยขึ้น production หรือไม่

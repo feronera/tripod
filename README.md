@@ -3,6 +3,24 @@
 ชุดตั้งต้นสำหรับ delivery pod ที่มีมนุษย์เพียงสองคนทำงานร่วมกับ agent
 ใช้ใน workshop ภาคปฏิบัติ 2 วัน เรื่อง Agentic Development Lifecycle (ADLC)
 
+## นำไปใช้กับ project อื่น
+
+ติดตั้ง kit ลงใน repo ที่มีอยู่แล้วได้ทุก stack ตัวติดตั้งไม่เขียนทับ Makefile, AGENTS.md และ CLAUDE.md และรันซ้ำได้
+
+```bash
+git clone git@github.com:hx-natthawat/workshop-ai-sdlc.git ~/adlc-kit
+cd ~/my-project && ~/adlc-kit/pod/scripts/pod-install.sh .
+```
+
+ติดตั้ง plugin ทีละคนจาก GitHub (repo เป็น private ผู้ติดตั้งต้องมีสิทธิ์อ่าน repo และตั้งค่า git credential แล้ว)
+
+```
+/plugin marketplace add hx-natthawat/workshop-ai-sdlc
+/plugin install superbiz@adlc-pod     # หรือ superdev@adlc-pod
+```
+
+ขั้นตอนครบ 9 ขั้นและ checklist อยู่ใน [docs/adopt.md](docs/adopt.md)
+
 - **SuperBiz** รับบทบาท PO, PM, BA และ Designer รับผิดชอบว่า "ทำอะไรและเพราะอะไร"
 - **SuperDev** รับบทบาท SA, Dev, QA, Deploy และ MA (ดูแลระบบ) รับผิดชอบว่า "ทำอย่างไรและปลอดภัยหรือไม่"
 
@@ -43,7 +61,10 @@ make check
 git add -A && git commit -m "chore: start pod"
 ```
 
-ต้องมี: Python 3.10 ขึ้นไป, git และ Claude Code ไม่ต้องติดตั้ง package เพิ่ม
+ต้องมี: Python 3.10 ขึ้นไป, git, make และ Claude Code ไม่ต้องติดตั้ง package เพิ่ม
+
+`make` ในโฟลเดอร์นี้เรียก target ใน `pod.mk` (`make check` เท่ากับ `make -f pod.mk pod-check`)
+คำสั่ง test และวิธีตรวจ test-strength อ่านจาก `pod.yml` (`test_cmd`, `code_dirs`, `tests_dir`, `strength`)
 
 ## ลำดับงานของหนึ่ง change
 
@@ -63,8 +84,8 @@ bug ใช้ `/superdev:bug-fix` และแนวทางออกแบบ�
 | คำสั่ง | ใช้ทำอะไร |
 |---|---|
 | `make setup` | ตรวจเครื่องมือ และเตรียมโฟลเดอร์ `.pod/` |
-| `make test` | รัน unit test ทั้งหมด (`app/` และ scripts) |
-| `make strength` หรือ `scripts/test-strength.sh` | หา test ที่ยังผ่านแม้ทุกฟังก์ชันใน `app/` คืนค่า None (test อ่อน) |
+| `make test` หรือ `scripts/pod-test.sh` | รัน `test_cmd` ใน pod.yml (ใน kit นี้คือ unit test ของ `app/` และ scripts) |
+| `make strength` หรือ `scripts/test-strength.sh` | ตามโหมด `strength` ใน pod.yml: `python` หา test ที่ยังผ่านแม้ทุกฟังก์ชันใน `code_dirs` คืนค่า None, `off` ข้าม, `cmd` รัน `strength_cmd` ดู `docs/test-strength.md` |
 | `make check` | test, strength, `scripts/sync-codeowners.sh --check` และ `scripts/gate-check.sh --all` (CI รันทุก pull request) |
 | `scripts/new-change.sh <slug>` | สร้าง `docs/changes/NNN-slug/intent.md` ปฏิเสธเมื่อถึง WIP limit |
 | `scripts/gate.sh <change-dir> <1-4>` | ลงชื่อ gate ด้วยอีเมลจาก `git config user.email` บันทึกลง `gates.log` |
@@ -74,6 +95,7 @@ bug ใช้ `/superdev:bug-fix` และแนวทางออกแบบ�
 | `scripts/mark-revert.sh <change-dir> "<reason>"` | มนุษย์บันทึกว่า change ถูก revert |
 | `scripts/pr-check.sh [--author A --approvals B,C --base main]` | CI: ตรวจ approval บน GitHub ตาม risk จริง |
 | `scripts/sync-codeowners.sh [--check]` | สร้างหรือตรวจ `.github/CODEOWNERS` จาก `docs/risk-paths` |
+| `scripts/pod-install.sh <repo> [--with-sample] [--vendor-plugins] [--force]` | ติดตั้ง kit ลงใน repo อื่น ดู `docs/adopt.md` |
 | `scripts/setup-github.sh <owner/repo> [--yes]` | เปิด auto-merge และป้องกัน branch main (แสดงแผนก่อน ใช้จริงเมื่อมี `--yes`) |
 | `scripts/gate-check.sh --all` | ตรวจทุก change (change ที่ยังไม่มี gates.log ถือเป็น draft) |
 | `scripts/metrics.sh <change-dir>` หรือ `make metrics CHANGE=<change-dir>` | เวลาจาก commit แรกของ intent.md ถึงแต่ละ gate และ lead time |
@@ -92,8 +114,10 @@ claude --plugin-dir ./plugins/superbiz
 claude --plugin-dir ./plugins/superdev
 ```
 
-หากต้องการติดตั้งแบบถาวร repo นี้เป็น marketplace ชื่อ `adlc-pod` ได้ด้วย
-(`/plugin marketplace add ./` แล้ว `/plugin install superbiz@adlc-pod` หรือ `superdev@adlc-pod`)
+หากต้องการติดตั้งแบบถาวร ใช้ marketplace ชื่อ `adlc-pod` จาก GitHub
+(`/plugin marketplace add hx-natthawat/workshop-ai-sdlc` แล้ว `/plugin install superbiz@adlc-pod` หรือ `superdev@adlc-pod`)
+ใน repo ที่คัดลอกโฟลเดอร์นี้ไปทั้งโฟลเดอร์ ใช้ `/plugin marketplace add ./` แทนได้
+hook ของ plugin ไม่บล็อกงานใน project ที่ไม่มี `pod.yml` และพิมพ์หมายเหตุว่า "ไม่พบ pod kit ใน project นี้"
 
 | Plugin | Skills | Agents | Hooks |
 |---|---|---|---|
@@ -104,8 +128,9 @@ claude --plugin-dir ./plugins/superdev
 
 ```
 AGENTS.md, CLAUDE.md     กฎสำหรับ agent
-pod.yml                  สมาชิก pod, บัญชี GitHub, WIP limit และค่า auto-merge
-Makefile                 setup, test, strength, check, metrics
+pod.yml                  สมาชิก pod, บัญชี GitHub, WIP limit, ค่า auto-merge และ stack (test_cmd, code_dirs, tests_dir, strength)
+pod.mk                   pod-setup, pod-test, pod-strength, pod-check, pod-metrics
+Makefile                 include pod.mk และชื่อย่อ setup, test, strength, check, metrics
 app/orders.py            โดเมนตัวอย่าง: สถานะคำสั่งซื้อของลูกค้า
 tests/                   unit test ของ app และ scripts
 docs/gates.md            gate และคำถามตรวจ
@@ -114,15 +139,18 @@ docs/pod-charter.md      ข้อตกลงของ pod
 docs/parallel-agents.md  ให้ agent หลายตัวทำงานพร้อมกัน และ arena
 docs/merge-by-risk.md    ใคร merge ได้ในแต่ละ risk, 9 เงื่อนไข auto-merge, revert, ตั้งค่า GitHub
 docs/risk-paths          path อ่อนไหว (แตะแล้วถือเป็น high)
+docs/test-strength.md    test อ่อน 5 แบบ และโหมด strength (python, off, cmd)
+docs/adopt.md            นำ kit ไปใช้กับ project อื่น และ checklist
 docs/credits.md          ที่มาของแนวคิดที่ดัดแปลงจาก pstack
 docs/templates/          intent, ux-brief, spec, plan, review, acceptance
 docs/changes/            change ของ pod (NNN-slug/)
-scripts/                 new-change, gate, gate-check, release-check, mark-revert, metrics (lib.py)
+scripts/                 new-change, gate, gate-check, release-check, mark-revert, metrics, pod-test (lib.py)
                          test-strength (strength.py)
                          auto-merge-check, pr-check, sync-codeowners (merge_rules.py), setup-github
+                         pod-install (pod_install.py) ติดตั้ง kit ลงใน repo อื่น
 plugins/                 superbiz และ superdev
 logs/sample-app.log      log สังเคราะห์สำหรับ lab incident
-.github/workflows/       CI job pod-gates: make check และ pr-check
+.github/workflows/       CI job pod-gates: make -f pod.mk pod-check และ pr-check
 .github/CODEOWNERS       สร้างจาก docs/risk-paths
 ```
 

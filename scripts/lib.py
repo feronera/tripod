@@ -9,6 +9,7 @@ Used as a library and as a CLI:
     python3 scripts/lib.py metrics <change-dir>
     python3 scripts/lib.py release-check <change-dir>
     python3 scripts/lib.py mark-revert <change-dir> "<reason>"
+    python3 scripts/lib.py test
 """
 import hashlib
 import os
@@ -32,23 +33,33 @@ ESCALATION_GATES = (2, 4)
 AUTO_BY = "auto-merge"
 INT_KEYS = {"wip_limit": 2, "auto_merge_max_lines": 200, "auto_merge_min_track": 10,
             "acceptance_hours": 48}
+# stack keys of pod.yml (defaults keep the Python sample app behavior)
+STACK_DEFAULTS = {"test_cmd": "python3 -m unittest discover -s tests -t . -v",
+                  "code_dirs": "app", "tests_dir": "tests", "strength": "python",
+                  "strength_cmd": ""}
+STRENGTH_MODES = ("python", "off", "cmd")
+NO_TESTS_EXIT = 5  # unittest (Python 3.12+) and pytest exit 5 when no test ran
 CHECKPOINT_ITEMS = ("Blocking first steps", "Independent workstreams",
                     "Shared mutable state", "Smallest safe decomposition")
 
 
 # ---------- config and parsing ----------
 
-def read_pod_yml(root=ROOT):
-    """Parse the simple `key: value` pod.yml without PyYAML."""
+def read_pod_yml(root=ROOT, missing_ok=False):
+    """Parse the simple `key: value` pod.yml without PyYAML.
+    missing_ok=True returns the defaults when pod.yml does not exist."""
     cfg = {}
     path = os.path.join(root, "pod.yml")
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.split("#", 1)[0].strip()
-            if not line or ":" not in line:
-                continue
-            key, value = line.split(":", 1)
-            cfg[key.strip()] = value.strip().strip('"').strip("'")
+    lines = []
+    if not (missing_ok and not os.path.exists(path)):
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    for line in lines:
+        line = line.split("#", 1)[0].strip()
+        if not line or ":" not in line:
+            continue
+        key, value = line.split(":", 1)
+        cfg[key.strip()] = value.strip().strip('"').strip("'")
     for key in ("superbiz_email", "superdev_email", "escalation_email",
                 "superbiz_github", "superdev_github", "escalation_github"):
         cfg[key] = cfg.get(key, "").lower().lstrip("@")
@@ -58,7 +69,35 @@ def read_pod_yml(root=ROOT):
         except ValueError:
             cfg[key] = default
     cfg["auto_merge"] = cfg.get("auto_merge", "off").lower() or "off"
+    for key, default in STACK_DEFAULTS.items():
+        cfg[key] = cfg.get(key, "") or default
+    cfg["tests_dir"] = cfg["tests_dir"].strip("/") or STACK_DEFAULTS["tests_dir"]
+    cfg["strength"] = cfg["strength"].lower()
     return cfg
+
+
+def code_dirs(cfg):
+    """`code_dirs` of pod.yml as a list of relative folders (space or comma separated)."""
+    dirs = [d.strip().strip("/") or "." for d in re.split(r"[\s,]+", cfg["code_dirs"]) if d.strip()]
+    return dirs or [STACK_DEFAULTS["code_dirs"]]
+
+
+def run_test_cmd(cfg, root=ROOT, capture=False):
+    """Run `test_cmd` from pod.yml. Returns (ok, exit_code, note, output).
+
+    "No tests ran" (exit 5) is accepted only while docs/changes/ has no change yet,
+    so a freshly installed project passes, and a project with real work needs tests.
+    """
+    res = subprocess.run(cfg["test_cmd"], shell=True, cwd=root, text=True,
+                         capture_output=capture)
+    output = (res.stdout or "") + (res.stderr or "") if capture else ""
+    if res.returncode == NO_TESTS_EXIT:
+        if change_dirs(root):
+            return False, res.returncode, ("pod-test: ไม่มี test ที่รัน (exit 5) แต่ docs/changes/ มี change แล้ว "
+                                           "จึงต้องมี test ใน %s/" % cfg["tests_dir"]), output
+        return True, res.returncode, ("pod-test: ยังไม่มี test (exit 5) ยอมรับได้เพราะยังไม่มี change "
+                                      "ใน docs/changes/"), output
+    return res.returncode == 0, res.returncode, "", output
 
 
 def now_iso():
@@ -692,7 +731,21 @@ def cmd_mark_revert(args):
     return 0
 
 
-COMMANDS = {"gate": cmd_gate, "check": cmd_check, "new-change": cmd_new_change,
+def cmd_test(args):
+    if args:
+        print("usage: scripts/pod-test.sh", file=sys.stderr)
+        return 2
+    cfg = read_pod_yml()
+    print("pod-test: %s" % cfg["test_cmd"], flush=True)
+    ok, code, note, _ = run_test_cmd(cfg)
+    if note:
+        print(note)
+    if ok:
+        return 0
+    return code or 1
+
+
+COMMANDS = {"test": cmd_test, "gate": cmd_gate, "check": cmd_check, "new-change": cmd_new_change,
             "metrics": cmd_metrics, "release-check": cmd_release_check,
             "mark-revert": cmd_mark_revert}
 

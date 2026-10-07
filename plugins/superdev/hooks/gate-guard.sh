@@ -3,6 +3,7 @@
 # and the newest change is merge-ready at gate 4 (per risk, see docs/merge-by-risk.md):
 #   low: owner + cross, or a `role=auto` record from scripts/auto-merge-check.sh --record
 #   medium: owner (SuperDev)   high: owner + cross + escalation
+# In a project without pod.yml or scripts/gate-check.sh (no pod kit) it allows with a note.
 set -euo pipefail
 INPUT="$(cat)"
 OUT="$(printf '%s' "$INPUT" | python3 -c '
@@ -26,11 +27,14 @@ print("1" if risky else "0")
 ')"
 ROOT="$(printf '%s\n' "$OUT" | sed -n 1p)"
 RISKY="$(printf '%s\n' "$OUT" | sed -n 2p)"
-[ "$RISKY" = "1" ] || exit 0
-
 CHECK="$ROOT/scripts/gate-check.sh"
+if [ ! -f "$ROOT/pod.yml" ] || [ ! -f "$CHECK" ]; then
+  echo "ไม่พบ pod kit ใน project นี้ (ไม่มี pod.yml หรือ scripts/gate-check.sh) hook gate-guard จึงไม่ทำงาน" >&2
+  exit 0
+fi
+[ "$RISKY" = "1" ] || exit 0
 if [ ! -x "$CHECK" ]; then
-  echo "gate-guard: ไม่พบ scripts/gate-check.sh จึงไม่อนุญาตให้ merge หรือ push เข้า main" >&2
+  echo "gate-guard: scripts/gate-check.sh ไม่มีสิทธิ์ execute ให้รัน make setup (หรือ make -f pod.mk pod-setup) ก่อน" >&2
   exit 2
 fi
 if ! RESULT="$(cd "$ROOT" && "$CHECK" --all 2>&1)"; then

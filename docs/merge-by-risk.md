@@ -27,9 +27,10 @@ gate 4 แยกเป็นสองการตรวจ
 4. gate 1 ถึง 3 ครบและไม่ stale
 5. `review.md` มี `blockers: 0`, `second_opinion: agree` และ `reviewed_head` ตรงกับ HEAD
    (commit หลัง reviewed_head ที่แก้เฉพาะไฟล์ในโฟลเดอร์ของ change นี้ เช่น review.md ไม่นับว่าโค้ดเปลี่ยน)
-6. `scripts/test-strength.sh` และ unit test ทั้งหมดผ่าน
-7. ไม่มีบรรทัดถูกลบใน `tests/` (เพิ่ม test ได้อย่างเดียว)
-8. บรรทัดที่เปลี่ยนนอก `docs/` และ `tests/` รวมไม่เกิน `auto_merge_max_lines`
+6. `test_cmd` ใน pod.yml และ `scripts/test-strength.sh` ผ่าน หาก pod.yml ตั้ง `strength: off` จะ DENY เสมอ
+   เพราะ merge อัตโนมัติต้องมีผลวัด test-strength (ดู `docs/test-strength.md`)
+7. ไม่มีบรรทัดถูกลบใน `tests_dir` (ค่าเริ่มต้น `tests/`) เพิ่ม test ได้อย่างเดียว
+8. บรรทัดที่เปลี่ยนนอก `docs/` และ `tests_dir` รวมไม่เกิน `auto_merge_max_lines`
 9. change ที่ผ่าน gate 4 ล่าสุด `auto_merge_min_track` ชิ้นมีครบ และไม่มีชิ้นใดถูก revert
 
 `--record` เมื่อได้ ALLOW จะเพิ่มบรรทัดนี้ใน gates.log
@@ -61,5 +62,5 @@ agent ไม่รัน `scripts/gate.sh` และ `scripts/mark-revert.sh`
 3. `scripts/setup-github.sh <owner/repo>` เพื่อดูสิ่งที่จะตั้งค่า แล้วรันซ้ำพร้อม `--yes`
    - เปิด auto-merge ของ repo
    - ป้องกัน main: ต้องผ่าน check `pod-gates`, ต้องมี review จาก code owner, ยกเลิก review เก่าเมื่อมี commit ใหม่, ห้าม force push
-4. CI (`.github/workflows/pod-gates.yml`) รัน `make check` และ `scripts/pr-check.sh` ซึ่งอ่านผู้เปิด PR และผู้ approve ด้วย `gh api`
+4. CI (`.github/workflows/pod-gates.yml`) รัน `make -f pod.mk pod-check` และ `scripts/pr-check.sh` ซึ่งอ่านผู้เปิด PR และผู้ approve ด้วย `gh api`
    การ approve บน GitHub ผูกกับบัญชีที่ login จึงปลอมยากกว่าอีเมลใน git config
