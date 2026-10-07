@@ -12,8 +12,6 @@ Tripod packages that practice as two Claude Code plugins, a set of gate scripts,
 | **SuperDev** | SA, Dev, QA, Deploy, Maintenance | How to build it, and whether it is safe | Available |
 | **SuperCEO** | Direction, priorities, high-risk approvals | Whether the risk is worth taking | Planned. The `escalation` role in `pod.yml` stands in today |
 
-Tripod was developed for HarmonyX's two-day hands-on workshop on the Agentic Development Lifecycle (ADLC).
-
 ## How it works
 
 Every change moves through four gates. Each gate has an owner who approves and a second person who cross-checks, so the author and the approver are never the same person.
@@ -85,7 +83,7 @@ Each person installs the plugin for their role:
 /plugin install superbiz@tripod     # or superdev@tripod
 ```
 
-The repository is private, so installers need read access and working git credentials. To try a plugin for one session without changing any settings, load it from a checkout:
+To try a plugin for one session without changing any settings, load it from a checkout:
 
 ```bash
 claude --plugin-dir ./plugins/superbiz   # SuperBiz
@@ -149,11 +147,9 @@ docs/                    Gates, risk tiers, risk paths, merge by risk, test stre
                          parallel agents, pod charter, adoption guide, credits
 docs/templates/          intent, ux-brief, spec, plan, review and acceptance templates
 docs/changes/            One folder per change (NNN-slug/)
-app/, tests/, logs/      Sample order-status service, tests and a synthetic log for the workshop
+app/, tests/, logs/      Sample order-status service, its tests and a synthetic incident log
 .github/                 CI workflow (pod-gates) and the generated CODEOWNERS
 ```
-
-The detailed guides in `docs/`, the skills and the agent rules are currently written in Thai.
 
 ## Operating notes
 
