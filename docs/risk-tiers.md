@@ -22,3 +22,5 @@
 - หากไม่แน่ใจ ให้เลือกระดับที่สูงกว่า และใส่เหตุผลใน Open questions
 - ระดับความเสี่ยงเปลี่ยนได้ แต่การแก้ intent.md หลัง gate 1 ทำให้การอนุมัติ gate 1 stale และต้องลงชื่อใหม่
 - งานในรายการ "pod ทำเองไม่ได้" ใน `docs/pod-charter.md` ถือเป็น high เสมอ
+- change ที่แตะ path ใน `docs/risk-paths` ถือเป็น high เสมอเมื่อ merge (auto-merge-check และ pr-check ตรวจจาก diff จริง)
+  แม้ intent.md ระบุระดับต่ำกว่า สิทธิ์ merge ตามระดับอยู่ใน `docs/merge-by-risk.md`

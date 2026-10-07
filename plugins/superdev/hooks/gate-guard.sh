@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse (Bash): block merge/push to main unless every change passes gate-check
-# and the newest change has gate 4 complete.
+# and the newest change is merge-ready at gate 4 (per risk, see docs/merge-by-risk.md):
+#   low: owner + cross, or a `role=auto` record from scripts/auto-merge-check.sh --record
+#   medium: owner (SuperDev)   high: owner + cross + escalation
 set -euo pipefail
 INPUT="$(cat)"
 OUT="$(printf '%s' "$INPUT" | python3 -c '
@@ -41,7 +43,7 @@ if [ -z "$NEWEST" ]; then
   exit 2
 fi
 if ! RESULT="$(cd "$ROOT" && "$CHECK" "$NEWEST" 4 2>&1)"; then
-  printf 'gate-guard: change ล่าสุดยังไม่ผ่าน gate 4\n%s\n' "$RESULT" >&2
+  printf 'gate-guard: change ล่าสุดยังไม่ merge-ready ที่ gate 4 (ดู docs/merge-by-risk.md)\n%s\n' "$RESULT" >&2
   exit 2
 fi
 exit 0

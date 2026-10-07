@@ -10,6 +10,18 @@ POD = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BIZ, DEV, LEAD, OTHER = "biz@example.com", "dev@example.com", "lead@example.com", "x@example.com"
 HOOKS_BIZ = os.path.join(POD, "plugins", "superbiz", "hooks")
 HOOKS_DEV = os.path.join(POD, "plugins", "superdev", "hooks")
+# smallest plan.md that passes the gate 3 structure check
+VALID_PLAN = """# plan
+## Data shape
+dict order_id -> record {customer_id, status, items}
+## Throughput checkpoint
+- Blocking first steps: failing tests
+- Independent workstreams: n/a: one small file
+- Shared mutable state: app/orders.py
+- Smallest safe decomposition: one requirement per commit
+## Parallel parts
+none: one file only
+"""
 
 
 def run(cmd, cwd, env=None, stdin=None):
@@ -78,7 +90,7 @@ class PodRepo(unittest.TestCase):
         owner, cross = (BIZ, DEV) if gate in (1, 2) else (DEV, BIZ)
         artifact = {1: "intent.md", 2: "spec.md", 3: "plan.md", 4: "acceptance.md"}[gate]
         if not os.path.exists(os.path.join(change, artifact)):
-            self.edit(change, artifact, "# %s\n" % artifact)
+            self.edit(change, artifact, VALID_PLAN if gate == 3 else "# %s\n" % artifact)
         self.approve(change, gate, owner)
         self.approve(change, gate, cross)
         if risk == "high" and gate in (2, 4):
@@ -223,7 +235,7 @@ class GateTests(PodRepo):
         self.assertEqual(res.returncode, 1)
         self.assertIn("missing escalation", res.stdout)
         # gate 3 cannot start before escalation signs gate 2
-        self.edit(c, "plan.md", "# plan\n")
+        self.edit(c, "plan.md", VALID_PLAN)
         self.assertEqual(self.approve(c, 3, DEV, expect_ok=False).returncode, 1)
         self.approve(c, 2, LEAD)
         self.assertEqual(self.check(c).returncode, 0)
@@ -400,7 +412,9 @@ class PluginFilesTests(unittest.TestCase):
                     self.assertTrue(os.access(path, os.X_OK), path)
 
     def test_scripts_are_executable(self):
-        for name in ("new-change.sh", "gate.sh", "gate-check.sh", "metrics.sh"):
+        for name in ("new-change.sh", "gate.sh", "gate-check.sh", "metrics.sh", "test-strength.sh",
+                     "release-check.sh", "mark-revert.sh", "auto-merge-check.sh", "pr-check.sh",
+                     "sync-codeowners.sh", "setup-github.sh"):
             self.assertTrue(os.access(os.path.join(POD, "scripts", name), os.X_OK), name)
 
 

@@ -20,6 +20,15 @@ agent ร่างงานของทุกบทบาท มนุษย์�
 - **Risk tier:** ระบุใน intent.md (`Risk: low | medium | high`) งาน `high` ต้องมี escalation ลงชื่อเพิ่มที่ gate 2 และ 4 ดู `docs/risk-tiers.md`
 - **WIP limit:** change ที่ผ่าน gate 1 แต่ยังไม่ผ่าน gate 4 เปิดพร้อมกันได้ไม่เกิน `wip_limit` ใน `pod.yml` (ค่าเริ่มต้น 2)
 - **Stale approval:** การอนุมัติแต่ละครั้งเก็บ blob hash ของ artifact หาก artifact ถูกแก้หลังอนุมัติ gate-check จะไม่ผ่าน
+- **Merge ตาม risk:** gate 4 แยกเป็น merge-ready และ release-ready งาน low ที่ผ่าน 9 เงื่อนไข merge อัตโนมัติได้
+  งาน medium ใช้ SuperDev คนเดียว งาน high ต้องครบสามคน ดู `docs/merge-by-risk.md`
+
+ชุดนี้มีสามชั้น
+1. **Governance:** gate, cross-approval, risk tier, WIP limit และ audit log ใน `gates.log`
+2. **วิธีทำงานทางวิศวกรรม** (ดัดแปลงจาก pstack ดู `docs/credits.md`): โครงข้อมูลก่อน logic,
+   throughput checkpoint, งานทีละ unit ที่ตรวจได้, test ที่ตรวจพฤติกรรม, แก้ bug ที่ต้นเหตุ,
+   ความเห็นที่สองจาก model อื่น และ arena สำหรับเทียบแนวทางออกแบบ
+3. **การบังคับใช้:** หลักการที่สำคัญเป็นการตรวจด้วย script, hook และ CI ไม่ใช่เพียงคำแนะนำ
 
 ## เริ่มต้นใช้งาน
 
@@ -41,10 +50,13 @@ git add -A && git commit -m "chore: start pod"
 1. SuperBiz: `scripts/new-change.sh order-history` แล้วใช้ skill `/superbiz:intent` ร่าง intent.md
 2. Gate 1: SuperBiz `scripts/gate.sh docs/changes/001-order-history 1` แล้ว SuperDev ตรวจทานและรันคำสั่งเดียวกัน
 3. SuperBiz: `/superbiz:ux-brief` และ `/superbiz:spec` แล้วผ่าน gate 2
-4. SuperDev: `/superdev:plan` แล้วผ่าน gate 3
-5. SuperDev: `/superdev:test-first` และ `/superdev:review` แล้วเปิด PR
-6. SuperBiz: `/superbiz:acceptance` แล้วผ่าน gate 4 (SuperDev ลงชื่อก่อนในฐานะ owner)
-7. SuperDev: `/superdev:release` และ SuperBiz: `/superbiz:release-notes`
+4. SuperDev: `/superdev:plan` (Data shape, Throughput checkpoint, Parallel parts) แล้วผ่าน gate 3
+5. SuperDev: `/superdev:test-first`, `/superdev:build` และ `/superdev:review` แล้วเปิด PR
+6. SuperDev: `/superdev:merge` merge ตาม risk (low อาจ merge อัตโนมัติ, medium SuperDev ลงชื่อ gate 4, high มนุษย์ครบสามคน)
+7. SuperBiz: `/superbiz:acceptance` แล้วลงชื่อ gate 4 (ตรวจรับ ก่อนหรือหลัง merge ตาม risk)
+8. SuperDev: `/superdev:release` (ต้องผ่าน `scripts/release-check.sh`) และ SuperBiz: `/superbiz:release-notes`
+
+bug ใช้ `/superdev:bug-fix` และแนวทางออกแบบที่ยังตัดสินไม่ได้ใช้ `/superdev:arena`
 
 ## คำสั่ง
 
@@ -52,10 +64,17 @@ git add -A && git commit -m "chore: start pod"
 |---|---|
 | `make setup` | ตรวจเครื่องมือ และเตรียมโฟลเดอร์ `.pod/` |
 | `make test` | รัน unit test ทั้งหมด (`app/` และ scripts) |
-| `make check` | `make test` และ `scripts/gate-check.sh --all` (CI รันคำสั่งนี้ทุก pull request) |
+| `make strength` หรือ `scripts/test-strength.sh` | หา test ที่ยังผ่านแม้ทุกฟังก์ชันใน `app/` คืนค่า None (test อ่อน) |
+| `make check` | test, strength, `scripts/sync-codeowners.sh --check` และ `scripts/gate-check.sh --all` (CI รันทุก pull request) |
 | `scripts/new-change.sh <slug>` | สร้าง `docs/changes/NNN-slug/intent.md` ปฏิเสธเมื่อถึง WIP limit |
 | `scripts/gate.sh <change-dir> <1-4>` | ลงชื่อ gate ด้วยอีเมลจาก `git config user.email` บันทึกลง `gates.log` |
-| `scripts/gate-check.sh <change-dir> [upto]` | ตรวจ gate ของ change เดียว |
+| `scripts/gate-check.sh <change-dir> [upto]` | ตรวจ gate ของ change เดียว (`4` = merge-ready ตาม risk) |
+| `scripts/release-check.sh <change-dir>` | release-ready: gate 4 ครบทุกคน ไม่ stale ไม่มี revert และตรวจรับไม่เกินกำหนด |
+| `scripts/auto-merge-check.sh <change-dir> [--base main] [--record]` | `ALLOW` หรือ `DENY` พร้อมเหตุผลสำหรับ merge อัตโนมัติ `--record` บันทึก `role=auto` |
+| `scripts/mark-revert.sh <change-dir> "<reason>"` | มนุษย์บันทึกว่า change ถูก revert |
+| `scripts/pr-check.sh [--author A --approvals B,C --base main]` | CI: ตรวจ approval บน GitHub ตาม risk จริง |
+| `scripts/sync-codeowners.sh [--check]` | สร้างหรือตรวจ `.github/CODEOWNERS` จาก `docs/risk-paths` |
+| `scripts/setup-github.sh <owner/repo> [--yes]` | เปิด auto-merge และป้องกัน branch main (แสดงแผนก่อน ใช้จริงเมื่อมี `--yes`) |
 | `scripts/gate-check.sh --all` | ตรวจทุก change (change ที่ยังไม่มี gates.log ถือเป็น draft) |
 | `scripts/metrics.sh <change-dir>` หรือ `make metrics CHANGE=<change-dir>` | เวลาจาก commit แรกของ intent.md ถึงแต่ละ gate และ lead time |
 | `touch .pod/lock-tests` | ล็อก tests ไม่ให้ agent แก้ |
@@ -79,30 +98,45 @@ claude --plugin-dir ./plugins/superdev
 | Plugin | Skills | Agents | Hooks |
 |---|---|---|---|
 | superbiz | intent, ux-brief, spec, acceptance, release-notes | ba-researcher, ux-critic | biz-scope: แก้ได้เฉพาะ `docs/` |
-| superdev | plan, test-first, review, release, incident | reviewer, monitor | kill-switch, protect-tests, gate-guard |
+| superdev | plan, build, test-first, review, bug-fix, arena, release, incident, merge | reviewer, reviewer-second, monitor | kill-switch, protect-tests, gate-guard |
 
 ## โครงสร้าง
 
 ```
 AGENTS.md, CLAUDE.md     กฎสำหรับ agent
-pod.yml                  สมาชิก pod, escalation และ WIP limit
-Makefile                 setup, test, check, metrics
+pod.yml                  สมาชิก pod, บัญชี GitHub, WIP limit และค่า auto-merge
+Makefile                 setup, test, strength, check, metrics
 app/orders.py            โดเมนตัวอย่าง: สถานะคำสั่งซื้อของลูกค้า
 tests/                   unit test ของ app และ scripts
 docs/gates.md            gate และคำถามตรวจ
 docs/risk-tiers.md       ระดับความเสี่ยง
 docs/pod-charter.md      ข้อตกลงของ pod
-docs/parallel-agents.md  ให้ agent หลายตัวทำงานพร้อมกัน
-docs/templates/          intent, ux-brief, spec, plan, acceptance
+docs/parallel-agents.md  ให้ agent หลายตัวทำงานพร้อมกัน และ arena
+docs/merge-by-risk.md    ใคร merge ได้ในแต่ละ risk, 9 เงื่อนไข auto-merge, revert, ตั้งค่า GitHub
+docs/risk-paths          path อ่อนไหว (แตะแล้วถือเป็น high)
+docs/credits.md          ที่มาของแนวคิดที่ดัดแปลงจาก pstack
+docs/templates/          intent, ux-brief, spec, plan, review, acceptance
 docs/changes/            change ของ pod (NNN-slug/)
-scripts/                 new-change, gate, gate-check, metrics (lib.py เป็นตัวหลัก)
+scripts/                 new-change, gate, gate-check, release-check, mark-revert, metrics (lib.py)
+                         test-strength (strength.py)
+                         auto-merge-check, pr-check, sync-codeowners (merge_rules.py), setup-github
 plugins/                 superbiz และ superdev
 logs/sample-app.log      log สังเคราะห์สำหรับ lab incident
-.github/workflows/       CI รัน make check
+.github/workflows/       CI job pod-gates: make check และ pr-check
+.github/CODEOWNERS       สร้างจาก docs/risk-paths
 ```
 
 ## ข้อควรรู้
 
-- agent ไม่ลงชื่อ gate แทนมนุษย์ คำสั่ง `scripts/gate.sh` ต้องรันโดยมนุษย์เท่านั้น
+- agent ไม่ลงชื่อ gate แทนมนุษย์ คำสั่ง `scripts/gate.sh` และ `scripts/mark-revert.sh` ต้องรันโดยมนุษย์เท่านั้น
+  agent รัน `scripts/auto-merge-check.sh --record` และ `gh pr merge --auto --squash` ได้เฉพาะเมื่อผลเป็น `ALLOW`
+- `auto_merge` ใน pod.yml เริ่มที่ `off` เปิดเป็น `low` เมื่อ pod สะสมผลงานครบ ดู `docs/pod-charter.md`
+- การตั้งค่า GitHub: ใส่บัญชีใน pod.yml, `scripts/sync-codeowners.sh`, แล้ว `scripts/setup-github.sh <owner/repo> --yes`
+  ผู้อนุมัติ PR ต้องไม่ใช่ผู้เปิด PR ถ้า agent เปิด PR ด้วยบัญชีของ SuperDev ระบบจะให้ SuperBiz อนุมัติแทน ดู `docs/merge-by-risk.md`
 - ข้อมูลใน `app/` และ `logs/` เป็นข้อมูลสังเคราะห์ทั้งหมด
 - โฟลเดอร์ `.pod/` ไม่ถูก commit (อยู่ใน `.gitignore`) เพราะเป็นสถานะของเครื่องแต่ละเครื่อง
+
+## Credits
+
+แนวคิดด้านวิธีทำงานหลายข้อดัดแปลงจาก pstack ของ Lauren Tan (MIT License, Copyright (c) 2026 Lauren Tan)
+รายการแนวคิดที่ดัดแปลงอยู่ใน `docs/credits.md`

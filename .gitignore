@@ -1,3 +1,5 @@
 .pod/
 __pycache__/
 *.pyc
+# skill folder named build/ must be committed even when a global gitignore ignores build/
+!plugins/superdev/skills/build/

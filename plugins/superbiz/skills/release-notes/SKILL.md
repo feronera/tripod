@@ -9,8 +9,8 @@ description: Write Thai release notes for customers and for internal teams from 
 
 ## ขั้นตอน
 1. อ่าน intent.md, spec.md, acceptance.md และ runbook.md (ถ้ามี) ของ change
-2. ตรวจว่า gate 4 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 4`
-   หากไม่ผ่าน ให้เขียนเป็นฉบับร่าง และระบุบรรทัดแรกว่า "ฉบับร่าง ยังไม่ผ่าน gate 4"
+2. ตรวจว่าพร้อมปล่อย: `scripts/release-check.sh docs/changes/NNN-slug`
+   หากไม่ผ่าน ให้เขียนเป็นฉบับร่าง และระบุบรรทัดแรกว่า "ฉบับร่าง ยังไม่พร้อมปล่อย"
 3. ส่วนสำหรับลูกค้า
    - ไม่เกิน 5 บรรทัด ใช้ภาษาสุภาพและเข้าใจง่าย
    - บอกว่าผู้ใช้ได้อะไร และต้องทำอะไรหรือไม่

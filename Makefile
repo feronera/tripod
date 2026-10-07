@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: setup test check metrics
+.PHONY: setup test strength check metrics
 
 setup:
 	@command -v $(PYTHON) >/dev/null || { echo "ต้องติดตั้ง python3"; exit 1; }
@@ -12,7 +12,11 @@ setup:
 test:
 	$(PYTHON) -m unittest discover -s tests -t . -v
 
-check: test
+strength:
+	scripts/test-strength.sh
+
+check: test strength
+	scripts/sync-codeowners.sh --check
 	scripts/gate-check.sh --all
 
 metrics:

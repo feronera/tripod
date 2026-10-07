@@ -10,6 +10,7 @@ description: Business-side gate 4 check. Compare the PR against the Success meas
 ## ขั้นตอน
 1. อ่าน intent.md (Success measure), spec.md (Requirements) และ `docs/templates/acceptance.md`
 2. ตรวจว่า gate 3 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 3`
+   และดู `gates.log` ว่ามีบรรทัด `role=auto` หรือไม่ (merge อัตโนมัติแล้ว รอตรวจรับ)
 3. ขอสรุปการเปลี่ยนแปลงของ PR จากมนุษย์ หรืออ่านด้วย `git diff main...HEAD --stat`
    แล้วสรุปเป็นภาษาที่ผู้ไม่ใช่นักพัฒนาเข้าใจ
 4. ใช้ demo steps ที่ SuperDev ให้ไว้ใน plan.md หรือ PR หากไม่มี ให้ถามมนุษย์ ห้ามคิดขั้นตอนเอง
@@ -29,3 +30,8 @@ description: Business-side gate 4 check. Compare the PR against the Success meas
 1. SuperDev (owner ของ gate 4) รัน `scripts/gate.sh docs/changes/NNN-slug 4` ก่อน
 2. SuperBiz ยืนยันคำตัดสินแล้วรันคำสั่งเดียวกัน
 3. หาก `Risk: high` escalation ต้องรันคำสั่งเดียวกันด้วย
+4. งาน low ที่ merge อัตโนมัติแล้ว (มีบรรทัด `role=auto` ใน gates.log) เป็นการตรวจรับหลัง merge
+   SuperBiz ลงชื่อได้ก่อน SuperDev และต้องทำภายใน `acceptance_hours` ใน pod.yml
+   จากนั้น SuperDev ลงชื่อ owner ด้วย acceptance.md ฉบับเดียวกัน
+5. หาก reject หลัง merge ให้ SuperBiz หรือ SuperDev พิจารณา `git revert` และ
+   `scripts/mark-revert.sh docs/changes/NNN-slug "<เหตุผล>"` (มนุษย์เป็นผู้รัน)

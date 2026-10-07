@@ -3,7 +3,7 @@
   "owner": { "name": "HarmonyX" },
   "metadata": {
     "description": "SuperBiz x SuperDev: two-person agentic delivery pod for the ADLC workshop",
-    "version": "0.1.0"
+    "version": "0.2.0"
   },
   "plugins": [
     {
@@ -14,7 +14,7 @@
     {
       "name": "superdev",
       "source": "./plugins/superdev",
-      "description": "SA, Dev, QA, Deploy and maintenance skills for the SuperDev seat: plan, test-first, review, release, incident. Guards tests, gates and kill switch."
+      "description": "SA, Dev, QA, Deploy and maintenance skills for the SuperDev seat: plan, build, test-first, review, bug-fix, arena, merge, release, incident. Guards tests, gates and kill switch."
     }
   ]
 }

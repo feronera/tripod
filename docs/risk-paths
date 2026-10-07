@@ -1,0 +1,10 @@
+# docs/risk-paths: path อ่อนไหว หนึ่ง glob ต่อบรรทัด
+# change ที่แตะ path เหล่านี้ถือเป็น Risk: high เสมอ ไม่ว่า intent.md จะระบุระดับใด
+# แก้ไฟล์นี้แล้วให้รัน scripts/sync-codeowners.sh เพื่ออัปเดต .github/CODEOWNERS
+app/auth*
+app/payment*
+**/migrations/**
+.github/**
+pod.yml
+scripts/**
+plugins/**/hooks/**

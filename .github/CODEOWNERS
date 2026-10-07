@@ -1,0 +1,9 @@
+# สร้างโดย scripts/sync-codeowners.sh จาก docs/risk-paths ห้ามแก้ไฟล์นี้เอง
+# path อ่อนไหวต้องได้รับ review จาก SuperDev และ escalation
+app/auth* @dev-example @lead-example
+app/payment* @dev-example @lead-example
+**/migrations/** @dev-example @lead-example
+.github/** @dev-example @lead-example
+pod.yml @dev-example @lead-example
+scripts/** @dev-example @lead-example
+plugins/**/hooks/** @dev-example @lead-example

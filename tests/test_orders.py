@@ -11,7 +11,9 @@ class OrderStatusTest(unittest.TestCase):
         self.assertNotIn("x", orders.get_order("A1001")["items"])
 
     def test_get_order_missing(self):
+        # absence is paired with presence, so a stub returning None cannot pass
         self.assertIsNone(orders.get_order("NOPE"))
+        self.assertEqual(orders.get_order("A1003")["status"], "pending")
 
     def test_status_for_owner(self):
         result = orders.status_for_customer("C001", "A1001")

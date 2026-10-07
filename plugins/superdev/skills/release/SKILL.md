@@ -1,6 +1,6 @@
 ---
 name: release
-description: Prepare a release after gate 4. Run the release checklist, write rollback steps and a runbook entry in docs/changes/NNN-slug/runbook.md, and run a kill-switch drill. Use when the user says "ปล่อยงาน", "release", "deploy", "เตรียม release", "runbook".
+description: Prepare a release once the change is release-ready (scripts/release-check.sh). Run the release checklist, write rollback steps and a runbook entry in docs/changes/NNN-slug/runbook.md, and run a kill-switch drill. Use when the user says "ปล่อยงาน", "release", "deploy", "เตรียม release", "runbook".
 ---
 
 # Release (SuperDev: Deploy และ MA)
@@ -8,8 +8,11 @@ description: Prepare a release after gate 4. Run the release checklist, write ro
 เป้าหมาย: release ที่ย้อนกลับได้ และมี runbook ให้ผู้ดูแลระบบใช้ต่อ
 
 ## ขั้นตอน
-1. ตรวจว่า gate 4 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 4`
-   หากไม่ผ่าน ให้แจ้งมนุษย์และหยุด
+1. ตรวจว่าพร้อมปล่อย: `scripts/release-check.sh docs/changes/NNN-slug`
+   - release-ready หมายถึง gate 4 มี SuperDev (owner) และ SuperBiz (ตรวจรับ) ครบและไม่ stale
+     งาน high ต้องมี escalation ด้วย และ change ต้องไม่มีบันทึก revert
+   - งาน low ที่ merge อัตโนมัติแล้ว ยังปล่อยขึ้น production ไม่ได้จนกว่า SuperBiz ตรวจรับ
+   - หากไม่ผ่าน ให้แจ้งข้อความทุกบรรทัดแก่มนุษย์และหยุด
 2. Release checklist
    - [ ] `make check` ผ่านบน branch ล่าสุด
    - [ ] CI (pod-gates) ผ่าน
@@ -27,10 +30,13 @@ description: Prepare a release after gate 4. Run the release checklist, write ro
    2. ลองเรียกเครื่องมือหนึ่งครั้ง และยืนยันว่า hook ปฏิเสธพร้อมข้อความ "kill switch เปิดอยู่"
    3. หยุดทำงานทั้งหมด และรอให้มนุษย์รัน `rm .pod/kill-switch` เอง
    4. บันทึกผล drill ใน runbook.md
-5. การ merge เข้า main ต้องผ่าน hook gate-guard ห้ามหลบ hook
+5. การ merge เข้า main ทำผ่าน `/superdev:merge` และต้องผ่าน hook gate-guard ห้ามหลบ hook
+6. หากต้องย้อนกลับหลังปล่อย ให้มนุษย์รัน `scripts/mark-revert.sh docs/changes/NNN-slug "<เหตุผล>"`
+   บันทึกนี้ทำให้ release-check ไม่ผ่าน และทำให้ pod ต้องสะสมผลงานใหม่ก่อน merge อัตโนมัติ
 
 ## สิ่งที่ห้ามทำ
 - ห้ามลบ `.pod/kill-switch` เอง
+- ห้ามรัน `scripts/mark-revert.sh` เอง เพราะเป็นการตัดสินใจของมนุษย์
 - ห้าม release เมื่อ acceptance.md ระบุ `reject`
 
 ## จบงาน

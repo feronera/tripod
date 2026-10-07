@@ -11,6 +11,29 @@
 | agent ที่เขียนโค้ด | หนึ่ง agent หนึ่ง worktree และไฟล์ไม่ทับกัน | ถ้า plan.md แบ่งไฟล์ไม่ได้ ให้ทำทีละส่วน |
 | การวางแผน การเขียน spec และการอนุมัติ gate | session หลักตัวเดียว | งานที่ต้องทำต่อกันจะแย่ลงเมื่อใช้ agent หลายตัว |
 
+## เริ่มจาก plan.md
+
+การแบ่งงานต้องเขียนไว้ใน plan.md ก่อน gate 3 และ gate 3 ตรวจรูปแบบนี้
+
+```
+## Throughput checkpoint
+- Blocking first steps: test ที่ fail และโครงข้อมูลใน Data shape
+- Independent workstreams: หน้ารายการ (A) และหน้ารายละเอียด (B)
+- Shared mutable state: n/a: แต่ละส่วนแก้ไฟล์ของตัวเอง
+- Smallest safe decomposition: หนึ่ง requirement ต่อหนึ่ง commit
+
+## Parallel parts
+### A
+files: app/history.py
+### B
+files: app/detail.py
+```
+
+- ถ้าไม่แบ่ง ให้เขียน `none: <เหตุผล>` ใต้ `## Parallel parts`
+- ไฟล์ของแต่ละส่วนต้องไม่ซ้ำกัน ถ้าซ้ำ gate 3 จะไม่ผ่านและแจ้งชื่อไฟล์ที่ซ้ำ
+- ถ้ามี Shared mutable state ให้แยกออกเป็นไฟล์ของแต่ละส่วนก่อน ถ้าแยกไม่ได้ ให้ทำส่วนนั้นทีละส่วน
+- แต่ละส่วนทำด้วย `/superdev:build` ทีละ unit และ commit ทุก unit ที่ test ผ่าน
+
 ## SuperBiz: fan-out ใน session เดียว
 
 ใน Claude Code ที่โหลด `plugins/superbiz`
@@ -40,12 +63,18 @@ git switch change/001
 git merge change/001-a change/001-b
 make check
 
-# review สามมุมพร้อมกัน
-/superdev:review ให้ reviewer 3 ตัวทำพร้อมกัน: security, ความถูกต้อง, test และ edge case
+# review สามมุมพร้อมกัน แล้วตามด้วย reviewer-second (model อื่น) เป็นความเห็นที่สอง
+/superdev:review
 
 # เก็บกวาด
 git worktree remove ../pod-a && git worktree remove ../pod-b
 ```
+
+## Arena: เมื่อยังเลือกแนวทางออกแบบไม่ได้
+
+ใช้ worktree สองชุดแบบเดียวกัน แต่ทั้งสองทำงานเดียวกันคนละแนวทาง แล้วเทียบด้วย test ที่ล็อกไว้
+test-strength, ขนาด diff และผล reviewer มนุษย์ SuperDev เลือก แล้วบันทึกใน plan.md ใต้ `## Decision log`
+ขั้นตอนอยู่ใน skill `/superdev:arena`
 
 ## ข้อควรระวัง
 
