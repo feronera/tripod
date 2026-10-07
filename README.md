@@ -92,6 +92,7 @@ tests/                   unit test ของ app และ scripts
 docs/gates.md            gate และคำถามตรวจ
 docs/risk-tiers.md       ระดับความเสี่ยง
 docs/pod-charter.md      ข้อตกลงของ pod
+docs/parallel-agents.md  ให้ agent หลายตัวทำงานพร้อมกัน
 docs/templates/          intent, ux-brief, spec, plan, acceptance
 docs/changes/            change ของ pod (NNN-slug/)
 scripts/                 new-change, gate, gate-check, metrics (lib.py เป็นตัวหลัก)
