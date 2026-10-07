@@ -1,7 +1,7 @@
 # ให้ agent หลายตัวทำงานพร้อมกัน
 
 หลักการ: ทำพร้อมกันเฉพาะงานที่แบ่งได้ ทุกสายส่งผลกลับมาที่ session หลักของแต่ละคน แล้วคนตัดสินที่ gate
-ภาพรวมอยู่ในสไลด์ "Multi-agent ใน pod" ของ `deck/adlc-pod-deck.html`
+ภาพรวมอยู่ในสไลด์ "Multi-agent ใน pod" ของ deck workshop (repo hx-natthawat/workshop-ai-sdlc, `deck/adlc-pod-deck.html`)
 
 ## กติกา 3 ข้อ
 

@@ -1,22 +1,30 @@
-# Pod starter kit: SuperBiz × SuperDev
+# Tripod
 
-ชุดตั้งต้นสำหรับ delivery pod ที่มีมนุษย์เพียงสองคนทำงานร่วมกับ agent
-ใช้ใน workshop ภาคปฏิบัติ 2 วัน เรื่อง Agentic Development Lifecycle (ADLC)
+แนวปฏิบัติสำหรับทีมส่งมอบขนาดเล็กที่ทำงานร่วมกับ AI agent ชื่อมาจากสามขาที่ทำให้ทีมยืนได้มั่นคง
+
+| ขา | บทบาทที่รวมไว้ | สถานะ |
+|---|---|---|
+| **SuperBiz** | PO, PM, BA, Designer: ทำอะไรและเพราะอะไร | ใช้งานได้ |
+| **SuperDev** | SA, Dev, QA, Deploy, MA: ทำอย่างไรและปลอดภัยหรือไม่ | ใช้งานได้ |
+| **SuperCEO** | ทิศทาง ลำดับความสำคัญ และการอนุมัติงานความเสี่ยงสูง | แผนในอนาคต ตอนนี้ใช้บทบาท escalation ใน `pod.yml` แทน |
+
+ใช้ใน workshop ภาคปฏิบัติ 2 วัน เรื่อง Agentic Development Lifecycle (ADLC) ของ HarmonyX
+และนำไปติดตั้งใน project อื่นได้
 
 ## นำไปใช้กับ project อื่น
 
 ติดตั้ง kit ลงใน repo ที่มีอยู่แล้วได้ทุก stack ตัวติดตั้งไม่เขียนทับ Makefile, AGENTS.md และ CLAUDE.md และรันซ้ำได้
 
 ```bash
-git clone git@github.com:hx-natthawat/workshop-ai-sdlc.git ~/adlc-kit
-cd ~/my-project && ~/adlc-kit/pod/scripts/pod-install.sh .
+gh repo clone feronera/tripod ~/tripod
+cd ~/my-project && ~/tripod/scripts/pod-install.sh .
 ```
 
 ติดตั้ง plugin ทีละคนจาก GitHub (repo เป็น private ผู้ติดตั้งต้องมีสิทธิ์อ่าน repo และตั้งค่า git credential แล้ว)
 
 ```
-/plugin marketplace add hx-natthawat/workshop-ai-sdlc
-/plugin install superbiz@adlc-pod     # หรือ superdev@adlc-pod
+/plugin marketplace add feronera/tripod
+/plugin install superbiz@tripod     # หรือ superdev@tripod
 ```
 
 ขั้นตอนครบ 9 ขั้นและ checklist อยู่ใน [docs/adopt.md](docs/adopt.md)
@@ -50,10 +58,10 @@ agent ร่างงานของทุกบทบาท มนุษย์�
 
 ## เริ่มต้นใช้งาน
 
-โฟลเดอร์นี้เป็น template ให้คัดลอกไปเป็น repo ใหม่ของ pod
+repo นี้เป็น template repository: สร้าง repo ใหม่ของทีมจาก template แล้วเริ่มใช้ได้ทันที
 
 ```bash
-cp -R pod ~/my-pod && cd ~/my-pod && git init
+gh repo create my-pod --private --template feronera/tripod --clone && cd my-pod
 # แก้ pod.yml: ใส่ชื่อและอีเมลจริงของ SuperBiz, SuperDev และ escalation
 # อีเมลต้องตรงกับ git config user.email ของแต่ละคน
 make setup
@@ -114,8 +122,8 @@ claude --plugin-dir ./plugins/superbiz
 claude --plugin-dir ./plugins/superdev
 ```
 
-หากต้องการติดตั้งแบบถาวร ใช้ marketplace ชื่อ `adlc-pod` จาก GitHub
-(`/plugin marketplace add hx-natthawat/workshop-ai-sdlc` แล้ว `/plugin install superbiz@adlc-pod` หรือ `superdev@adlc-pod`)
+หากต้องการติดตั้งแบบถาวร ใช้ marketplace ชื่อ `tripod` จาก GitHub
+(`/plugin marketplace add feronera/tripod` แล้ว `/plugin install superbiz@tripod` หรือ `superdev@tripod`)
 ใน repo ที่คัดลอกโฟลเดอร์นี้ไปทั้งโฟลเดอร์ ใช้ `/plugin marketplace add ./` แทนได้
 hook ของ plugin ไม่บล็อกงานใน project ที่ไม่มี `pod.yml` และพิมพ์หมายเหตุว่า "ไม่พบ pod kit ใน project นี้"
 

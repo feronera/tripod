@@ -24,9 +24,9 @@ pod เหมาะกับงานที่
 ต้องมี: git, Python 3.10 ขึ้นไป, make และ Claude Code ตัวติดตั้งไม่ใช้ network
 
 ```bash
-git clone git@github.com:hx-natthawat/workshop-ai-sdlc.git ~/adlc-kit
+gh repo clone feronera/tripod ~/tripod
 cd ~/my-project                     # repo ของ project ที่มีอยู่แล้ว
-~/adlc-kit/pod/scripts/pod-install.sh .
+~/tripod/scripts/pod-install.sh .
 ```
 
 ตัวเลือก
@@ -87,19 +87,19 @@ cd ~/my-project                     # repo ของ project ที่มีอ�
 
 ## 4. ติดตั้ง plugin (ทำทีละคน)
 
-plugin ติดตั้งจาก GitHub โดยตรง repo ของ kit เป็น marketplace ชื่อ `adlc-pod`
+plugin ติดตั้งจาก GitHub โดยตรง repo ของ kit เป็น marketplace ชื่อ `tripod`
 
 ```
-/plugin marketplace add hx-natthawat/workshop-ai-sdlc
-/plugin install superbiz@adlc-pod     # เครื่องของ SuperBiz
-/plugin install superdev@adlc-pod     # เครื่องของ SuperDev
+/plugin marketplace add feronera/tripod
+/plugin install superbiz@tripod     # เครื่องของ SuperBiz
+/plugin install superdev@tripod     # เครื่องของ SuperDev
 ```
 
 - repo นี้เป็น private ผู้ติดตั้งต้องมีสิทธิ์อ่าน repo บน GitHub และตั้งค่า git credential ไว้แล้ว
-  (ตรวจได้ด้วย `git ls-remote git@github.com:hx-natthawat/workshop-ai-sdlc.git`)
+  (ตรวจได้ด้วย `git ls-remote https://github.com/feronera/tripod.git`)
 - plugin ทำงานกับไฟล์ของ project ผ่าน `CLAUDE_PROJECT_DIR` hook จะไม่บล็อกงานใน project ที่ไม่มี `pod.yml`
   และจะพิมพ์หมายเหตุหนึ่งบรรทัด "ไม่พบ pod kit ใน project นี้"
-- อัปเดต plugin เมื่อ kit ออกเวอร์ชันใหม่: `/plugin marketplace update adlc-pod`
+- อัปเดต plugin เมื่อ kit ออกเวอร์ชันใหม่: `/plugin marketplace update tripod`
 - ทางเลือกที่ไม่ติดตั้งถาวร: ติดตั้งด้วย `--vendor-plugins` แล้วใช้ `claude --plugin-dir ./plugins/superdev`
 
 ## 5. change แรกแบบนำร่อง
@@ -141,20 +141,20 @@ plugin ติดตั้งจาก GitHub โดยตรง repo ของ k
 - กฎเฉพาะของทีมให้เขียนใน `AGENTS.md` นอกส่วน `<!-- pod:begin -->` ถึง `<!-- pod:end -->`
 - เมื่อแก้ plugin ใน repo ของ kit ให้เพิ่ม `version` ใน `plugins/<ชื่อ>/.claude-plugin/plugin.json`
   และ `metadata.version` ใน `.claude-plugin/marketplace.json` แล้วรัน `claude plugin validate --strict`
-  ผู้ใช้จะได้รับเวอร์ชันใหม่เมื่อรัน `/plugin marketplace update adlc-pod`
+  ผู้ใช้จะได้รับเวอร์ชันใหม่เมื่อรัน `/plugin marketplace update tripod`
 
 ## 9. อัปเดต kit จากต้นฉบับ
 
 ```bash
-cd ~/adlc-kit && git pull
+cd ~/tripod && git pull
 cd ~/my-project && git switch -c chore/pod-kit-update
-~/adlc-kit/pod/scripts/pod-install.sh .
+~/tripod/scripts/pod-install.sh .
 git status && git diff
 ```
 
 - ไฟล์ที่เนื้อหาตรงกับ kit แล้วจะไม่เปลี่ยน ส่วนของ pod ใน `AGENTS.md` จะถูกแทนที่ด้วยฉบับใหม่
 - ไฟล์ที่ทีมแก้เองจะถูกข้ามและแสดงรายการ ให้เทียบกับ kit ด้วย
-  `diff ~/adlc-kit/pod/<ไฟล์> <ไฟล์>` แล้วตัดสินว่าจะรวมการเปลี่ยนแปลงเองหรือใช้ `--force`
+  `diff ~/tripod/<ไฟล์> <ไฟล์>` แล้วตัดสินว่าจะรวมการเปลี่ยนแปลงเองหรือใช้ `--force`
 - เมื่อใช้ `--force` ให้ตรวจ `git diff` และไฟล์ `.pod-bak` ทุกไฟล์ แล้วลบไฟล์ `.pod-bak` ก่อน commit
 - `pod.yml` ที่มีอยู่แล้วไม่ถูกแก้ (เว้นแต่ใช้ `--force`) หาก kit เพิ่ม key ใหม่ ค่าเริ่มต้นจะถูกใช้จนกว่าทีมจะเพิ่ม key นั้นเอง
 - การอัปเดตแตะ `scripts/**` และ `.github/**` ซึ่งอยู่ใน `docs/risk-paths` จึงเป็น change ระดับ high
@@ -171,7 +171,7 @@ git status && git diff
 - [ ] CI ติดตั้ง stack ของ project ก่อน `pod-check` (project ที่ไม่ใช่ Python)
 - [ ] `scripts/setup-github.sh <owner/repo>` ตรวจแผนแล้ว และรันพร้อม `--yes`
 - [ ] `docs/pod-charter.md` กรอกครบ
-- [ ] SuperBiz ติดตั้ง `superbiz@adlc-pod` และ SuperDev ติดตั้ง `superdev@adlc-pod`
+- [ ] SuperBiz ติดตั้ง `superbiz@tripod` และ SuperDev ติดตั้ง `superdev@tripod`
 - [ ] change แรก `Risk: low` ผ่าน 4 gate โดย `auto_merge: off`
 - [ ] กำหนดวันทบทวนผลที่ 30, 60 และ 90 วัน
 - [ ] ตกลงเงื่อนไขการเปิด `auto_merge: low` และผู้มีสิทธิ์เปลี่ยนค่า

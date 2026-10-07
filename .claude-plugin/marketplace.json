@@ -1,9 +1,9 @@
 {
-  "name": "adlc-pod",
+  "name": "tripod",
   "owner": { "name": "HarmonyX" },
   "metadata": {
     "description": "SuperBiz x SuperDev: two-person agentic delivery pod for the ADLC workshop",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "plugins": [
     {

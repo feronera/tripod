@@ -342,8 +342,8 @@ def report(inst, target, stack_name, stack, warnings, include_hint, opts):
         "แก้ docs/risk-paths ให้ตรงกับ path อ่อนไหวของ project นี้",
         "รัน scripts/sync-codeowners.sh เพื่อสร้าง .github/CODEOWNERS",
         "รัน make -f pod.mk pod-setup แล้ว make -f pod.mk pod-check ต้องผ่าน",
-        "ติดตั้ง plugin ต่อคน: /plugin marketplace add hx-natthawat/workshop-ai-sdlc แล้ว"
-        " /plugin install superbiz@adlc-pod หรือ superdev@adlc-pod",
+        "ติดตั้ง plugin ต่อคน: /plugin marketplace add feronera/tripod แล้ว"
+        " /plugin install superbiz@tripod หรือ superdev@tripod",
         "รัน scripts/setup-github.sh <owner/repo> เพื่อดูแผนก่อน แล้วรันซ้ำพร้อม --yes",
         "commit ไฟล์ทั้งหมดผ่าน PR และอ่าน docs/adopt.md ของ kit สำหรับ change แรกแบบนำร่อง",
     ]
