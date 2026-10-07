@@ -160,6 +160,7 @@ class InstallerTests(TempRepo):
         for rel in ("app/orders.py", "tests/test_orders.py", "logs/sample-app.log"):
             self.assertTrue(self.exists(rel), rel)
         self.assertFalse(self.exists("tests/test_pod_scripts.py"))
+        self.assertIn("!logs/sample-app.log", self.read(".gitignore"))
         self.assertIn("strength: python", self.read("pod.yml"))
         self.assertEqual(self.sh("sync-codeowners.sh").returncode, 0)
         res = make(self.root, "check")

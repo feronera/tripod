@@ -299,7 +299,8 @@ def main(argv):
     # .gitignore lines, once
     gi = inst.read(".gitignore")
     have = set((gi or "").splitlines())
-    missing = [line for line in GITIGNORE_LINES if line not in have]
+    wanted = GITIGNORE_LINES + (["!logs/", "!logs/sample-app.log"] if opts["with_sample"] else [])
+    missing = [line for line in wanted if line not in have]
     if missing:
         sep = "" if not gi or gi.endswith("\n") else "\n"
         inst.write_text(".gitignore", (gi or "") + sep + "# pod kit\n" + "\n".join(missing) + "\n",
