@@ -5,12 +5,12 @@
 2026-03-02T09:05:00+07:00 INFO  orders.list customer=C001 count=2 ms=20
 2026-03-02T09:12:31+07:00 ERROR orders.status customer=C001 order=A1002 error="TypeError: delivery_date is None" ms=31
 2026-03-02T09:12:33+07:00 ERROR orders.status customer=C001 order=A1002 error="TypeError: delivery_date is None" ms=28
-2026-03-02T09:14:02+07:00 INFO  support.ticket channel=phone caller="ลูกค้าตัวอย่าง" phone=080-000-0000 topic="ถามวันที่จะได้รับสินค้า"
+2026-03-02T09:14:02+07:00 INFO  support.ticket channel=phone caller="Sample Customer" phone=080-000-0000 topic="Asked for the delivery date"
 2026-03-02T09:15:47+07:00 ERROR orders.status customer=C003 order=A1004 error="TypeError: delivery_date is None" ms=30
 2026-03-02T09:20:00+07:00 INFO  orders.status customer=C001 order=A1001 result=ok ms=11
 2026-03-02T09:22:18+07:00 ERROR orders.status customer=C001 order=A1002 error="TypeError: delivery_date is None" ms=29
 2026-03-02T09:25:00+07:00 INFO  health.check status=ok
 2026-03-02T09:31:05+07:00 WARN  orders.status customer=C004 order=A9999 result=not_found ms=7
 2026-03-02T09:40:12+07:00 ERROR orders.status customer=C002 order=A1003 error="TypeError: delivery_date is None" ms=33
-2026-03-02T09:45:00+07:00 INFO  support.ticket channel=chat topic="สถานะคำสั่งซื้อแสดงไม่ขึ้น" count_today=4
+2026-03-02T09:45:00+07:00 INFO  support.ticket channel=chat topic="Order status not showing" count_today=4
 2026-03-02T09:50:00+07:00 INFO  health.check status=ok

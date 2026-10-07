@@ -1,21 +1,21 @@
 # Test strength
 
-test ที่ผ่านไม่ได้แปลว่าโค้ดถูก test บางแบบผ่านได้แม้โค้ดไม่ทำงานเลย เอกสารนี้อธิบาย test อ่อน 5 แบบ
-วิธีที่ `scripts/test-strength.sh` ตรวจใน Python และวิธีเพิ่มการตรวจสำหรับ stack อื่น
+A passing test does not mean the code is correct. Some tests pass even when the code does nothing at all. This document describes 5 kinds of weak test,
+how `scripts/test-strength.sh` detects them in Python, and how to add a check for other stacks.
 
-## test อ่อน 5 แบบ
+## 5 kinds of weak test
 
-test ทั้ง 5 แบบนี้ยังผ่านได้แม้ทุกฟังก์ชันในโค้ดคืนค่าว่าง (None, null หรือ nil)
+All 5 kinds still pass even when every function in the code returns an empty value (None, null or nil).
 
-| แบบ | ตัวอย่าง | วิธีแก้ |
+| Kind | Example | Fix |
 |---|---|---|
-| 1. assert อ่อนหรือไม่มี assert | มีเพียง `assertTrue(x)`, `assertIsNotNone(x)` หรือเรียกฟังก์ชันโดยไม่ตรวจผล | assert ผลลัพธ์ด้วยค่าที่ระบุชัด |
-| 2. ตรวจเฉพาะ mock หรือการไม่มีข้อมูล | มีเพียง `assertIsNone(find("x"))` หรือ `assertEqual(list_orders(), [])` | จับคู่กับกรณีที่มีข้อมูลใน test เดียวกัน |
-| 3. อ้างอิงตัวเอง | `assertEqual(f(a), f(a))` ค่าที่คาดหวังมาจากโค้ดที่กำลังทดสอบ | เขียนค่าที่คาดหวังจาก spec |
-| 4. ตรึงค่าคงที่ | assert ค่าคงที่หรือ config ที่เขียนไว้ในโค้ดซ้ำ | ทดสอบกลไกที่ใช้ค่านั้น |
-| 5. fixture ตรวจ fixture | assert ข้อมูลที่ test สร้างเอง โดยไม่ได้เรียกโค้ดที่ทดสอบ | เรียกโค้ดจริงแล้ว assert ผลของโค้ด |
+| 1. Weak or missing assert | Only `assertTrue(x)`, `assertIsNotNone(x)`, or calling a function without checking the result | Assert the result against a specific value |
+| 2. Checks only a mock or the absence of data | Only `assertIsNone(find("x"))` or `assertEqual(list_orders(), [])` | Pair it with a case that has data, in the same test |
+| 3. Self-referencing | `assertEqual(f(a), f(a))`: the expected value comes from the code under test | Write the expected value from the spec |
+| 4. Pinned constant | Asserts a constant or config value that is repeated from the code | Test the mechanism that uses the value |
+| 5. Fixture checks fixture | Asserts data the test created itself, without calling the code under test | Call the real code and assert its result |
 
-## การตั้งค่าใน pod.yml
+## Settings in pod.yml
 
 ```
 test_cmd: python3 -m unittest discover -s tests -t . -v
@@ -25,40 +25,40 @@ strength: python           # python | off | cmd
 strength_cmd:
 ```
 
-| `strength` | การทำงานของ `scripts/test-strength.sh` | auto-merge-check |
+| `strength` | What `scripts/test-strength.sh` does | auto-merge-check |
 |---|---|---|
-| `python` | ตรวจแบบ Python ตามหัวข้อถัดไป exit 1 เมื่อพบ test อ่อน | ใช้ผลการตรวจ |
-| `off` | พิมพ์ข้อความว่าปิดอยู่ และ exit 0 reviewer ต้องตรวจ 5 แบบข้างต้นเอง | DENY เสมอ เพราะ merge อัตโนมัติต้องมีผลวัด strength |
-| `cmd` | รัน `strength_cmd` และ exit ด้วย code ของคำสั่งนั้น | ใช้ผลของคำสั่ง |
+| `python` | Runs the Python check described below. Exits 1 when a weak test is found | Uses the check result |
+| `off` | Prints a message that the check is off and exits 0. The reviewer must check the 5 kinds above manually | Always DENY, because an automated merge requires a strength result |
+| `cmd` | Runs `strength_cmd` and exits with that command's exit code | Uses the command's result |
 
-## วิธีตรวจแบบ Python (`strength: python`)
+## The Python check (`strength: python`)
 
-1. หา test ใน `tests_dir` ที่ import package จาก `code_dirs`
-   - โฟลเดอร์ใน `code_dirs` ที่มี `__init__.py` ถือเป็น package (`app` ให้ชื่อ `app.orders`)
-   - โฟลเดอร์ที่ไม่มี `__init__.py` ถือเป็น source root (`src/shop/cart.py` ให้ชื่อ `shop.cart`)
-2. รัน test แต่ละตัวตามปกติ test ที่ไม่ผ่านตั้งแต่แรกจะแสดงเป็น `FAIL (ปกติ)` และไม่นับ
-3. แทนทุกฟังก์ชันใน module ใต้ `code_dirs` ด้วยฟังก์ชันที่คืนค่า None แล้วรัน test นั้นอีกครั้ง
-4. test ที่ยังผ่านในรอบที่ 3 จะแสดงเป็น `WEAK <test id>` เพราะ test นั้นไม่ fail แม้โค้ดเสีย
+1. Find the tests in `tests_dir` that import a package from `code_dirs`.
+   - A folder in `code_dirs` that has `__init__.py` is a package (`app` gives the name `app.orders`).
+   - A folder without `__init__.py` is a source root (`src/shop/cart.py` gives the name `shop.cart`).
+2. Run each test normally. Tests that already fail are reported as `FAIL` and not counted.
+3. Replace every function in the modules under `code_dirs` with a function that returns None, then run the test again.
+4. A test that still passes in step 3 is reported as `WEAK <test id>`, because it does not fail even when the code is broken.
 
-ข้อจำกัด: ตรวจได้เฉพาะ test แบบ `unittest.TestCase` และฟังก์ชันระดับ module (ไม่รวม method ของ class)
+Limitation: only `unittest.TestCase` tests and module-level functions are checked (class methods are not).
 
-## เพิ่มการตรวจสำหรับ stack อื่น (`strength: cmd`)
+## Adding a check for other stacks (`strength: cmd`)
 
-ทีมที่ใช้ stack อื่นเพิ่มการตรวจของตนเองได้ โดยเขียนคำสั่งที่ exit 1 เมื่อพบ test อ่อน แล้วตั้งค่าใน pod.yml
+Teams on other stacks can add their own check: write a command that exits 1 when it finds a weak test, then configure it in pod.yml.
 
 ```
 strength: cmd
 strength_cmd: node scripts/strength.js
 ```
 
-แนวทางเขียนคำสั่งตรวจ
-1. ใช้หลักเดียวกับแบบ Python: ทำให้โค้ดคืนค่าว่างแล้วดูว่า test ใดยังผ่าน
-   เช่น ใช้ mutation testing ของ stack นั้น (Stryker สำหรับ JavaScript หรือ TypeScript, go-mutesting สำหรับ Go)
-   แล้วกำหนดเกณฑ์ว่า mutant ที่รอดเกินเท่าใดถือว่าไม่ผ่าน
-2. พิมพ์ผลบรรทัดละหนึ่ง test ในรูป `WEAK <test id>` เพื่อให้ auto-merge-check แสดงชื่อ test ในเหตุผลได้
-3. exit 0 เมื่อไม่พบ test อ่อน และ exit 1 เมื่อพบ
-4. คำสั่งต้องไม่ใช้ network และรันได้ใน CI
-5. เมื่อคำสั่งพร้อม ให้เปลี่ยน `strength: off` เป็น `strength: cmd` ผ่าน change ที่มี escalation
-   เพราะ pod.yml อยู่ใน `docs/risk-paths`
+Guidelines for the check command:
+1. Use the same principle as the Python check: make the code return empty values and see which tests still pass.
+   For example, use the stack's mutation testing tool (Stryker for JavaScript or TypeScript, go-mutesting for Go)
+   and set a threshold for how many surviving mutants count as a failure.
+2. Print one line per test in the form `WEAK <test id>`, so auto-merge-check can name the tests in its reasons.
+3. Exit 0 when no weak test is found, and exit 1 when one is.
+4. The command must not use the network and must run in CI.
+5. When the command is ready, change `strength: off` to `strength: cmd` through a change with escalation,
+   because pod.yml is in `docs/risk-paths`.
 
-ระหว่างที่ยังไม่มีคำสั่งตรวจ ให้ใช้ `strength: off` และ reviewer ตรวจ 5 แบบข้างต้นใน review.md
+Until a check command exists, use `strength: off` and have the reviewer check for the 5 kinds above in review.md.

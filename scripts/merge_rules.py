@@ -104,59 +104,59 @@ def run_strength():
 
 
 def auto_merge_reasons(change_dir, base, cfg):
-    """Return the list of Thai DENY reasons (empty = ALLOW)."""
+    """Return the list of DENY reasons (empty = ALLOW)."""
     reasons = []
     entries = lib.read_log(change_dir)
     # 1. pod setting
     if cfg["auto_merge"] != "low":
-        reasons.append("pod.yml ตั้ง auto_merge: %s (ต้องเป็น low จึง merge อัตโนมัติได้)"
+        reasons.append("pod.yml sets auto_merge: %s (must be low to allow auto-merge)"
                        % cfg["auto_merge"])
     # 2. declared risk low and gate 1 fresh
     risk = lib.risk_of(change_dir)
     if risk != "low":
-        reasons.append("Risk ใน intent.md คือ %s (merge อัตโนมัติได้เฉพาะ low)" % risk)
+        reasons.append("Risk in intent.md is %s (only low may be auto-merged)" % risk)
     if lib.check_gate(change_dir, 1, cfg, entries, risk):
-        reasons.append("การอนุมัติ gate 1 ไม่ครบหรือล้าสมัย จึงยืนยันไม่ได้ว่า Risk ไม่ถูกลดหลังอนุมัติ")
+        reasons.append("gate 1 approval is incomplete or stale, so there is no proof that Risk was not lowered after approval")
     # 3. effective risk from touched paths
     files = changed_files(base)
     if files is None:
-        reasons.append("เทียบกับ base '%s' ไม่ได้ (ไม่พบ branch หรือ commit นี้)" % base)
+        reasons.append("cannot compare with base '%s' (branch or commit not found)" % base)
         files = []
     risky = lib.risky_files(files, ROOT)
     if risky:
-        reasons.append("แตะ path อ่อนไหว: %s ระดับความเสี่ยงจริงคือ high" % ", ".join(risky))
+        reasons.append("touches a sensitive path: %s. The effective risk tier is high" % ", ".join(risky))
     # 4. gates 1-3 complete and fresh
     for p in lib.check_change(change_dir, cfg, 3):
-        reasons.append("gate 1-3 ยังไม่ครบ: %s" % p)
+        reasons.append("gates 1-3 not complete: %s" % p)
     # 5. review header
     review = read_review(change_dir)
     if review is None:
-        reasons.append("ไม่พบ review.md ให้รัน /superdev:review ก่อน")
+        reasons.append("review.md not found. Run /superdev:review first")
     else:
         if review.get("blockers") != "0":
-            reasons.append("review.md มี blockers: %s (ต้องเป็น 0)" % review.get("blockers", "-"))
+            reasons.append("review.md has blockers: %s (must be 0)" % review.get("blockers", "-"))
         if review.get("second_opinion") != "agree":
-            reasons.append("review.md มี second_opinion: %s (ต้องเป็น agree)"
+            reasons.append("review.md has second_opinion: %s (must be agree)"
                            % review.get("second_opinion", "-"))
         if not review_matches_head(change_dir, review.get("reviewed_head", "")):
-            reasons.append("review.md ตรวจ commit %s แต่ HEAD คือ %s โค้ดเปลี่ยนหลัง review ให้ review ใหม่"
+            reasons.append("review.md reviewed commit %s, but HEAD is %s. The code changed after review: review again"
                            % (review.get("reviewed_head", "-")[:12] or "-", head_sha()[:12]))
     # 6. tests and test strength (auto-merge needs a measured strength)
     tests_dir = cfg["tests_dir"]
     if not run_tests(cfg):
-        reasons.append("make test ไม่ผ่าน (test_cmd: %s)" % cfg["test_cmd"])
+        reasons.append("make test failed (test_cmd: %s)" % cfg["test_cmd"])
     if cfg["strength"] == "off":
-        reasons.append("test-strength ปิดอยู่ จึง merge อัตโนมัติไม่ได้")
+        reasons.append("test-strength is off, so auto-merge is not allowed")
     else:
         strong, out = run_strength()
         if not strong:
             weak = [line.split()[1] for line in out if line.startswith("WEAK ")]
-            reasons.append("test-strength ไม่ผ่าน: %s"
-                           % (", ".join(weak) or "ดูผลจาก scripts/test-strength.sh"))
+            reasons.append("test-strength failed: %s"
+                           % (", ".join(weak) or "see the output of scripts/test-strength.sh"))
     # 7. tests may only be added
     deleted = sum(d or 0 for _, d, _ in numstat(base, tests_dir))
     if deleted:
-        reasons.append("มีการลบหรือแก้บรรทัดใน %s/ %d บรรทัด (merge อัตโนมัติอนุญาตเฉพาะการเพิ่ม test)"
+        reasons.append("deleted or changed lines in %s/: %d (auto-merge only allows adding tests)"
                        % (tests_dir, deleted))
     # 8. diff size outside docs/ and tests_dir
     size = 0
@@ -168,18 +168,18 @@ def auto_merge_reasons(change_dir, base, cfg):
         else:
             size += added + removed
     if size > cfg["auto_merge_max_lines"]:
-        reasons.append("แก้โค้ดนอก docs/ และ %s/ %d บรรทัด เกิน auto_merge_max_lines (%d)"
+        reasons.append("code changes outside docs/ and %s/ are %d lines, over auto_merge_max_lines (%d)"
                        % (tests_dir, size, cfg["auto_merge_max_lines"]))
     # 9. track record
     if lib.reverts(entries):
-        reasons.append("change นี้มีบันทึก revert")
+        reasons.append("this change has a revert record")
     need = cfg["auto_merge_min_track"]
     window = completed_changes(cfg, change_dir)[:need]
     if len(window) < need:
-        reasons.append("ยังสะสมผลงานไม่ครบ %d ชิ้น (มี %d ชิ้นที่ผ่าน gate 4)" % (need, len(window)))
+        reasons.append("track record has fewer than %d changes (%d changes passed gate 4)" % (need, len(window)))
     reverted = [os.path.basename(d) for d in window if lib.reverts(lib.read_log(d))]
     if reverted:
-        reasons.append("มีการ revert ใน %d change ล่าสุด: %s ต้องสะสมผลงานที่ไม่ถูก revert ใหม่"
+        reasons.append("a revert in the last %d changes: %s. Build a new track record without reverts"
                        % (need, ", ".join(reverted)))
     return reasons
 
@@ -202,7 +202,7 @@ def cmd_auto_merge_check(args):
         return 2
     change_dir = os.path.abspath(rest[0])
     if not os.path.isdir(change_dir):
-        print("ไม่พบโฟลเดอร์ change: %s" % rest[0], file=sys.stderr)
+        print("change folder not found: %s" % rest[0], file=sys.stderr)
         return 1
     cfg = lib.read_pod_yml(ROOT)
     reasons = auto_merge_reasons(change_dir, base, cfg)
@@ -219,7 +219,7 @@ def cmd_auto_merge_check(args):
             lib.AUTO_BY, lib.now_iso(), blob, head_sha())
         with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
             fh.write(line)
-        print("บันทึกแล้ว: gate 4 role=auto (SuperBiz ต้องตรวจรับภายใน %d ชั่วโมงก่อน release)"
+        print("Recorded: gate 4 role=auto (SuperBiz must accept within %d hours before release)"
               % cfg["acceptance_hours"])
     return 0
 
@@ -252,7 +252,7 @@ def pr_reasons(author, approvals, base, cfg):
     approvals = {a.lower().lstrip("@") for a in approvals if a}
     files = changed_files(base)
     if files is None:
-        return "high", ["เทียบกับ base '%s' ไม่ได้" % base]
+        return "high", ["cannot compare with base '%s'" % base]
     dirs = sorted({os.path.join(ROOT, *f.split("/")[:3]) for f in files
                    if re.match(r"^docs/changes/\d{3}-[^/]+/", f)})
     dirs = [d for d in dirs if os.path.isdir(d)]
@@ -273,7 +273,7 @@ def pr_reasons(author, approvals, base, cfg):
             deny = auto_merge_reasons(d, base, cfg)
             if deny:
                 auto_ok = False
-                reasons.extend("%s: auto record ไม่ผ่าน auto-merge-check: %s" % (os.path.basename(d), r)
+                reasons.extend("%s: auto record fails auto-merge-check: %s" % (os.path.basename(d), r)
                                for r in deny)
     if auto_ok:
         return risk, reasons
@@ -282,8 +282,8 @@ def pr_reasons(author, approvals, base, cfg):
     logins = {seat: cfg.get(seat + "_github", "") for seat in ("superdev", "superbiz", "escalation")}
     for seat, login in logins.items():
         if not login:
-            reasons.append("pod.yml ไม่มี %s_github" % seat)
-    if reasons and any(r.startswith("pod.yml ไม่มี") for r in reasons):
+            reasons.append("pod.yml has no %s_github" % seat)
+    if reasons and any(r.startswith("pod.yml has no") for r in reasons):
         return risk, reasons
     if risk in ("low", "medium"):
         seats = ["superdev"] if logins["superdev"] != author else ["superbiz"]
@@ -292,8 +292,8 @@ def pr_reasons(author, approvals, base, cfg):
     for seat in seats:
         login = logins[seat]
         if login not in approvals:
-            note = " (SuperDev เป็นผู้เปิด PR จึงต้องให้ SuperBiz อนุมัติแทน)" if seat == "superbiz" and risk != "high" else ""
-            reasons.append("ยังไม่มี approval จาก %s (%s) ซึ่งจำเป็นสำหรับ Risk: %s%s"
+            note = " (SuperDev opened the PR, so SuperBiz must approve instead)" if seat == "superbiz" and risk != "high" else ""
+            reasons.append("no approval yet from %s (%s), required for Risk: %s%s"
                            % (lib.LABEL[seat], login, risk, note))
     return risk, reasons
 
@@ -318,11 +318,11 @@ def cmd_pr_check(args):
     cfg = lib.read_pod_yml(ROOT)
     risk, reasons = pr_reasons(author, approvals, base, cfg)
     if reasons:
-        print("PR-CHECK FAIL (Risk จริง: %s)" % risk)
+        print("PR-CHECK FAIL (effective Risk: %s)" % risk)
         for r in reasons:
             print("- " + r)
         return 1
-    print("PR-CHECK OK (Risk จริง: %s)" % risk)
+    print("PR-CHECK OK (effective Risk: %s)" % risk)
     return 0
 
 
@@ -330,8 +330,8 @@ def cmd_pr_check(args):
 
 def codeowners_text(cfg):
     owners = " ".join("@" + cfg[k] for k in ("superdev_github", "escalation_github") if cfg.get(k))
-    lines = ["# สร้างโดย scripts/sync-codeowners.sh จาก docs/risk-paths ห้ามแก้ไฟล์นี้เอง",
-             "# path อ่อนไหวต้องได้รับ review จาก SuperDev และ escalation"]
+    lines = ["# Generated by scripts/sync-codeowners.sh from docs/risk-paths. Do not edit by hand.",
+             "# Sensitive paths need review from SuperDev and escalation."]
     lines += ["%s %s" % (g, owners) for g in lib.read_risk_paths(ROOT)]
     return "\n".join(lines) + "\n"
 
@@ -343,9 +343,9 @@ def cmd_sync_codeowners(args):
     if args == ["--check"]:
         current = open(path, encoding="utf-8").read() if os.path.exists(path) else ""
         if current != text:
-            print("CODEOWNERS ไม่ตรงกับ docs/risk-paths และ pod.yml ให้รัน scripts/sync-codeowners.sh")
+            print("CODEOWNERS does not match docs/risk-paths and pod.yml. Run scripts/sync-codeowners.sh")
             return 1
-        print("CODEOWNERS ตรงกับ docs/risk-paths")
+        print("CODEOWNERS matches docs/risk-paths")
         return 0
     if args:
         print("usage: scripts/sync-codeowners.sh [--check]", file=sys.stderr)
@@ -353,7 +353,7 @@ def cmd_sync_codeowners(args):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as fh:
         fh.write(text)
-    print("เขียน .github/CODEOWNERS แล้ว (%d path)" % len(lib.read_risk_paths(ROOT)))
+    print("Wrote .github/CODEOWNERS (%d paths)" % len(lib.read_risk_paths(ROOT)))
     return 0
 
 

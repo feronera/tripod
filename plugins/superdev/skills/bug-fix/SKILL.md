@@ -3,46 +3,46 @@ name: bug-fix
 description: Fix a bug at its root cause. Reproduce first and show the failing behavior, ask why until the cause is in code, write a failing test that reproduces it, lock tests, fix, and prove the fix with the same reproduction. Uses the normal change flow. Use when the user says "แก้ bug", "มี bug", "ระบบทำงานผิด", "bug fix", "fix this bug".
 ---
 
-# แก้ bug ที่ต้นเหตุ (SuperDev: Dev และ QA)
+# Fix a bug at the root cause (SuperDev: Dev and QA)
 
-เป้าหมาย: แก้ที่สาเหตุจริง และพิสูจน์ด้วยการทำซ้ำแบบเดียวกับที่พบ bug
+Goal: fix the real cause, and prove it with the same reproduction that exposed the bug.
 
-## 1. ทำซ้ำให้เห็นก่อน
-- หาคำสั่งหรือขั้นตอนที่ทำให้ bug เกิด แล้วรันให้เห็นผลผิดจริง
-- บันทึกคำสั่งและผลลัพธ์ที่ได้ (ตัดข้อมูลส่วนบุคคลออก) เช่น
+## 1. Reproduce it first
+- Find the command or steps that trigger the bug, then run them and show the wrong result.
+- Record the command and its output (with personal data removed), for example:
   ```
-  $ <คำสั่งที่ทำให้เกิด bug>
-  <ผลที่ผิด>
-  คาดหวัง: <ผลที่ถูกต้อง>
+  $ <command that triggers the bug>
+  <wrong result>
+  Expected: <correct result>
   ```
-- หากทำซ้ำไม่ได้ ห้ามแก้ ให้รายงานสิ่งที่ลองแล้วและขอข้อมูลเพิ่มจากมนุษย์
+- If you cannot reproduce it, do not fix anything. Report what you tried and ask the human for more information.
 
-## 2. หาต้นเหตุ
-- ถาม "ทำไม" ต่อไปเรื่อย ๆ จนได้คำตอบที่ชี้ไปที่บรรทัดโค้ด (`path:line`) หรือข้อมูลที่ผิด
-- ห้ามเดา เมื่อไม่แน่ใจ ให้เพิ่มการพิมพ์ค่าชั่วคราวหรืออ่าน error จริง แล้วลบออกก่อน commit
-- ค้นหารูปแบบเดียวกันในโค้ดส่วนอื่น (`grep`) และแก้ทุกจุดที่มีสาเหตุเดียวกัน
-- การเพิ่ม `if x is None: return` เพื่อปิด error เป็นการแก้อาการ ไม่ใช่ต้นเหตุ
+## 2. Find the root cause
+- Keep asking "why" until the answer points to a line of code (`path:line`) or to wrong data.
+- Never guess. When unsure, add temporary print statements or read the actual error, and remove them before committing.
+- Search for the same pattern elsewhere in the code (`grep`) and fix every place with the same cause.
+- Adding `if x is None: return` to silence an error treats the symptom, not the root cause.
 
-## 3. เข้า change flow ตามปกติ
-1. ขอให้มนุษย์รัน `scripts/new-change.sh <slug>`
-2. ร่าง intent.md: Problem คือ bug พร้อมคำสั่งทำซ้ำและผลที่ได้, Success measure คือ
-   คำสั่งเดิมให้ผลที่ถูกต้อง, Risk ตาม `docs/risk-tiers.md`
-3. ผ่าน gate 1 ถึง 3 ตามปกติ plan.md ระบุต้นเหตุใน Data shape หรือ Risks
+## 3. Use the normal change flow
+1. Ask the human to run `scripts/new-change.sh <slug>`.
+2. Draft intent.md: the Problem is the bug, with the reproduction command and its output. The Success measure is
+   that the same command gives the correct result. Set Risk per `docs/risk-tiers.md`.
+3. Pass gates 1 to 3 as usual. plan.md states the root cause under Data shape or Risks.
 
-## 4. test ที่ทำซ้ำ bug แล้วล็อก
-- เขียน test ที่ fail เพราะ bug นี้ และผ่านเมื่อแก้ถูก (assert ค่าที่ถูกต้องที่ระบุชัด)
-- รัน `make test` เพื่อยืนยันว่า test fail ด้วยอาการเดียวกับที่ทำซ้ำได้
-- commit test แล้วขอให้มนุษย์ `touch .pod/lock-tests`
+## 4. Write a test that reproduces the bug, then lock it
+- Write a test that fails because of this bug and passes when it is fixed correctly (assert an explicit correct value).
+- Run `make test` to confirm the test fails with the same symptom as the reproduction.
+- Commit the test, then ask the human to run `touch .pod/lock-tests`.
 
-## 5. แก้และพิสูจน์
-- แก้โค้ดที่ต้นเหตุตาม `/superdev:build`
-- รันคำสั่งทำซ้ำจากข้อ 1 อีกครั้ง และแสดงผลลัพธ์ที่ถูกต้องเทียบกับผลเดิม
-- รัน `make check`
+## 5. Fix and prove
+- Fix the code at the root cause, following `/superdev:build`.
+- Run the reproduction command from step 1 again, and show the correct result next to the original one.
+- Run `make check`.
 
-## สิ่งที่ห้ามทำ
-- ห้ามแก้อาการโดยไม่รู้ต้นเหตุ
-- ห้ามแก้ test ที่ล็อกให้ผ่าน
-- ห้ามรัน `scripts/gate.sh`
+## Do not
+- Fix a symptom without knowing the root cause.
+- Edit locked tests to make them pass.
+- Run `scripts/gate.sh`.
 
-## จบงาน
-ส่งต่อ `/superdev:review` และแนบคำสั่งทำซ้ำกับผลก่อนและหลังแก้ใน review.md
+## When done
+Hand over to `/superdev:review`, and include the reproduction command with the before and after results in review.md.

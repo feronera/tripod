@@ -1,18 +1,18 @@
-# Acceptance: <ชื่องาน>
+# Acceptance: <change title>
 
-อ้างอิง: intent.md (Success measure), PR: <ลิงก์หรือเลข PR>
+References: intent.md (Success measure), PR: <PR link or number>
 
 ## Success measure check
-| Success measure | วิธีวัด | ผลที่ได้ | ผ่านหรือไม่ |
+| Success measure | How measured | Result | Pass? |
 |---|---|---|---|
-| <จาก intent.md> | | | |
+| <from intent.md> | | | |
 
 ## Demo steps
-1. <ขั้นตอน>
-   - ผลที่คาดหวัง:
-   - ผลจริง:
+1. <step>
+   - Expected result:
+   - Actual result:
 
 ## Decision
 Decision: accept | reject
 
-เหตุผล: <เหตุผลประกอบการตัดสินใจ>
+Reason: <reasoning behind the decision>

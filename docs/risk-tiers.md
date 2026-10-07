@@ -1,26 +1,26 @@
 # Risk tiers
 
-ระบุระดับความเสี่ยงใน `intent.md` เป็นบรรทัดเดียว เช่น `Risk: medium`
-ระดับความเสี่ยงกำหนดจากคำตอบของ 4 คำถาม
+Declare the risk tier in `intent.md` on a single line, e.g. `Risk: medium`.
+The tier follows from the answers to 4 questions.
 
-| # | คำถาม | ตอบ "ใช่" หมายถึง |
+| # | Question | A "yes" means |
 |---|---|---|
-| 1 | เกี่ยวข้องกับกฎหมายหรือข้อบังคับหรือไม่ (เช่น PDPA การเงิน สัญญา) | ความเสี่ยงสูงขึ้น |
-| 2 | ลูกค้าหรือผู้ใช้ภายนอกเห็นผลโดยตรงหรือไม่ | ความเสี่ยงสูงขึ้น |
-| 3 | ย้อนกลับได้ภายในไม่กี่นาทีโดยไม่เสียข้อมูลหรือไม่ | ความเสี่ยงต่ำลง |
-| 4 | แตะข้อมูลส่วนบุคคลหรือข้อมูลอ่อนไหวหรือไม่ | ความเสี่ยงสูงขึ้น |
+| 1 | Does it involve law or regulation (e.g. data protection, finance, contracts)? | Higher risk |
+| 2 | Do customers or external users see the result directly? | Higher risk |
+| 3 | Can it be rolled back within minutes without data loss? | Lower risk |
+| 4 | Does it touch personal or sensitive data? | Higher risk |
 
-## ระดับ
+## Tiers
 
-| ระดับ | เกณฑ์ | สิ่งที่เปลี่ยน |
+| Tier | Criteria | What changes |
 |---|---|---|
-| low | ข้อ 1, 2, 4 ตอบ "ไม่" และข้อ 3 ตอบ "ใช่" | gate ปกติ 4 จุด (owner + cross) |
-| medium | ข้อ 2 ตอบ "ใช่" แต่ข้อ 1 และ 4 ตอบ "ไม่" และย้อนกลับได้ | gate ปกติ, plan.md ต้องมี Rollback ที่ซ้อมแล้ว, acceptance ต้องมี demo กับข้อมูลตัวอย่างที่ใกล้เคียงจริง |
-| high | ข้อ 1 หรือ 4 ตอบ "ใช่" หรือข้อ 3 ตอบ "ไม่" | เหมือน medium และต้องมี escalation ลงชื่อเพิ่มที่ gate 2 และ gate 4 (ผู้มีชื่อใน `pod.yml`) |
+| low | Questions 1, 2 and 4 are "no", and question 3 is "yes" | The normal 4 gates (owner + cross) |
+| medium | Question 2 is "yes", questions 1 and 4 are "no", and it can be rolled back | Normal gates; plan.md needs a rehearsed Rollback; acceptance needs a demo with realistic sample data |
+| high | Question 1 or 4 is "yes", or question 3 is "no" | As medium, plus an additional escalation signature at gate 2 and gate 4 (the person named in `pod.yml`) |
 
-## หมายเหตุ
-- หากไม่แน่ใจ ให้เลือกระดับที่สูงกว่า และใส่เหตุผลใน Open questions
-- ระดับความเสี่ยงเปลี่ยนได้ แต่การแก้ intent.md หลัง gate 1 ทำให้การอนุมัติ gate 1 stale และต้องลงชื่อใหม่
-- งานในรายการ "pod ทำเองไม่ได้" ใน `docs/pod-charter.md` ถือเป็น high เสมอ
-- change ที่แตะ path ใน `docs/risk-paths` ถือเป็น high เสมอเมื่อ merge (auto-merge-check และ pr-check ตรวจจาก diff จริง)
-  แม้ intent.md ระบุระดับต่ำกว่า สิทธิ์ merge ตามระดับอยู่ใน `docs/merge-by-risk.md`
+## Notes
+- If unsure, choose the higher tier and give the reason in Open questions.
+- The risk tier can change, but editing intent.md after gate 1 makes the gate 1 approval stale, and it must be signed again.
+- Work on the "What the pod may not do alone" list in `docs/pod-charter.md` is always high.
+- A change that touches a path in `docs/risk-paths` is always high at merge time (auto-merge-check and pr-check check the actual diff),
+  even if intent.md declares a lower tier. Merge rights by tier are in `docs/merge-by-risk.md`.

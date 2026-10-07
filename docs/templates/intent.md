@@ -1,23 +1,23 @@
-# Intent: <ชื่องาน>
+# Intent: <change title>
 
 Status: draft
 
 ## Problem
-<ปัญหาที่เกิดขึ้นจริง เกิดกับใคร บ่อยแค่ไหน มีหลักฐานอะไร>
+<the real problem: who it affects, how often, and what evidence there is>
 
 ## Users
-<ผู้ใช้หรือผู้ได้รับผลกระทบ>
+<users or people affected>
 
 ## Success measure
-<ตัวเลขที่วัดได้ พร้อมค่าปัจจุบันและเป้าหมาย เช่น จาก X เป็น Y ภายใน Z สัปดาห์ หากยังไม่ทราบตัวเลข ให้ใส่ไว้ใน Open questions>
+<a measurable number with its current value and target, e.g. from X to Y within Z weeks. If the number is not known yet, add it to Open questions>
 
 ## Risk
 Risk: low
 
-<เหตุผลของระดับความเสี่ยง ตอบ 4 คำถามใน docs/risk-tiers.md>
+<why this risk tier: answer the 4 questions in docs/risk-tiers.md>
 
 ## Constraints
-- <ข้อจำกัดด้านเวลา กฎหมาย ระบบ หรือข้อมูล>
+- <time, legal, system or data constraints>
 
 ## Open questions
-- <สิ่งที่ยังไม่ทราบและต้องหาคำตอบก่อน gate 1>
+- <unknowns that must be answered before gate 1>

@@ -5,60 +5,60 @@ description: Review the branch diff with three reviewer lenses in parallel (secu
 
 # Review (SuperDev: QA)
 
-เป้าหมาย: ไม่มี Blocker เหลือ ความเห็นที่สองเห็นตรงกัน และได้ `review.md` สำหรับ gate 4 และ merge
+Goal: no Blockers left, a second opinion that agrees, and a `review.md` for gate 4 and merge.
 
-## ขั้นตอน
-1. ตรวจว่า working tree สะอาด (`git status`) แล้วรัน `git diff main...HEAD`, `git log main..HEAD --oneline`
-   และ `make check` (รวม `scripts/test-strength.sh`)
-2. ส่ง agent `reviewer` สามตัวพร้อมกันในข้อความเดียว ทุกตัวได้รับ diff, spec.md, plan.md
-   และ REVIEW checklist ด้านล่าง แต่ละตัวเน้นคนละมุม
-   - security: สิทธิ์การเข้าถึง ข้อมูลส่วนบุคคล secret การรับ input
-   - correctness: ทำตาม requirement ใน spec.md ครบและถูกต้องหรือไม่
-   - tests และ edge cases: edge case ใน spec.md มี test หรือไม่ และ test ตรวจพฤติกรรมจริงหรือไม่
-3. รวมผลเป็นรายการเดียว ตัดข้อซ้ำ
-4. แก้ทุกข้อที่เป็น Blocker แล้วรัน `make check` อีกครั้ง
-   - หาก Blocker อยู่ใน test ที่ล็อกแล้ว ห้ามแก้ test ให้แจ้งมนุษย์
-5. Major: แก้ หรือเขียนเหตุผลที่ไม่แก้ให้มนุษย์ตัดสิน Major ที่ยังไม่แก้นับเป็น `majors_open`
-6. Minor: บันทึกไว้ ไม่ต้องแก้ใน change นี้
-7. ส่ง reviewer ตรวจซ้ำจนไม่มี Blocker และ commit การแก้ทั้งหมด
-8. ความเห็นที่สอง: ส่ง agent `reviewer-second` ตรวจ diff ล่าสุดด้วย checklist เดียวกัน
-   - ส่งเฉพาะ diff, spec.md, plan.md และ checklist ห้ามส่งผลของ reviewer ตัวแรก
-   - `agree`: reviewer-second ไม่พบ Blocker ที่ reviewer ตัวแรกพลาด และไม่โต้แย้งผล "ไม่มี Blocker"
-   - `disagree`: พบ Blocker ใหม่ หรือโต้แย้งผล ให้แก้ แล้วกลับไปข้อ 2
-9. เขียน `docs/changes/NNN-slug/review.md` ตาม `docs/templates/review.md`
-   4 บรรทัดแรกต้องเป็น header นี้ (ชื่อ key ต้องตรง เพราะ `scripts/auto-merge-check.sh` อ่าน)
+## Steps
+1. Check that the working tree is clean (`git status`), then run `git diff main...HEAD`, `git log main..HEAD --oneline`
+   and `make check` (including `scripts/test-strength.sh`).
+2. Send three `reviewer` agents in parallel in a single message. Each gets the diff, spec.md, plan.md
+   and the REVIEW checklist below, and each focuses on a different lens:
+   - security: access control, personal data, secrets, input handling
+   - correctness: are the requirements in spec.md implemented completely and correctly?
+   - tests and edge cases: does every edge case in spec.md have a test, and do the tests check real behavior?
+3. Merge the results into one list and remove duplicates.
+4. Fix every Blocker, then run `make check` again.
+   - If a Blocker is in a locked test, do not edit the test. Tell the human.
+5. Major: fix it, or write the reason for not fixing it and let the human decide. Unfixed Majors count toward `majors_open`.
+6. Minor: record it. No need to fix it in this change.
+7. Send the reviewers again until there are no Blockers, and commit all fixes.
+8. Second opinion: send the `reviewer-second` agent to review the latest diff with the same checklist.
+   - Send only the diff, spec.md, plan.md and the checklist. Never send the first reviewers' results.
+   - `agree`: reviewer-second finds no Blocker the first reviewers missed, and does not dispute the "no Blocker" result.
+   - `disagree`: it finds a new Blocker or disputes the result. Fix it, then go back to step 2.
+9. Write `docs/changes/NNN-slug/review.md` from `docs/templates/review.md`.
+   The first 4 lines must be this header (key names must match exactly, because `scripts/auto-merge-check.sh` reads them):
    ```
    blockers: <int>
    majors_open: <int>
    second_opinion: agree | disagree
-   reviewed_head: <git sha ของ HEAD ที่ตรวจ>
+   reviewed_head: <git sha of the reviewed HEAD>
    ```
-   ค่า `reviewed_head` ได้จาก `git rev-parse HEAD` ณ ตอนตรวจ แล้วตามด้วยรายการ findings
-10. commit review.md: `git commit -m "docs(NNN): review"`
-    commit ที่แก้เฉพาะไฟล์ใน `docs/changes/NNN-slug/` หลัง reviewed_head ไม่ทำให้ review ล้าสมัย
-    แต่การแก้โค้ดหรือ test หลังจากนี้ต้อง review ใหม่
+   Get `reviewed_head` from `git rev-parse HEAD` at review time. Follow the header with the findings.
+10. Commit review.md: `git commit -m "docs(NNN): review"`.
+    Commits after reviewed_head that only touch files in `docs/changes/NNN-slug/` do not make the review stale,
+    but any later change to code or tests needs a new review.
 
 ## REVIEW checklist
 Blocker
-- requirement ใน spec.md ข้อใดไม่มีโค้ดหรือ test รองรับ
-- ผู้ใช้เห็นข้อมูลของผู้อื่นได้ หรือ error บอกว่าข้อมูลของผู้อื่นมีอยู่
-- มีข้อมูลส่วนบุคคล secret หรือ token ในโค้ด test หรือ log
-- test ถูกแก้หรือลบหลังล็อก หรือ `make check` ไม่ผ่าน
-- `scripts/test-strength.sh` ไม่ผ่าน (มี test ที่ยังผ่านแม้ทุกฟังก์ชันใน app/ คืนค่า None)
-- มี dependency นอก Python standard library
+- A requirement in spec.md has no code or test behind it.
+- A user can see other users' data, or an error reveals that other users' data exists.
+- Personal data, secrets or tokens in code, tests or logs.
+- Tests edited or deleted after locking, or `make check` fails.
+- `scripts/test-strength.sh` fails (a test still passes when every function in app/ returns None).
+- A dependency outside the Python standard library.
 
 Major
-- edge case ใน spec.md ไม่มี test
-- โค้ดเกินขอบเขตของ plan.md หรือแตะ Out of scope
-- ไม่มีวิธี rollback ตามที่ plan.md ระบุ
+- An edge case in spec.md has no test.
+- Code goes beyond the scope of plan.md or touches Out of scope.
+- No rollback method as stated in plan.md.
 
 Minor
-- ชื่อไม่สื่อความหมาย โค้ดซ้ำ ข้อความภาษาไทยไม่ตรงกับ ux-brief.md
+- Unclear names, duplicated code, UI copy that does not match ux-brief.md.
 
-## จบงาน
-เขียนสรุปสำหรับ gate 4 ใน PR description
-1. สิ่งที่เปลี่ยน อ้างอิง R1, R2, ...
-2. ผล `make check`
-3. Major และ Minor ที่เหลือ พร้อมเหตุผล
-4. demo steps สำหรับ SuperBiz ใช้ใน `/superbiz:acceptance`
-แจ้งมนุษย์ว่าขั้นต่อไปคือ `/superdev:merge` ซึ่ง merge ตาม Risk ของ change
+## When done
+Write a gate 4 summary in the PR description:
+1. What changed, citing R1, R2, ...
+2. The `make check` result
+3. Remaining Majors and Minors, with reasons
+4. Demo steps for SuperBiz to use in `/superbiz:acceptance`
+Tell the human the next step is `/superdev:merge`, which merges according to the change's Risk.

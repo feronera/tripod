@@ -1,26 +1,25 @@
-# ให้ agent หลายตัวทำงานพร้อมกัน
+# Running several agents in parallel
 
-หลักการ: ทำพร้อมกันเฉพาะงานที่แบ่งได้ ทุกสายส่งผลกลับมาที่ session หลักของแต่ละคน แล้วคนตัดสินที่ gate
-ภาพรวมอยู่ในสไลด์ "Multi-agent ใน pod" ของ deck workshop (repo hx-natthawat/workshop-ai-sdlc, `deck/adlc-pod-deck.html`)
+Principle: run in parallel only the work that can be split. Every stream reports back to each person's main session, and people decide at the gates.
 
-## กติกา 3 ข้อ
+## 3 rules
 
-| งาน | ทำอย่างไร | เหตุผล |
+| Work | How | Why |
 |---|---|---|
-| agent ที่อ่านอย่างเดียว (ba-researcher, ux-critic, reviewer) | สั่งพร้อมกันได้ทุกครั้ง | ไม่แก้ไฟล์ จึงไม่ชนกัน |
-| agent ที่เขียนโค้ด | หนึ่ง agent หนึ่ง worktree และไฟล์ไม่ทับกัน | ถ้า plan.md แบ่งไฟล์ไม่ได้ ให้ทำทีละส่วน |
-| การวางแผน การเขียน spec และการอนุมัติ gate | session หลักตัวเดียว | งานที่ต้องทำต่อกันจะแย่ลงเมื่อใช้ agent หลายตัว |
+| Read-only agents (ba-researcher, ux-critic, reviewer) | Always safe to run in parallel | They do not edit files, so they cannot collide |
+| Agents that write code | One agent per worktree, with no overlapping files | If plan.md cannot split the files, do the parts one at a time |
+| Planning, writing the spec and approving gates | A single main session | Sequential work gets worse with several agents |
 
-## เริ่มจาก plan.md
+## Start from plan.md
 
-การแบ่งงานต้องเขียนไว้ใน plan.md ก่อน gate 3 และ gate 3 ตรวจรูปแบบนี้
+The split must be written in plan.md before gate 3, and gate 3 checks this format:
 
 ```
 ## Throughput checkpoint
-- Blocking first steps: test ที่ fail และโครงข้อมูลใน Data shape
-- Independent workstreams: หน้ารายการ (A) และหน้ารายละเอียด (B)
-- Shared mutable state: n/a: แต่ละส่วนแก้ไฟล์ของตัวเอง
-- Smallest safe decomposition: หนึ่ง requirement ต่อหนึ่ง commit
+- Blocking first steps: failing tests and the structures in Data shape
+- Independent workstreams: list page (A) and detail page (B)
+- Shared mutable state: n/a: each part edits its own files
+- Smallest safe decomposition: one requirement per commit
 
 ## Parallel parts
 ### A
@@ -29,23 +28,23 @@ files: app/history.py
 files: app/detail.py
 ```
 
-- ถ้าไม่แบ่ง ให้เขียน `none: <เหตุผล>` ใต้ `## Parallel parts`
-- ไฟล์ของแต่ละส่วนต้องไม่ซ้ำกัน ถ้าซ้ำ gate 3 จะไม่ผ่านและแจ้งชื่อไฟล์ที่ซ้ำ
-- ถ้ามี Shared mutable state ให้แยกออกเป็นไฟล์ของแต่ละส่วนก่อน ถ้าแยกไม่ได้ ให้ทำส่วนนั้นทีละส่วน
-- แต่ละส่วนทำด้วย `/superdev:build` ทีละ unit และ commit ทุก unit ที่ test ผ่าน
+- If the work is not split, write `none: <reason>` under `## Parallel parts`.
+- Each part's files must not overlap. If they do, gate 3 fails and names the duplicated files.
+- If there is shared mutable state, first separate it into files owned by each part. If that is not possible, do those parts one at a time.
+- Build each part with `/superdev:build`, one unit at a time, and commit every unit whose tests pass.
 
-## SuperBiz: fan-out ใน session เดียว
+## SuperBiz: fan out in one session
 
-ใน Claude Code ที่โหลด `plugins/superbiz`
+In Claude Code with `plugins/superbiz` loaded:
 
 ```
-/superbiz:spec docs/changes/002-[ชื่องาน]
-ให้ ba-researcher และ ux-critic ทำงานพร้อมกัน แล้วรวมผลลง spec.md
+/superbiz:spec docs/changes/002-[change-name]
+Run ba-researcher and ux-critic in parallel, then merge their results into spec.md
 ```
 
-## SuperDev: build สองส่วนพร้อมกัน แล้ว review สามมุม
+## SuperDev: build two parts in parallel, then review from three angles
 
-ก่อนเริ่ม plan.md ต้องแบ่งงานเป็นส่วน A และ B ที่แก้ไฟล์ไม่ทับกัน และ test ของ change ต้อง commit บน `change/001` แล้ว
+Before starting, plan.md must split the work into parts A and B that edit non-overlapping files, and the change's tests must already be committed on `change/001`.
 
 ```
 git worktree add ../pod-a -b change/001-a change/001
@@ -58,27 +57,27 @@ cd ../pod-a && claude --plugin-dir ~/my-pod/plugins/superdev
 # terminal 2
 cd ../pod-b && claude --plugin-dir ~/my-pod/plugins/superdev
 
-# รวม แล้วให้ test ที่ล็อกไว้ตัดสิน
+# merge, then let the locked tests decide
 git switch change/001
 git merge change/001-a change/001-b
 make check
 
-# review สามมุมพร้อมกัน แล้วตามด้วย reviewer-second (model อื่น) เป็นความเห็นที่สอง
+# three-angle review in parallel, followed by reviewer-second (a different model) as a second opinion
 /superdev:review
 
-# เก็บกวาด
+# clean up
 git worktree remove ../pod-a && git worktree remove ../pod-b
 ```
 
-## Arena: เมื่อยังเลือกแนวทางออกแบบไม่ได้
+## Arena: when the design approach is still undecided
 
-ใช้ worktree สองชุดแบบเดียวกัน แต่ทั้งสองทำงานเดียวกันคนละแนวทาง แล้วเทียบด้วย test ที่ล็อกไว้
-test-strength, ขนาด diff และผล reviewer มนุษย์ SuperDev เลือก แล้วบันทึกใน plan.md ใต้ `## Decision log`
-ขั้นตอนอยู่ใน skill `/superdev:arena`
+Use two worktrees the same way, but both do the same work with different approaches. Compare them with the locked tests,
+test strength, diff size and the reviewer results. SuperDev chooses and records the decision in plan.md under `## Decision log`.
+The steps are in the `/superdev:arena` skill.
 
-## ข้อควรระวัง
+## Cautions
 
-- `.pod/` ไม่อยู่ใน git worktree ใหม่จึงยังไม่ล็อก test ต้อง `touch .pod/lock-tests` ในทุก worktree
-- kill switch ทำงานรายโฟลเดอร์ เมื่อต้องหยุดทุก agent ให้ `touch .pod/kill-switch` ในทุก worktree
-- ถ้า merge ชนกัน แปลว่าการแบ่งไฟล์ใน plan.md ไม่จริง ให้แก้ plan.md แล้วทำส่วนที่ชนทีละส่วน
-- จำนวน agent ที่เขียนโค้ดพร้อมกันไม่ควรเกินจำนวนที่ SuperDev review ทัน ส่วนใหญ่สองส่วนก็พอ
+- `.pod/` is not part of a new git worktree, so its tests are not locked yet. Run `touch .pod/lock-tests` in every worktree.
+- The kill switch works per folder. To stop every agent, run `touch .pod/kill-switch` in every worktree.
+- A merge conflict means the file split in plan.md was not real. Fix plan.md, then do the conflicting parts one at a time.
+- Do not run more code-writing agents at once than SuperDev can review. Two parts are usually enough.

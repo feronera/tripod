@@ -1,44 +1,44 @@
-# Plan: <ชื่องาน>
+# Plan: <change title>
 
-อ้างอิง: intent.md, spec.md
+References: intent.md, spec.md
 
 ## Data shape
-<โครงข้อมูลหลักและโครงสร้างที่ใช้จัด เช่น ตาราง, state machine, typed record ก่อนเขียน logic>
+<the core data and the structure that organizes it, e.g. a table, state machine or typed record, before any logic is written>
 
 ## Throughput checkpoint
-- Blocking first steps: <งานที่ต้องเสร็จก่อนงานอื่นจึงเริ่มได้>
-- Independent workstreams: <งานที่ทำแยกกันได้ หรือ n/a: <เหตุผล>>
-- Shared mutable state: <ไฟล์หรือข้อมูลที่หลายส่วนต้องแก้ร่วมกัน หรือ n/a: <เหตุผล>>
-- Smallest safe decomposition: <การแบ่งงานที่เล็กที่สุดที่แต่ละส่วนจบด้วยการตรวจได้>
+- Blocking first steps: <work that must finish before anything else can start>
+- Independent workstreams: <work that can proceed separately, or n/a: <reason>>
+- Shared mutable state: <files or data that several parts must edit, or n/a: <reason>>
+- Smallest safe decomposition: <the smallest split in which each part ends with a check>
 
 ## Parallel parts
-<ไม่บังคับ ถ้าไม่แบ่งให้เขียน `none: <เหตุผล>`>
+<optional. If the work is not split, write `none: <reason>`>
 ### A
 files: app/a.py, app/b.py
 ### B
 files: app/c.py
 
 ## Files to change
-| ไฟล์ | เปลี่ยนอะไร | requirement |
+| File | What changes | Requirement |
 |---|---|---|
 | <path> | | R1 |
 
 ## Order of work
-1. เขียน test ที่ fail จาก edge cases ใน spec.md แล้ว commit
-2. ล็อก tests (`touch .pod/lock-tests`)
-3. <unit ถัดไป: การเปลี่ยนที่เล็กที่สุดที่จบด้วย `make test` ผ่าน>
+1. Write failing tests from the edge cases in spec.md, then commit
+2. Lock the tests (`touch .pod/lock-tests`)
+3. <next unit: the smallest change that ends with `make test` passing>
 
 ## Risks
-- <ความเสี่ยงทางเทคนิค และวิธีลด>
+- <technical risk and how to reduce it>
 
 ## Proof
-- `make test` และ `make strength` ผ่าน
-- <วิธีพิสูจน์แต่ละ requirement>
+- `make test` and `make strength` pass
+- <how each requirement is proven>
 
 ## Rollback
-- <วิธีย้อนกลับ เช่น git revert <commit> และสิ่งที่ต้องตรวจหลังย้อน>
+- <how to roll back, e.g. git revert <commit>, and what to check afterwards>
 
-## สรุปให้ SuperBiz
-1. <ทำอะไร>
-2. <กระทบผู้ใช้อย่างไร>
-3. <ความเสี่ยงที่ SuperBiz ควรรู้>
+## Summary for SuperBiz
+1. <what is being done>
+2. <how it affects users>
+3. <risks SuperBiz should know about>

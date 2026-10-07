@@ -93,10 +93,10 @@ def run_test_cmd(cfg, root=ROOT, capture=False):
     output = (res.stdout or "") + (res.stderr or "") if capture else ""
     if res.returncode == NO_TESTS_EXIT:
         if change_dirs(root):
-            return False, res.returncode, ("pod-test: ไม่มี test ที่รัน (exit 5) แต่ docs/changes/ มี change แล้ว "
-                                           "จึงต้องมี test ใน %s/" % cfg["tests_dir"]), output
-        return True, res.returncode, ("pod-test: ยังไม่มี test (exit 5) ยอมรับได้เพราะยังไม่มี change "
-                                      "ใน docs/changes/"), output
+            return False, res.returncode, ("pod-test: no tests ran (exit 5), but docs/changes/ already has a change, "
+                                           "so tests are required in %s/" % cfg["tests_dir"]), output
+        return True, res.returncode, ("pod-test: no tests yet (exit 5). Accepted because docs/changes/ "
+                                      "has no change yet"), output
     return res.returncode == 0, res.returncode, "", output
 
 
@@ -217,13 +217,13 @@ def is_placeholder(value):
 
 
 def value_problem(value):
-    """None when a checkpoint value is filled in, else a Thai reason."""
+    """None when a checkpoint value is filled in, else the reason."""
     v = value.strip().strip("`").strip()
     if is_placeholder(v):
-        return "ยังไม่ได้กรอกค่า"
+        return "has no value"
     m = re.match(r"^n/a\b\s*:?\s*(.*)$", v, re.I)
     if m and is_placeholder(m.group(1)):
-        return "ใช้ n/a ได้ แต่ต้องมีเหตุผล เช่น `n/a: <เหตุผล>`"
+        return "may be n/a, but needs a reason, e.g. `n/a: <reason>`"
     return None
 
 
@@ -234,12 +234,12 @@ def check_plan(path):
     problems = []
     pre = "gate 3: plan.md "
     if "Data shape" not in sections:
-        problems.append(pre + "ไม่มีหัวข้อ `## Data shape`")
+        problems.append(pre + "has no `## Data shape` heading")
     elif is_placeholder("\n".join(sections["Data shape"])):
-        problems.append(pre + "หัวข้อ `## Data shape` ยังว่างหรือเป็นข้อความตัวอย่าง "
-                        "ให้ระบุโครงข้อมูลหลักก่อนเขียน logic")
+        problems.append(pre + "`## Data shape` is empty or still template text. "
+                        "Describe the main data shape before writing logic")
     if "Throughput checkpoint" not in sections:
-        problems.append(pre + "ไม่มีหัวข้อ `## Throughput checkpoint`")
+        problems.append(pre + "has no `## Throughput checkpoint` heading")
     else:
         lines = sections["Throughput checkpoint"]
         for item in CHECKPOINT_ITEMS:
@@ -250,14 +250,14 @@ def check_plan(path):
                     found = m.group(1)
                     break
             if found is None:
-                problems.append(pre + "ไม่มีบรรทัด `- %s:` ใน `## Throughput checkpoint`" % item)
+                problems.append(pre + "has no `- %s:` line in `## Throughput checkpoint`" % item)
             else:
                 reason = value_problem(found)
                 if reason:
                     problems.append(pre + "`%s` %s" % (item, reason))
     if "Parallel parts" not in sections:
-        problems.append(pre + "ไม่มีหัวข้อ `## Parallel parts` "
-                        "(ถ้าไม่แบ่งงาน ให้เขียน `none: <เหตุผล>`)")
+        problems.append(pre + "has no `## Parallel parts` heading "
+                        "(if the work is not split, write `none: <reason>`)")
     else:
         problems.extend(pre + p for p in check_parallel_parts(sections["Parallel parts"]))
     return problems
@@ -283,26 +283,26 @@ def check_parallel_parts(lines):
             parts[current] = [f for f in parts[current] if f]
     if not order:
         if none_reason is None:
-            return ["`## Parallel parts` ต้องมีบรรทัด `none: <เหตุผล>` "
-                    "หรืออย่างน้อย 2 ส่วนแบบ `### <ชื่อ>` ที่มีบรรทัด `files:`"]
+            return ["`## Parallel parts` needs a `none: <reason>` line "
+                    "or at least 2 `### <name>` parts, each with a `files:` line"]
         if is_placeholder(none_reason):
-            return ["`none:` ใน `## Parallel parts` ต้องมีเหตุผล"]
+            return ["`none:` in `## Parallel parts` needs a reason"]
         return []
     problems = []
     if len(order) < 2:
-        problems.append("`## Parallel parts` มีเพียง 1 ส่วน (%s) ต้องมีอย่างน้อย 2 ส่วน "
-                        "หรือเขียน `none: <เหตุผล>`" % order[0])
+        problems.append("`## Parallel parts` has only 1 part (%s). Add at least 2 parts "
+                        "or write `none: <reason>`" % order[0])
     owner = {}
     for name in order:
         files = parts[name]
         if not files or any("<" in f for f in files):
-            problems.append("ส่วน `### %s` ไม่มีบรรทัด `files:` ที่ระบุไฟล์จริง" % name)
+            problems.append("part `### %s` has no `files:` line listing real files" % name)
             continue
         for f in files:
             owner.setdefault(f, []).append(name)
     overlap = sorted(f for f, names in owner.items() if len(set(names)) > 1)
     if overlap:
-        problems.append("Parallel parts ใช้ไฟล์ซ้ำกัน: %s (แต่ละส่วนต้องแก้ไฟล์ไม่ทับกัน)"
+        problems.append("Parallel parts share files: %s (each part must edit separate files)"
                         % ", ".join("%s (%s)" % (f, ", ".join(owner[f])) for f in overlap))
     return problems
 
@@ -387,7 +387,7 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     artifact = os.path.join(change_dir, ARTIFACTS[gate])
     current = blob_hash(artifact) if os.path.exists(artifact) else None
     if current is None:
-        problems.append("gate %d: ไม่พบ %s / artifact missing" % (gate, ARTIFACTS[gate]))
+        problems.append("gate %d: %s not found (artifact missing)" % (gate, ARTIFACTS[gate]))
     elif gate == 3:
         problems.extend(check_plan(artifact))
     indexed = [(i, e) for i, e in enumerate(entries) if e["gate"] == gate]
@@ -396,18 +396,18 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
         latest[e.get("role", "")] = (i, e)
     for role in roles:
         if role not in latest:
-            extra = " หรือ auto-merge" if gate == 4 and role == "cross" and risk == "low" \
+            extra = " or auto-merge" if gate == 4 and role == "cross" and risk == "low" \
                 and not release else ""
-            problems.append("gate %d: ยังไม่มีการอนุมัติจาก %s%s / missing %s approval"
+            problems.append("gate %d: no approval yet from %s%s (missing %s approval)"
                             % (gate, role_label(gate, role), extra, role))
             continue
         idx, e = latest[role]
         want = expected_email(cfg, gate, role)
         if e["by"] != want:
-            problems.append("gate %d: %s ลงชื่อโดย %s ซึ่งไม่ตรงกับ pod.yml (%s) / role mismatch"
+            problems.append("gate %d: %s signed by %s, which does not match pod.yml (%s) (role mismatch)"
                             % (gate, role, e["by"], want or "-"))
         if current is not None and e.get("blob") != current:
-            problems.append("gate %d: การอนุมัติของ %s ล้าสมัย เพราะ %s ถูกแก้หลังอนุมัติ / stale approval"
+            problems.append("gate %d: %s approval is stale because %s changed after approval"
                             % (gate, role, ARTIFACTS[gate]))
         if role != "owner":
             before = [r_e for r_i, r_e in indexed if r_i < idx]
@@ -415,11 +415,11 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
             if gate == 4 and auto_entry(before):
                 ok = True  # post-merge acceptance after an auto record
             if not ok:
-                problems.append("gate %d: %s ต้องลงชื่อหลัง owner / wrong role order"
+                problems.append("gate %d: %s must sign after owner (wrong role order)"
                                 % (gate, role))
     if "owner" in latest and "cross" in latest:
         if latest["owner"][1]["by"] == latest["cross"][1]["by"]:
-            problems.append("gate %d: owner และ cross เป็นคนเดียวกัน (%s) / writer and approver must differ"
+            problems.append("gate %d: owner and cross are the same person (%s): writer and approver must differ"
                             % (gate, latest["owner"][1]["by"]))
     return problems
 
@@ -434,8 +434,8 @@ def check_change(change_dir, cfg, upto=None):
     for gate in range(1, upto + 1):
         gate_problems = check_gate(change_dir, gate, cfg, entries, risk)
         if gate > 1 and not previous_ok and any(e["gate"] == gate for e in entries):
-            problems.append("gate %d: ต้องผ่าน gate %d ให้ครบก่อน / gate %d requires gate %d complete"
-                            % (gate, gate - 1, gate, gate - 1))
+            problems.append("gate %d: requires gate %d complete first"
+                            % (gate, gate - 1))
         problems.extend(gate_problems)
         previous_ok = previous_ok and not gate_problems
     return problems
@@ -478,37 +478,37 @@ def cmd_gate(args):
         return 2
     change_dir, gate = os.path.abspath(args[0]), int(args[1])
     if not os.path.isdir(change_dir):
-        print("ไม่พบโฟลเดอร์ change: %s" % args[0], file=sys.stderr)
+        print("change folder not found: %s" % args[0], file=sys.stderr)
         return 1
     cfg = read_pod_yml()
     artifact = os.path.join(change_dir, ARTIFACTS[gate])
     if not os.path.exists(artifact):
-        print("ปฏิเสธ: ไม่พบ %s ใน %s ต้องมี artifact ก่อนอนุมัติ gate %d"
+        print("Refused: %s not found in %s. The artifact must exist before gate %d is approved"
               % (ARTIFACTS[gate], args[0], gate), file=sys.stderr)
         return 1
     email = git_email()
     role = role_for(cfg, gate, email)
     if role is None:
-        print("ปฏิเสธ: อีเมล git '%s' ไม่มีสิทธิ์ลงชื่อ gate %d ตาม pod.yml "
-              "(SuperBiz และ SuperDev ต้องเป็นคนละอีเมล)" % (email or "-", gate), file=sys.stderr)
+        print("Refused: git email '%s' may not sign gate %d according to pod.yml "
+              "(SuperBiz and SuperDev must use different emails)" % (email or "-", gate), file=sys.stderr)
         return 1
     risk = risk_of(change_dir)
     if role == "escalation" and role not in required_roles(gate, risk):
-        print("ปฏิเสธ: gate %d ของ change นี้ (Risk: %s) ไม่ต้องใช้ escalation" % (gate, risk),
+        print("Refused: gate %d of this change (Risk: %s) does not need escalation" % (gate, risk),
               file=sys.stderr)
         return 1
     entries = read_log(change_dir)
     if gate > 1:
         before = check_change(change_dir, cfg, gate - 1)
         if before:
-            print("ปฏิเสธ: ต้องผ่าน gate %d ให้ครบก่อน" % (gate - 1), file=sys.stderr)
+            print("Refused: gate %d must be complete first" % (gate - 1), file=sys.stderr)
             for p in before:
                 print("  - " + p, file=sys.stderr)
             return 1
     if gate == 3:
         plan_problems = check_plan(artifact)
         if plan_problems:
-            print("ปฏิเสธ: plan.md ยังไม่ครบตามรูปแบบ จึงลงชื่อ gate 3 ไม่ได้", file=sys.stderr)
+            print("Refused: plan.md does not follow the required structure, so gate 3 cannot be signed", file=sys.stderr)
             for p in plan_problems:
                 print("  - " + p, file=sys.stderr)
             return 1
@@ -519,22 +519,22 @@ def cmd_gate(args):
         # gate 4: SuperBiz may accept after an auto-merge (post-merge acceptance)
         auto_ok = gate == 4 and role == "cross" and auto_entry(entries) is not None
         if not (owner_ok or auto_ok):
-            print("ปฏิเสธ: owner ของ gate %d ต้องอนุมัติ %s ฉบับปัจจุบันก่อน แล้ว %s จึงลงชื่อได้"
+            print("Refused: the gate %d owner must approve the current %s before %s can sign"
                   % (gate, ARTIFACTS[gate], role), file=sys.stderr)
             return 1
     line = "gate=%d role=%s by=%s at=%s blob=%s\n" % (gate, role, email, now_iso(), blob)
     with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
         fh.write(line)
-    print("บันทึกแล้ว: gate %d role=%s by=%s" % (gate, role, email))
+    print("Recorded: gate %d role=%s by=%s" % (gate, role, email))
     if gate == 4 and not check_gate(change_dir, 4, cfg):
-        print("gate 4 merge-ready แล้ว (Risk: %s)" % risk)
+        print("gate 4 is merge-ready (Risk: %s)" % risk)
     missing = check_gate(change_dir, gate, cfg, release=True)
     if missing:
-        print("gate %d ยังไม่ครบ%s:" % (gate, " สำหรับ release" if gate == 4 else ""))
+        print("gate %d is not complete%s:" % (gate, " for release" if gate == 4 else ""))
         for p in missing:
             print("  - " + p)
     else:
-        print("gate %d ครบแล้ว" % gate)
+        print("gate %d is complete" % gate)
     return 0
 
 
@@ -545,12 +545,12 @@ def cmd_check(args):
     elif len(args) in (1, 2):
         dirs = [os.path.abspath(args[0])]
         if not os.path.isdir(dirs[0]):
-            print("ไม่พบโฟลเดอร์ change: %s" % args[0], file=sys.stderr)
+            print("change folder not found: %s" % args[0], file=sys.stderr)
             return 1
         upto = None
         if len(args) == 2:
             if args[1] not in ("1", "2", "3", "4"):
-                print("upto ต้องเป็น 1-4", file=sys.stderr)
+                print("upto must be 1-4", file=sys.stderr)
                 return 2
             upto = int(args[1])
     else:
@@ -558,11 +558,11 @@ def cmd_check(args):
         return 2
     failed = False
     if not dirs:
-        print("OK: ยังไม่มี change ใน docs/changes/")
+        print("OK: no changes in docs/changes/ yet")
     for d in dirs:
         name = os.path.basename(d)
         if upto is None and not os.path.exists(os.path.join(d, "gates.log")):
-            print("OK   %s (draft ยังไม่มี gates.log)" % name)
+            print("OK   %s (draft, no gates.log yet)" % name)
             continue
         problems = check_change(d, cfg, upto)
         if problems:
@@ -574,7 +574,7 @@ def cmd_check(args):
             entries = read_log(d)
             top = upto or max([e["gate"] for e in entries], default=0)
             note = " merge-ready" if top == 4 else ""
-            print("OK   %s (ผ่านถึง gate %d%s, Risk: %s)" % (name, top, note, risk_of(d)))
+            print("OK   %s (passed up to gate %d%s, Risk: %s)" % (name, top, note, risk_of(d)))
     return 1 if failed else 0
 
 
@@ -585,7 +585,7 @@ def cmd_new_change(args):
     cfg = read_pod_yml()
     current = open_changes(cfg)
     if len(current) >= cfg["wip_limit"]:
-        print("ปฏิเสธ: งานที่เปิดอยู่ %d ชิ้น ถึง WIP limit (%d) แล้ว ปิดงานให้ผ่าน gate 4 ก่อน:"
+        print("Refused: %d open changes reach the WIP limit (%d). Take a change through gate 4 first:"
               % (len(current), cfg["wip_limit"]), file=sys.stderr)
         for d in current:
             print("  - " + os.path.basename(d), file=sys.stderr)
@@ -618,13 +618,13 @@ def cmd_metrics(args):
     change_dir = os.path.abspath(args[0])
     intent = os.path.join(change_dir, "intent.md")
     if not os.path.exists(intent):
-        print("ไม่พบ intent.md ใน %s" % args[0], file=sys.stderr)
+        print("intent.md not found in %s" % args[0], file=sys.stderr)
         return 1
     out = subprocess.run(["git", "log", "--follow", "--format=%cI", "--", intent],
                          cwd=change_dir, capture_output=True, text=True, check=False)
     stamps = [s for s in out.stdout.split() if s]
     if not stamps:
-        print("intent.md ยังไม่ได้ commit จึงคำนวณเวลาไม่ได้", file=sys.stderr)
+        print("intent.md is not committed yet, so times cannot be computed", file=sys.stderr)
         return 1
     start = parse_iso(stamps[-1])
     cfg = read_pod_yml()
@@ -653,7 +653,7 @@ def cmd_metrics(args):
     if finish is not None:
         print("lead time intent -> gate 4: %s" % fmt_duration((finish - start).total_seconds()))
     else:
-        print("lead time intent -> gate 4: ยังไม่ครบ gate 4")
+        print("lead time intent -> gate 4: gate 4 not complete yet")
     return 0
 
 
@@ -665,7 +665,7 @@ def release_problems(change_dir, cfg, now=None):
     problems = check_change(change_dir, cfg, 3)
     problems.extend(check_gate(change_dir, 4, cfg, entries, risk, release=True))
     for e in reverts(entries):
-        problems.append("change นี้ถูก revert แล้ว (%s): %s" % (e.get("at", "-"), e.get("reason", "-")))
+        problems.append("this change was reverted (%s): %s" % (e.get("at", "-"), e.get("reason", "-")))
     overdue = None
     auto = auto_entry(entries)
     has_cross = any(e["gate"] == 4 and e.get("role") == "cross" for e in entries)
@@ -673,10 +673,10 @@ def release_problems(change_dir, cfg, now=None):
         due = parse_iso(auto["at"]).timestamp() + cfg["acceptance_hours"] * 3600
         now = datetime.now(timezone.utc).timestamp() if now is None else now
         if now > due:
-            overdue = ("merge อัตโนมัติเมื่อ %s แต่ SuperBiz ยังไม่ตรวจรับเกิน %d ชั่วโมง"
+            overdue = ("auto-merged at %s, but SuperBiz has not accepted it within %d hours"
                        % (auto["at"], cfg["acceptance_hours"]))
         else:
-            problems.append("merge อัตโนมัติแล้ว รอ SuperBiz ตรวจรับ (gate 4 cross) ภายใน %d ชั่วโมง"
+            problems.append("auto-merged, waiting for SuperBiz acceptance (gate 4 cross) within %d hours"
                             % cfg["acceptance_hours"])
     return problems, overdue
 
@@ -687,7 +687,7 @@ def cmd_release_check(args):
         return 2
     change_dir = os.path.abspath(args[0])
     if not os.path.isdir(change_dir):
-        print("ไม่พบโฟลเดอร์ change: %s" % args[0], file=sys.stderr)
+        print("change folder not found: %s" % args[0], file=sys.stderr)
         return 1
     cfg = read_pod_yml()
     problems, overdue = release_problems(change_dir, cfg)
@@ -695,7 +695,7 @@ def cmd_release_check(args):
     if overdue:
         print("NOT RELEASE-READY %s" % name)
         print("  - " + overdue)
-        print("  - ห้ามปล่อยขึ้น production จนกว่า SuperBiz ตรวจรับ")
+        print("  - Do not release to production until SuperBiz accepts")
         for p in problems:
             print("  - " + p)
         return 1
@@ -714,19 +714,19 @@ def cmd_mark_revert(args):
         return 2
     change_dir = os.path.abspath(args[0])
     if not os.path.isdir(change_dir):
-        print("ไม่พบโฟลเดอร์ change: %s" % args[0], file=sys.stderr)
+        print("change folder not found: %s" % args[0], file=sys.stderr)
         return 1
     cfg = read_pod_yml()
     email = git_email()
     members = {cfg["superbiz_email"], cfg["superdev_email"], cfg["escalation_email"]} - {""}
     if email not in members:
-        print("ปฏิเสธ: อีเมล git '%s' ไม่ใช่สมาชิกใน pod.yml" % (email or "-"), file=sys.stderr)
+        print("Refused: git email '%s' is not a member in pod.yml" % (email or "-"), file=sys.stderr)
         return 1
     reason = " ".join(args[1].replace('"', "'").split())
     line = 'event=revert by=%s at=%s reason="%s"\n' % (email, now_iso(), reason)
     with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
         fh.write(line)
-    print("บันทึก revert แล้ว: %s (release-check จะไม่ผ่าน และนับผลงานต่อเนื่องใหม่)"
+    print("Revert recorded: %s (release-check will fail, and the track record restarts)"
           % os.path.basename(change_dir))
     return 0
 

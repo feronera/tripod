@@ -1,16 +1,16 @@
-# Spec: <ชื่องาน>
+# Spec: <change title>
 
-อ้างอิง: intent.md, ux-brief.md
+References: intent.md, ux-brief.md
 
 ## Requirements
-- R1: <ระบบต้อง ... เมื่อ ...> (ตรวจได้ด้วย: <test หรือ demo>)
+- R1: <the system must ... when ...> (verified by: <test or demo>)
 - R2:
 
 ## Edge cases
-- E1: <กรณีขอบ และผลที่คาดหวัง>
+- E1: <edge case and expected result>
 
 ## Flagged concerns
-- <ข้อกังวลที่ต้องให้ SuperBiz หรือ SuperDev ตัดสินใจ พร้อมอ้างอิงไฟล์>
+- <concerns that SuperBiz or SuperDev must decide, with file references>
 
 ## Out of scope
-- <สิ่งที่ไม่ทำใน change นี้>
+- <what this change does not do>

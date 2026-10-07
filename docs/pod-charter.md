@@ -1,49 +1,49 @@
 # Pod charter
 
-กรอกเอกสารนี้ร่วมกันก่อนเริ่ม change แรก และทบทวนทุกครั้งที่สมาชิกเปลี่ยน
+Fill in this document together before the first change, and review it whenever the members change.
 
-## สมาชิก
-| บทบาท | ชื่อ | อีเมล (ตรงกับ pod.yml) | รับผิดชอบ |
+## Members
+| Role | Name | Email (matches pod.yml) | Responsible for |
 |---|---|---|---|
-| SuperBiz | | | PO, PM, BA, Designer: อะไรและเพราะอะไร |
-| SuperDev | | | SA, Dev, QA, Deploy, MA: อย่างไรและปลอดภัยหรือไม่ |
-| Escalation | | | ลงชื่อเพิ่มที่ gate 2 และ 4 สำหรับงาน Risk: high |
+| SuperBiz | | | PO, PM, BA, Designer: what to build and why |
+| SuperDev | | | SA, Dev, QA, Deploy, Maintenance: how to build it, and whether it is safe |
+| Escalation | | | Additional signature at gates 2 and 4 for Risk: high changes |
 
-## เวลาทำงาน
-- ช่วงเวลาที่ทั้งสองคนติดต่อได้:
-- ช่องทางสื่อสารหลัก:
-- เวลาตอบกลับที่คาดหวังสำหรับคำขอ cross-check:
+## Working hours
+- Hours when both people are reachable:
+- Main communication channel:
+- Expected response time for cross-check requests:
 
-## ผู้แทนและการ escalate
-- เมื่อ SuperBiz ไม่อยู่ ผู้แทนคือ:
-- เมื่อ SuperDev ไม่อยู่ ผู้แทนคือ:
-- เมื่อสองคนเห็นไม่ตรงกันที่ gate ใด ให้ตัดสินโดย:
+## Backup people and escalation
+- Backup person when SuperBiz is away:
+- Backup person when SuperDev is away:
+- When the two disagree at a gate, the decision is made by:
 
 ## WIP limit
-- จำนวน change ที่เปิดพร้อมกันได้: 2 (ตรงกับ `wip_limit` ใน pod.yml)
-- change ที่เปิดอยู่ หมายถึง ผ่าน gate 1 แล้วแต่ยังไม่ผ่าน gate 4
+- Number of changes that may be open at once: 2 (matches `wip_limit` in pod.yml)
+- An open change is one that has passed gate 1 but not yet gate 4.
 
-## สิ่งที่ pod ทำเองไม่ได้ (ต้องเป็น Risk: high และมี escalation)
-- เปลี่ยนการเก็บหรือการแสดงข้อมูลส่วนบุคคล
-- เปลี่ยนการคำนวณเงิน ราคา หรือภาษี
-- เปลี่ยนสิทธิ์การเข้าถึงหรือการยืนยันตัวตน
-- เปลี่ยนที่ย้อนกลับไม่ได้ เช่น ลบข้อมูล หรือ migration ที่ย้อนไม่ได้
-- <รายการเพิ่มเติมของทีม>
+## What the pod may not do alone (must be Risk: high with escalation)
+- Change how personal data is stored or displayed
+- Change how money, prices or taxes are calculated
+- Change access permissions or authentication
+- Make irreversible changes, such as deleting data or an irreversible migration
+- <additional items for your team>
 
-## กฎต้องอยู่ในโครงสร้าง
-- กฎที่ถูกฝ่าซ้ำ 2 ครั้ง ต้องย้ายจาก skill ไปเป็น hook, script หรือ CI check
-- บันทึกการย้ายไว้ที่นี่: <วันที่, กฎ, ย้ายไปเป็นอะไร>
+## Rules belong in the structure
+- A rule broken twice must move from a skill into a hook, script or CI check.
+- Record each move here: <date, rule, what it became>
 
-## บันไดความไว้วางใจของ auto-merge
-| ขั้น | `auto_merge` ใน pod.yml | เงื่อนไข |
+## Auto-merge trust ladder
+| Step | `auto_merge` in pod.yml | Condition |
 |---|---|---|
-| 1 | `off` | ค่าเริ่มต้น ทุก change ต้องมีมนุษย์ลงชื่อก่อน merge |
-| 2 | `low` | pod ปิด change ครบ `auto_merge_min_track` ชิ้นติดกันโดยไม่มี revert แล้วทั้งสองคนตกลงเปิด |
-| กลับขั้น 1 | (อัตโนมัติ) | มีการ revert ใน `auto_merge_min_track` change ล่าสุด auto-merge-check จะ DENY จนกว่าจะสะสมผลงานใหม่ครบ |
+| 1 | `off` | Default. Every change needs a human signature before merge |
+| 2 | `low` | The pod has closed `auto_merge_min_track` consecutive changes without a revert, and both people agree to enable it |
+| Back to step 1 | (automatic) | A revert within the last `auto_merge_min_track` changes makes auto-merge-check DENY until a new track record is built |
 
-- งาน medium และ high ไม่ merge อัตโนมัติไม่ว่าอยู่ขั้นใด
-- ผู้ที่เปลี่ยน `auto_merge` ได้: <ระบุ> (pod.yml อยู่ใน docs/risk-paths จึงต้องผ่าน escalation)
+- Medium and high changes are never merged automatically, at any step.
+- Who may change `auto_merge`: <name> (pod.yml is in docs/risk-paths, so the change requires escalation)
 
 ## Kill switch
-- ผู้ที่สั่งเปิดได้: ทั้งสองคน (`touch .pod/kill-switch`)
-- ผู้ที่สั่งปิดได้: ผู้ที่เปิด หลังตรวจสอบสาเหตุแล้ว (`rm .pod/kill-switch`)
+- Who may turn it on: both people (`touch .pod/kill-switch`)
+- Who may turn it off: the person who turned it on, after investigating the cause (`rm .pod/kill-switch`)

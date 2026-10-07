@@ -9,7 +9,7 @@ if [ -z "$REPO" ] || ! printf '%s' "$REPO" | grep -Eq '^[A-Za-z0-9_.-]+/[A-Za-z0
   echo "usage: scripts/setup-github.sh <owner/repo> [--yes]" >&2
   exit 2
 fi
-command -v gh >/dev/null || { echo "ต้องติดตั้ง gh และ gh auth login ก่อน" >&2; exit 1; }
+command -v gh >/dev/null || { echo "Install gh and run gh auth login first" >&2; exit 1; }
 
 PROTECTION='{
   "required_status_checks": { "strict": true, "contexts": ["pod-gates"] },
@@ -24,18 +24,18 @@ PROTECTION='{
   "allow_deletions": false
 }'
 
-echo "จะตั้งค่า GitHub repo $REPO ดังนี้"
-echo "  1. เปิด auto-merge ของ repo (allow_auto_merge=true)"
-echo "  2. ป้องกัน branch main"
-echo "     - ต้องผ่าน status check: pod-gates"
-echo "     - path ใน docs/risk-paths ต้องได้ review จาก code owner (.github/CODEOWNERS)"
-echo "     - review เก่าถูกยกเลิกเมื่อมี commit ใหม่"
-echo "     - ห้าม force push และห้ามลบ branch main"
-echo "  การอนุมัติตาม risk (SuperDev, SuperBiz, escalation) ตรวจโดย scripts/pr-check.sh ใน job pod-gates"
+echo "This will configure GitHub repo $REPO as follows"
+echo "  1. Turn on repo auto-merge (allow_auto_merge=true)"
+echo "  2. Protect branch main"
+echo "     - Require status check: pod-gates"
+echo "     - Paths in docs/risk-paths need code owner review (.github/CODEOWNERS)"
+echo "     - Dismiss old reviews when new commits are pushed"
+echo "     - No force pushes and no deleting branch main"
+echo "  Approvals by risk (SuperDev, SuperBiz, escalation) are checked by scripts/pr-check.sh in the pod-gates job"
 if [ "$APPLY" != "--yes" ]; then
-  echo "ยังไม่ได้เปลี่ยนอะไร รันอีกครั้งพร้อม --yes เพื่อใช้ค่าตามนี้"
+  echo "Nothing changed yet. Run again with --yes to apply these settings"
   exit 0
 fi
 gh api -X PATCH "repos/$REPO" -F allow_auto_merge=true >/dev/null
 printf '%s' "$PROTECTION" | gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null
-echo "ตั้งค่าเรียบร้อย"
+echo "Done"

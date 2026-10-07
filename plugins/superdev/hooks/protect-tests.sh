@@ -32,13 +32,13 @@ ROOT="$(printf '%s\n' "$OUT" | sed -n 1p)"
 REL="$(printf '%s\n' "$OUT" | sed -n 2p)"
 TESTS_DIR="$(printf '%s\n' "$OUT" | sed -n 3p)"
 if [ ! -f "$ROOT/pod.yml" ]; then
-  echo "ไม่พบ pod kit ใน project นี้ (ไม่มี pod.yml) hook protect-tests จึงไม่ทำงาน" >&2
+  echo "No pod kit in this project (no pod.yml), so the protect-tests hook is inactive" >&2
   exit 0
 fi
 if [ -e "$ROOT/.pod/lock-tests" ]; then
   case "$REL" in
     "$TESTS_DIR"/*)
-      echo "tests ถูกล็อกแล้ว (.pod/lock-tests) ห้ามแก้ $REL ให้แก้โค้ดจนกว่า test ทั้งหมดจะผ่าน หากเห็นว่า test ผิด ให้หยุดและแจ้ง SuperDev" >&2
+      echo "tests are locked (.pod/lock-tests). Do not edit $REL. Fix the code until all tests pass. If you believe a test is wrong, stop and tell SuperDev" >&2
       exit 2 ;;
   esac
 fi

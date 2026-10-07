@@ -1,26 +1,26 @@
-# pod.yml: สมาชิกของ pod (รูปแบบ key: value บรรทัดละหนึ่งค่า)
-# อีเมลต้องตรงกับ `git config user.email` ของแต่ละคน และ SuperBiz กับ SuperDev ต้องเป็นคนละอีเมล
+# pod.yml: pod members (key: value, one per line)
+# Each email must match that person's `git config user.email`. SuperBiz and SuperDev must use different emails
 superbiz_name: SuperBiz Example
 superbiz_email: biz@example.com
 superdev_name: SuperDev Example
 superdev_email: dev@example.com
-# ผู้อนุมัติเพิ่มสำหรับงาน Risk: high (gate 2 และ gate 4)
+# Additional approver for Risk: high changes (gates 2 and 4)
 escalation_name: Lead Example
 escalation_email: lead@example.com
-# จำนวน change ที่เปิดพร้อมกันได้ (ผ่าน gate 1 แล้วแต่ยังไม่ผ่าน gate 4)
+# How many changes may be open at once (past gate 1, not yet past gate 4)
 wip_limit: 2
-# บัญชี GitHub ของสมาชิก (ใช้ตรวจ approval ของ PR ใน CI และสร้าง .github/CODEOWNERS)
+# Members' GitHub logins (used to check PR approvals in CI and to generate .github/CODEOWNERS)
 superbiz_github: biz-example
 superdev_github: dev-example
 escalation_github: lead-example
-# merge ตาม risk ดู docs/merge-by-risk.md
+# Merge by risk: see docs/merge-by-risk.md
 auto_merge: off            # off | low
 auto_merge_max_lines: 200
 auto_merge_min_track: 10   # recent completed changes with no revert needed before auto-merge is allowed
 acceptance_hours: 48
-# stack ของ project ดู docs/test-strength.md
+# Project stack: see docs/test-strength.md
 test_cmd: python3 -m unittest discover -s tests -t . -v
-code_dirs: app             # โฟลเดอร์โค้ด คั่นด้วยช่องว่าง (ใช้กับ test-strength แบบ python)
-tests_dir: tests           # โฟลเดอร์ test (hook protect-tests และกฎห้ามลบบรรทัดใน test)
+code_dirs: app             # code folders, space separated (used by python test-strength)
+tests_dir: tests           # test folder (protect-tests hook and the no-deleted-test-lines rule)
 strength: python           # python | off | cmd
-strength_cmd:              # ใช้เมื่อ strength: cmd คำสั่งที่ exit 1 เมื่อพบ test อ่อน
+strength_cmd:              # for strength: cmd, a command that exits 1 when it finds a weak test

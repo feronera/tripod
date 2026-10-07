@@ -42,7 +42,7 @@ The kit has three layers:
    - Model the data shape before writing logic.
    - Write a throughput checkpoint before splitting work.
    - Work in small verifiable units.
-   - Test behaviour, not implementation.
+   - Test behavior, not implementation.
    - Fix bugs at the root cause.
    - Get a second opinion from a different model.
    - Run a design bake-off when the approach is contested.

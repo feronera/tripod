@@ -24,11 +24,11 @@ print(os.path.relpath(os.path.join(parent, os.path.basename(target)), root))
 ROOT="$(printf '%s\n' "$OUT" | sed -n 1p)"
 REL="$(printf '%s\n' "$OUT" | sed -n 2p)"
 if [ ! -f "$ROOT/pod.yml" ] || [ ! -f "$ROOT/scripts/gate-check.sh" ]; then
-  echo "ไม่พบ pod kit ใน project นี้ (ไม่มี pod.yml หรือ scripts/gate-check.sh) hook biz-scope จึงไม่ทำงาน" >&2
+  echo "No pod kit in this project (no pod.yml or scripts/gate-check.sh), so the biz-scope hook is inactive" >&2
   exit 0
 fi
 case "$REL" in
   docs/*) exit 0 ;;
 esac
-echo "SuperBiz แก้ได้เฉพาะ docs/ (ไฟล์ที่ขอแก้: ${REL:-ไม่ระบุ}) งานโค้ด test หรือ config ให้ส่งต่อให้ SuperDev" >&2
+echo "SuperBiz may edit only docs/ (requested file: ${REL:-not given}). Hand code, test or config work to SuperDev" >&2
 exit 2

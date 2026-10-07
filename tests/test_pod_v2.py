@@ -110,12 +110,12 @@ class PlanCheckTests(V2Repo):
 
     def test_placeholder_checkpoint_value_is_refused(self):
         plan = VALID_PLAN.replace("- Shared mutable state: app/orders.py",
-                                  "- Shared mutable state: <ไฟล์ที่แก้ร่วมกัน>")
+                                  "- Shared mutable state: <files edited in common>")
         c = self.plan_change(plan)
-        self.assert_refused(c, "`Shared mutable state` ยังไม่ได้กรอกค่า")
+        self.assert_refused(c, "`Shared mutable state` has no value")
 
     def test_missing_checkpoint_line_and_data_shape(self):
-        plan = ("# plan\n## Data shape\n<โครงข้อมูล>\n" + CHECKPOINT.replace(
+        plan = ("# plan\n## Data shape\n<data shape>\n" + CHECKPOINT.replace(
             "- Blocking first steps: failing tests\n", "") + "## Parallel parts\nnone: x\n")
         c = self.plan_change(plan)
         self.assert_refused(c, "`## Data shape`", "`- Blocking first steps:`")
@@ -134,7 +134,7 @@ class PlanCheckTests(V2Repo):
     def test_single_part_fails(self):
         plan = PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\n"
         c = self.plan_change(plan)
-        self.assert_refused(c, "มีเพียง 1 ส่วน")
+        self.assert_refused(c, "has only 1 part")
 
     def test_none_is_accepted(self):
         c = self.plan_change(PLAN_HEAD + CHECKPOINT + "## Parallel parts\nnone: one file only\n")
@@ -188,13 +188,13 @@ class StrengthTests(unittest.TestCase):
         self.assertEqual(res.returncode, 1, res.stdout)
         self.assertIn("WEAK tests.test_calc.T.test_missing", res.stdout)
         self.assertNotIn("test_add", res.stdout)
-        self.assertIn("คืนค่า None", res.stdout)
+        self.assertIn("returns None", res.stdout)
 
     def test_passes_strong_tests(self):
         self.write_test_file(CALC_TESTS)
         res = self.strength()
         self.assertEqual(res.returncode, 0, res.stdout)
-        self.assertIn("ตรวจแล้ว 2 test", res.stdout)
+        self.assertIn("checked 2 tests", res.stdout)
 
     def test_stubs_from_import_alias(self):
         self.write_test_file("import unittest\nfrom app.calc import add\n\n\nclass T(unittest.TestCase):\n"
@@ -208,7 +208,7 @@ class StrengthTests(unittest.TestCase):
                         "    def test_x(self):\n        self.assertTrue(True)\n", "test_other.py")
         res = self.strength()
         self.assertEqual(res.returncode, 0, res.stdout)
-        self.assertIn("ตรวจแล้ว 2 test", res.stdout)
+        self.assertIn("checked 2 tests", res.stdout)
 
     def test_sample_suite_is_strong(self):
         res = run([os.path.join(POD, "scripts", "test-strength.sh")], POD)
@@ -363,13 +363,13 @@ class AutoMergeTests(AutoMergeRepo):
 
     def test_deny_risk_medium(self):
         self.edit(self.c, "intent.md", None, risk="medium")
-        self.assert_deny("Risk ใน intent.md คือ medium")
+        self.assert_deny("Risk in intent.md is medium")
 
     def test_deny_risk_path(self):
         self.write("app/auth.py", "def login():\n    return None\n")
         self.commit("feat: auth")
         self.write_review()
-        self.assert_deny("แตะ path อ่อนไหว: app/auth.py ระดับความเสี่ยงจริงคือ high")
+        self.assert_deny("touches a sensitive path: app/auth.py. The effective risk tier is high")
 
     def test_deny_review_blockers(self):
         self.write_review(blockers=2, head=self.head())
@@ -377,7 +377,7 @@ class AutoMergeTests(AutoMergeRepo):
 
     def test_deny_missing_review(self):
         os.remove(os.path.join(self.c, "review.md"))
-        self.assert_deny("ไม่พบ review.md")
+        self.assert_deny("review.md not found")
 
     def test_deny_second_opinion_disagree(self):
         self.write_review(opinion="disagree")
@@ -386,14 +386,14 @@ class AutoMergeTests(AutoMergeRepo):
     def test_deny_stale_reviewed_head(self):
         self.write("app/calc.py", "\n\ndef triple(x):\n    return x * 3\n", "a")
         self.commit("feat: more")
-        self.assert_deny("โค้ดเปลี่ยนหลัง review")
+        self.assert_deny("The code changed after review")
 
     def test_deny_test_deletion(self):
         self.write("tests/test_calc.py", CALC_TESTS.replace(
             '        self.assertEqual(calc.find("a"), 1)\n', ""))
         self.commit("test: drop")
         self.write_review()
-        self.assert_deny("ลบหรือแก้บรรทัดใน tests/ 1 บรรทัด")
+        self.assert_deny("deleted or changed lines in tests/: 1")
 
     def test_deny_weak_test(self):
         self.write("tests/test_weak.py", "import unittest\nfrom app import calc\n\n\n"
@@ -401,21 +401,21 @@ class AutoMergeTests(AutoMergeRepo):
                    "        self.assertIsNone(calc.find('q'))\n")
         self.commit("test: weak")
         self.write_review()
-        self.assert_deny("test-strength ไม่ผ่าน: tests.test_weak.W.test_w")
+        self.assert_deny("test-strength failed: tests.test_weak.W.test_w")
 
     def test_deny_too_many_lines(self):
         self.write_pod_yml(auto="low", track=2, max_lines=1)
-        self.assert_deny("เกิน auto_merge_max_lines (1)")
+        self.assert_deny("over auto_merge_max_lines (1)")
 
     def test_deny_track_record_short(self):
         self.write_pod_yml(auto="low", track=3)
-        self.assert_deny("ยังสะสมผลงานไม่ครบ 3 ชิ้น")
+        self.assert_deny("track record has fewer than 3 changes")
 
     def test_deny_recent_revert(self):
         self.as_user(DEV)
         res = self.sh("mark-revert.sh", self.history[0], "rollback after incident")
         self.assertEqual(res.returncode, 0, res.stderr)
-        self.assert_deny("มีการ revert")
+        self.assert_deny("a revert in the last")
 
     def test_review_commit_after_reviewed_head_is_allowed(self):
         # setUp reviewed the code commit, then committed review.md on top of it
@@ -431,7 +431,7 @@ class ReleaseAfterAutoTests(AutoMergeRepo):
         self.assertEqual(self.auto("--record").returncode, 0)
         res = self.sh("release-check.sh", self.c)
         self.assertEqual(res.returncode, 1)
-        self.assertIn("รอ SuperBiz ตรวจรับ", res.stdout)
+        self.assertIn("waiting for SuperBiz acceptance", res.stdout)
         # pretend the auto-merge happened 3 days ago
         old = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat(timespec="seconds")
         lines = self.log_lines(self.c)
@@ -439,7 +439,7 @@ class ReleaseAfterAutoTests(AutoMergeRepo):
         self.write_log(self.c, lines)
         res = self.sh("release-check.sh", self.c)
         self.assertEqual(res.returncode, 1)
-        self.assertIn("ห้ามปล่อยขึ้น production จนกว่า SuperBiz ตรวจรับ", res.stdout)
+        self.assertIn("Do not release to production until SuperBiz accepts", res.stdout)
         # post-merge acceptance: SuperBiz signs cross after the auto record, then SuperDev owner
         self.edit(self.c, "acceptance.md", "# acceptance\nDecision: accept\n")
         self.approve(self.c, 4, BIZ)
@@ -478,12 +478,12 @@ class PrCheckTests(AutoMergeRepo):
         self.assertEqual(res.returncode, 0, res.stdout)
         res = self.pr("biz-example", "")
         self.assertEqual(res.returncode, 1)
-        self.assertIn("ยังไม่มี approval จาก SuperDev (dev-example)", res.stdout)
+        self.assertIn("no approval yet from SuperDev (dev-example)", res.stdout)
 
     def test_superdev_author_needs_superbiz_instead(self):
         res = self.pr("dev-example", "dev-example")
         self.assertEqual(res.returncode, 1)
-        self.assertIn("ยังไม่มี approval จาก SuperBiz (biz-example)", res.stdout)
+        self.assertIn("no approval yet from SuperBiz (biz-example)", res.stdout)
         self.assertEqual(self.pr("dev-example", "biz-example").returncode, 0)
 
     def test_medium_needs_superdev(self):
@@ -500,7 +500,7 @@ class PrCheckTests(AutoMergeRepo):
         self.commit("feat: pay")
         res = self.pr("bot-example", "dev-example")
         self.assertEqual(res.returncode, 1)
-        self.assertIn("Risk จริง: high", res.stdout)
+        self.assertIn("effective Risk: high", res.stdout)
         self.assertIn("SuperBiz (biz-example)", res.stdout)
         self.assertIn("escalation (lead-example)", res.stdout)
         self.assertEqual(self.pr("bot-example", "dev-example,biz-example,lead-example").returncode, 0)

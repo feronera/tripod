@@ -3,32 +3,32 @@ name: intent
 description: Draft intent.md for a new change with the PO, one question at a time, including Risk tier. Use when the user wants to start a change, write an intent, or says "ร่าง intent", "เริ่มงานใหม่", "เขียน intent.md", "draft intent", "new change".
 ---
 
-# ร่าง intent.md (SuperBiz: PO)
+# Draft intent.md (SuperBiz: PO)
 
-เป้าหมาย: ได้ `docs/changes/NNN-slug/intent.md` ที่พร้อมให้มนุษย์ลงชื่อ gate 1
+Goal: a `docs/changes/NNN-slug/intent.md` that is ready for a human to sign gate 1.
 
-## ขั้นตอน
-1. ถามว่าจะทำ change ใด หากยังไม่มีโฟลเดอร์ ให้ขอให้มนุษย์รัน `scripts/new-change.sh <slug>`
-   และรอ path ที่คำสั่งพิมพ์ออกมา (คำสั่งจะปฏิเสธหากถึง WIP limit ให้แจ้งมนุษย์ตามข้อความนั้น)
-2. อ่าน `docs/templates/intent.md`, `docs/risk-tiers.md` และ intent.md ในโฟลเดอร์ change
-3. สัมภาษณ์ PO ทีละคำถาม รอคำตอบก่อนถามข้อถัดไป ตามลำดับนี้
-   1. ปัญหาคืออะไร เกิดกับใคร มีหลักฐานอะไร
-   2. ผู้ใช้หรือผู้ได้รับผลกระทบคือใคร
-   3. Success measure เป็นตัวเลขใด ค่าปัจจุบันเท่าไร เป้าหมายเท่าไร ภายในเมื่อใด
-   4. คำถาม 4 ข้อใน `docs/risk-tiers.md` ทีละข้อ
-   5. มีข้อจำกัดใดบ้าง
-4. กำหนด Risk ตามเกณฑ์ใน `docs/risk-tiers.md` หากไม่แน่ใจ ให้เลือกระดับที่สูงกว่า
-   และเขียนบรรทัด `Risk: low`, `Risk: medium` หรือ `Risk: high` เพียงบรรทัดเดียว
-5. เขียน intent.md ตาม template คง `Status: draft` ไว้
-6. ห้ามแต่งตัวเลขหรือข้อเท็จจริง สิ่งที่ PO ไม่ทราบให้ใส่ใน Open questions
-7. ตรวจด้วยคำถามของ Gate 1 ใน `docs/gates.md` แล้วรายงานข้อที่ยังไม่ผ่าน
+## Steps
+1. Ask which change to work on. If the folder does not exist yet, ask the human to run `scripts/new-change.sh <slug>`
+   and wait for the path it prints. (The command refuses when the WIP limit is reached. Relay its message to the human.)
+2. Read `docs/templates/intent.md`, `docs/risk-tiers.md` and the intent.md in the change folder.
+3. Interview the PO one question at a time. Wait for each answer before asking the next. Use this order:
+   1. What is the problem, who has it, and what is the evidence?
+   2. Who are the users or the people affected?
+   3. What number is the Success measure? What is the current value, the target, and by when?
+   4. The 4 questions in `docs/risk-tiers.md`, one at a time.
+   5. What constraints apply?
+4. Set the Risk using the criteria in `docs/risk-tiers.md`. If unsure, choose the higher tier.
+   Write exactly one line: `Risk: low`, `Risk: medium` or `Risk: high`.
+5. Write intent.md from the template. Keep `Status: draft`.
+6. Never invent numbers or facts. Put anything the PO does not know under Open questions.
+7. Check against the Gate 1 questions in `docs/gates.md` and report any that do not pass yet.
 
-## สิ่งที่ห้ามทำ
-- ห้ามรัน `scripts/gate.sh` และห้ามแก้ `gates.log`
-- ห้ามแก้ไฟล์นอก `docs/`
+## Do not
+- Run `scripts/gate.sh` or edit `gates.log`.
+- Edit files outside `docs/`.
 
-## จบงาน
-แจ้งมนุษย์ว่า
-1. SuperBiz ตรวจ intent.md แล้วรัน `scripts/gate.sh docs/changes/NNN-slug 1`
-2. ขอให้ SuperDev ตรวจทาน (ทำได้จริงและวัดผลได้หรือไม่) แล้วรันคำสั่งเดียวกัน
-3. ตรวจผลด้วย `scripts/gate-check.sh docs/changes/NNN-slug`
+## When done
+Tell the human:
+1. SuperBiz reviews intent.md, then runs `scripts/gate.sh docs/changes/NNN-slug 1`.
+2. Ask SuperDev to cross-check it (feasible and measurable?), then run the same command.
+3. Check the result with `scripts/gate-check.sh docs/changes/NNN-slug`.

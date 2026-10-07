@@ -17,7 +17,7 @@ class OrderStatusTest(unittest.TestCase):
 
     def test_status_for_owner(self):
         result = orders.status_for_customer("C001", "A1001")
-        self.assertEqual(result, {"order_id": "A1001", "status": "shipped", "label": "จัดส่งแล้ว"})
+        self.assertEqual(result, {"order_id": "A1001", "status": "shipped", "label": "Shipped"})
 
     def test_other_customer_order_is_hidden(self):
         with self.assertRaises(orders.OrderNotFound) as other:
@@ -26,8 +26,8 @@ class OrderStatusTest(unittest.TestCase):
             orders.status_for_customer("C002", "NOPE")
         self.assertEqual(str(other.exception), str(missing.exception))
 
-    def test_thai_labels(self):
-        self.assertEqual(orders.status_label("pending"), "รอชำระเงิน")
+    def test_status_labels(self):
+        self.assertEqual(orders.status_label("pending"), "Awaiting payment")
         self.assertEqual(orders.status_label("unknown"), "unknown")
 
     def test_orders_for_customer(self):

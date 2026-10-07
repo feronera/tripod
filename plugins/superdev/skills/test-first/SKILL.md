@@ -3,38 +3,38 @@ name: test-first
 description: Write failing tests from the spec edge cases that observe real behavior, check them with scripts/test-strength.sh, commit them and lock tests with .pod/lock-tests, then hand over to the build skill. Use when the user says "เริ่มเขียนโค้ด", "เขียน test ก่อน", "test first", "TDD", "implement the plan".
 ---
 
-# Test-first (SuperDev: Dev และ QA)
+# Test-first (SuperDev: Dev and QA)
 
-เป้าหมาย: test ที่ fail ด้วยเหตุผลที่ถูกต้อง ตรวจพฤติกรรมจริง และถูกล็อกก่อนเขียนโค้ด
+Goal: tests that fail for the right reason, check real behavior, and are locked before any code is written.
 
-## ขั้นตอน
-1. ตรวจว่า gate 3 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 3`
-   หากไม่ผ่าน ให้แจ้งมนุษย์และหยุด
-2. อ่าน spec.md (Requirements และ Edge cases) และ plan.md (Data shape และ Order of work)
-3. เขียน test ใน `tests_dir` ของ pod.yml (ค่าเริ่มต้น `tests/` ด้วย unittest) ให้ครบทุก requirement และทุก edge case
-   ตั้งชื่อ test ให้อ้างอิง R หรือ E เช่น `test_r1_...`, `test_e2_...`
-4. แต่ละ test ต้องเรียกโค้ดแบบที่ผู้ใช้เรียก และ assert ผลลัพธ์ด้วยค่าที่ระบุชัด
-   หลีกเลี่ยง test อ่อน 5 แบบ ซึ่งยังผ่านได้แม้ทุกฟังก์ชันใน `code_dirs` (ค่าเริ่มต้น `app/`) คืนค่า None ดู `docs/test-strength.md`
-   - assert อ่อนหรือไม่มี assert: เช่น มีเพียง `assertTrue(x)` หรือ `assertIsNotNone(x)`
-   - ตรวจเฉพาะ mock หรือการไม่มีข้อมูล: เช่น มีเพียง `assertIsNone(...)` หรือ `assertEqual(..., [])`
-     ให้จับคู่กับกรณีที่มีข้อมูลใน test เดียวกัน
-   - อ้างอิงตัวเอง: ค่าที่คาดหวังมาจากโค้ดที่กำลังทดสอบ เช่น `assertEqual(f(a), f(a))`
-   - ตรึงค่าคงที่: assert ค่าคงที่หรือ config ที่เขียนไว้ในโค้ดซ้ำ แทนการทดสอบกลไกที่ใช้ค่านั้น
-   - fixture ตรวจ fixture: assert ข้อมูลที่ test สร้างเอง โดยไม่ได้เรียกโค้ดที่ทดสอบ
-5. รัน `make test` และยืนยันว่า test ใหม่ fail ด้วยเหตุผลที่ถูกต้อง (ไม่ใช่ import error หรือพิมพ์ผิด)
-6. รัน `scripts/test-strength.sh` ก่อนล็อก (หาก pod.yml ตั้ง `strength: off` ให้ตรวจ 5 แบบข้างต้นเองและบันทึกใน review.md)
-   - `WEAK <test id>`: แก้ test ตามคำแนะนำ แล้วรันใหม่จนไม่มี WEAK
-   - `FAIL (ปกติ) <test id>`: test ที่ยังแดงอยู่ ยังวัดความแข็งไม่ได้ ให้ตรวจเองตาม 5 แบบข้างต้น
-     `make check` จะตรวจซ้ำเมื่อโค้ดเสร็จ หากพบ test อ่อนหลังล็อก ต้องหยุดและแจ้งมนุษย์
-7. แสดงรายการ test ให้มนุษย์ตรวจ เมื่อมนุษย์ยืนยันแล้วให้ commit:
-   `git add <tests_dir> && git commit -m "test(NNN): failing tests from spec"`
-8. ขอให้มนุษย์ล็อก tests: `touch .pod/lock-tests`
-   หลังจากนี้ hook protect-tests จะปฏิเสธการแก้ไฟล์ใน `tests_dir`
+## Steps
+1. Check that gate 3 has passed: `scripts/gate-check.sh docs/changes/NNN-slug 3`.
+   If it fails, tell the human and stop.
+2. Read spec.md (Requirements and Edge cases) and plan.md (Data shape and Order of work).
+3. Write tests in `tests_dir` from pod.yml (default `tests/`, with unittest), covering every requirement and every edge case.
+   Name each test after its R or E, for example `test_r1_...`, `test_e2_...`.
+4. Each test must call the code the way a user does, and assert the result against an explicit value.
+   Avoid the 5 kinds of weak test, which still pass when every function in `code_dirs` (default `app/`) returns None. See `docs/test-strength.md`.
+   - Weak or missing assertion: for example only `assertTrue(x)` or `assertIsNotNone(x)`.
+   - Checks only a mock or the absence of data: for example only `assertIsNone(...)` or `assertEqual(..., [])`.
+     Pair it with a case that has data in the same test.
+   - Self-referential: the expected value comes from the code under test, for example `assertEqual(f(a), f(a))`.
+   - Pinned constant: asserts a constant or config value copied from the code instead of testing the mechanism that uses it.
+   - Fixture checks fixture: asserts data the test built itself without calling the code under test.
+5. Run `make test` and confirm the new tests fail for the right reason (not an import error or a typo).
+6. Run `scripts/test-strength.sh` before locking. (If pod.yml sets `strength: off`, check the 5 kinds above yourself and record it in review.md.)
+   - `WEAK <test id>`: fix the test as suggested, then run again until there is no WEAK.
+   - `FAIL (normal run) <test id>`: a test that is still red cannot be measured yet. Check it yourself against the 5 kinds above.
+     `make check` checks again when the code is done. If a weak test is found after locking, stop and tell the human.
+7. Show the list of tests to the human. Once the human confirms, commit:
+   `git add <tests_dir> && git commit -m "test(NNN): failing tests from spec"`.
+8. Ask the human to lock the tests: `touch .pod/lock-tests`.
+   From then on, the protect-tests hook refuses edits to files in `tests_dir`.
 
-## สิ่งที่ห้ามทำ
-- ห้ามเขียนโค้ดใน `code_dirs` ใน skill นี้
-- ห้ามเพิ่ม dependency ที่ AGENTS.md ของ project ไม่อนุญาต
-- ห้ามลบไฟล์ `.pod/lock-tests` เอง
+## Do not
+- Write code in `code_dirs` in this skill.
+- Add dependencies that the project's AGENTS.md does not allow.
+- Delete `.pod/lock-tests` yourself.
 
-## จบงาน
-แจ้งมนุษย์ว่าขั้นต่อไปคือ `/superdev:build` และหลังจบ change ให้ปลดล็อกด้วย `rm .pod/lock-tests`
+## When done
+Tell the human the next step is `/superdev:build`, and that after the change is finished they unlock with `rm .pod/lock-tests`.

@@ -1,6 +1,7 @@
 """Tests for kit v3: stack keys in pod.yml, pod-install.sh, and hooks in projects without the kit."""
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -92,15 +93,18 @@ class InstallerTests(TempRepo):
         self.assertTrue(os.access(os.path.join(self.root, "scripts", "gate.sh"), os.X_OK))
         self.assertIn("include pod.mk", self.read("Makefile"))
         self.assertIn("<!-- pod:begin -->", self.read("AGENTS.md"))
+        # the block keeps the 4 kit sections the installer selects by heading, plus the stack section
+        block = self.read("AGENTS.md").split("<!-- pod:begin -->", 1)[1]
+        self.assertEqual(len(re.findall(r"^## ", block, re.M)), 5, block)
         self.assertEqual(self.read("CLAUDE.md"), "@AGENTS.md\n")
         self.assertEqual(self.read(".gitignore").splitlines()[-2:], [".pod/", "!**/skills/build/"])
         self.assertIn("make -f pod.mk pod-check", self.read(".github/workflows/pod-gates.yml"))
-        self.assertIn("คำเตือน", res.stdout)
-        self.assertIn("ขั้นตอนต่อไป", res.stdout)
+        self.assertIn("Warning: ", res.stdout)
+        self.assertIn("Next steps", res.stdout)
         # second run is a no-op
         before = self.snapshot()
         res = self.install()
-        self.assertIn("ไม่มีการเปลี่ยนแปลง", res.stdout)
+        self.assertIn("No changes", res.stdout)
         self.assertEqual(before, self.snapshot())
 
     def test_existing_makefile_and_agents(self):
@@ -121,7 +125,7 @@ class InstallerTests(TempRepo):
         self.assertEqual(self.read(".gitignore"), "node_modules/\n.pod/\n# pod kit\n!**/skills/build/\n")
         before = self.snapshot()
         res = self.install()
-        self.assertIn("ไม่มีการเปลี่ยนแปลง", res.stdout)
+        self.assertIn("No changes", res.stdout)
         self.assertEqual(before, self.snapshot())
         # the block is replaced on re-run; text outside it is kept
         edited = text.replace("## Gates", "## Gates (edited)") + "\nTeam note after block.\n"
@@ -165,7 +169,7 @@ class InstallerTests(TempRepo):
         self.assertEqual(self.sh("sync-codeowners.sh").returncode, 0)
         res = make(self.root, "check")
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        self.assertIn("ไม่มี test ที่อ่อน", res.stdout)
+        self.assertIn("no weak tests", res.stdout)
 
     def test_vendor_plugins(self):
         self.install("--vendor-plugins")
@@ -232,13 +236,13 @@ class InstalledRepoTests(TempRepo):
         self.set_pod(strength="off")
         res = make(self.root, "-f", "pod.mk", "pod-check")
         self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
-        self.assertIn("ยังไม่มี test (exit 5)", res.stdout)
-        self.assertIn("test-strength ปิดอยู่ใน pod.yml", res.stdout)
+        self.assertIn("no tests yet (exit 5)", res.stdout)
+        self.assertIn("test-strength is off in pod.yml", res.stdout)
         # once a change exists, "no tests ran" is a failure
         self.write("docs/changes/001-first/intent.md", "# intent\nRisk: low\n")
         res = self.sh("pod-test.sh")
         self.assertEqual(res.returncode, 5, res.stdout)
-        self.assertIn("docs/changes/ มี change แล้ว", res.stdout)
+        self.assertIn("docs/changes/ already has a change", res.stdout)
 
     def test_pod_test_uses_test_cmd(self):
         self.set_pod(test_cmd="echo custom-run && exit 3")
@@ -255,8 +259,8 @@ class InstalledRepoTests(TempRepo):
         res = self.sh("test-strength.sh")
         self.assertEqual(res.returncode, 0)
         self.assertEqual(res.stdout.strip(),
-                         "test-strength ปิดอยู่ใน pod.yml (stack นี้ยังไม่รองรับ) "
-                         "ให้ reviewer ตรวจรูปแบบ test ที่อ่อนตาม docs/test-strength.md แทน")
+                         "test-strength is off in pod.yml (this stack is not supported yet). "
+                         "The reviewer checks for weak test patterns from docs/test-strength.md instead")
 
     def test_strength_cmd(self):
         self.set_pod(strength="cmd", strength_cmd="echo WEAK x.y && exit 1")
@@ -268,7 +272,7 @@ class InstalledRepoTests(TempRepo):
         self.set_pod(strength_cmd="")
         res = self.sh("test-strength.sh")
         self.assertEqual(res.returncode, 2)
-        self.assertIn("ไม่มี strength_cmd", res.stdout)
+        self.assertIn("has no strength_cmd", res.stdout)
 
     def test_strength_python_with_src_layout_and_custom_dirs(self):
         self.set_pod(code_dirs="src", tests_dir="checks",
@@ -303,11 +307,11 @@ class AutoMergeV3Tests(AutoMergeRepo):
     def test_deny_when_strength_off(self):
         self.assertEqual(self.auto().returncode, 0)
         self.append_pod("strength: off\n")
-        self.assert_deny("test-strength ปิดอยู่ จึง merge อัตโนมัติไม่ได้")
+        self.assert_deny("test-strength is off, so auto-merge is not allowed")
 
     def test_deny_when_test_cmd_fails(self):
         self.append_pod("test_cmd: exit 1\n")
-        self.assert_deny("make test ไม่ผ่าน")
+        self.assert_deny("make test failed")
 
     def test_custom_tests_dir_deletion_rule(self):
         # add checks/ on main, bring it into the branch, then delete a line on the branch
@@ -319,8 +323,8 @@ class AutoMergeV3Tests(AutoMergeRepo):
         self.write("checks/cases.txt", "case one\n")
         self.commit("test: drop case")
         self.append_pod("tests_dir: checks\n")
-        res = self.assert_deny("ลบหรือแก้บรรทัดใน checks/ 1 บรรทัด")
-        self.assertNotIn("ใน tests/", res.stdout)
+        res = self.assert_deny("deleted or changed lines in checks/: 1")
+        self.assertNotIn("in tests/", res.stdout)
 
 
 # ---------- hooks: protect-tests with tests_dir, and projects without the kit ----------
@@ -361,7 +365,7 @@ class HookV3Tests(TempRepo):
         for hook, payload in cases:
             res = self.hook(hook, payload)
             self.assertEqual(res.returncode, 0, (hook, res.stderr))
-            self.assertIn("ไม่พบ pod kit ใน project นี้", res.stderr)
+            self.assertIn("No pod kit in this project", res.stderr)
             self.assertEqual(len(res.stderr.strip().splitlines()), 1, res.stderr)
 
     def test_gate_guard_and_biz_scope_allow_without_scripts(self):
@@ -369,7 +373,7 @@ class HookV3Tests(TempRepo):
         res = self.hook(os.path.join(HOOKS_DEV, "gate-guard.sh"),
                         {"tool_name": "Bash", "tool_input": {"command": "gh pr merge 1"}})
         self.assertEqual(res.returncode, 0, res.stderr)
-        self.assertIn("ไม่พบ pod kit", res.stderr)
+        self.assertIn("No pod kit", res.stderr)
         res = self.hook(os.path.join(HOOKS_BIZ, "biz-scope.sh"), self.edit_payload("src/a.py"))
         self.assertEqual(res.returncode, 0, res.stderr)
         # kill-switch is active as soon as pod.yml exists
@@ -406,13 +410,13 @@ class ConfigTests(unittest.TestCase):
         for plugin in ("superbiz", "superdev"):
             with open(os.path.join(POD, "plugins", plugin, ".claude-plugin", "plugin.json")) as fh:
                 versions.add(json.load(fh)["version"])
-        self.assertEqual(versions, {"0.4.0"})
+        self.assertEqual(versions, {"0.5.0"})
         bases = [(POD, "./plugins/")]
         for base, prefix in bases:
             with open(os.path.join(base, ".claude-plugin", "marketplace.json")) as fh:
                 market = json.load(fh)
             self.assertEqual(market["name"], "tripod")
-            self.assertEqual(market["metadata"]["version"], "0.4.0")
+            self.assertEqual(market["metadata"]["version"], "0.5.0")
             for entry in market["plugins"]:
                 self.assertEqual(entry["source"], prefix + entry["name"])
                 self.assertTrue(os.path.isdir(os.path.join(base, entry["source"])), entry["source"])

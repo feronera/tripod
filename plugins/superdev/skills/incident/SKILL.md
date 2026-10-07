@@ -3,31 +3,31 @@ name: incident
 description: Turn an application log into a draft change. Decide severity, never copy personal data, create a change with scripts/new-change.sh and fill intent.md citing log lines. Use when the user says "มี incident", "อ่าน log", "ระบบมีปัญหา", "incident", "triage this log".
 ---
 
-# Incident เป็น change (SuperDev: MA)
+# Turn an incident into a change (SuperDev: MA)
 
-เป้าหมาย: intent.md ฉบับร่างที่อ้างอิงหลักฐานจาก log โดยไม่มีข้อมูลส่วนบุคคล
+Goal: a draft intent.md that cites evidence from the log and contains no personal data.
 
-## ขั้นตอน
-1. ขอ path ของไฟล์ log จากมนุษย์ (เช่น `logs/sample-app.log`) ห้ามเดา path
-2. ส่ง path ให้ agent `monitor` อ่านและสรุป หรืออ่านเองด้วยเครื่องมืออ่านอย่างเดียว
-3. ตัดสิน severity
-   - SEV1: ผู้ใช้จำนวนมากใช้งานไม่ได้ หรือข้อมูลรั่ว
-   - SEV2: feature หลักผิดพลาดกับผู้ใช้บางส่วน
-   - SEV3: ผิดพลาดเล็กน้อย มีทางเลี่ยง
-4. ห้ามคัดลอกข้อมูลส่วนบุคคล เช่น ชื่อ เบอร์โทร อีเมล ที่อยู่ เลขบัตร
-   ให้อ้างอิงเป็นหมายเลขบรรทัด และแทนค่าด้วย `[ตัดข้อมูลส่วนบุคคล]`
-5. หากหลักฐานไม่พอ (น้อยกว่า 2 บรรทัดที่สอดคล้องกัน หรือสาเหตุเป็นเพียงการคาดเดา)
-   ให้หยุดและถามมนุษย์ ห้ามสร้าง change
-6. ขอให้มนุษย์รัน `scripts/new-change.sh <slug>` (คำสั่งปฏิเสธเมื่อถึง WIP limit ให้แจ้งมนุษย์)
-7. เขียน intent.md ตาม template
-   - Problem: อาการ จำนวนครั้ง ช่วงเวลา อ้างอิง `logs/...:<line>`
-   - Success measure: เช่น จำนวน error ต่อชั่วโมงจาก X เป็น 0 ใช้ตัวเลขจาก log เท่านั้น
-   - Risk: ตาม `docs/risk-tiers.md` หาก log มีข้อมูลส่วนบุคคล ให้พิจารณา `Risk: high`
-   - Open questions: สิ่งที่ log ไม่ได้บอก
-8. SEV1 ให้แจ้ง escalation จาก pod.yml ทันที และแนะนำให้มนุษย์พิจารณา kill switch
+## Steps
+1. Ask the human for the log file path (for example `logs/sample-app.log`). Never guess the path.
+2. Send the path to the `monitor` agent to read and summarize, or read it yourself with read-only tools.
+3. Decide the severity:
+   - SEV1: many users cannot use the system, or data has leaked.
+   - SEV2: a core feature fails for some users.
+   - SEV3: a minor failure with a workaround.
+4. Never copy personal data such as names, phone numbers, emails, addresses or ID numbers.
+   Cite line numbers instead, and replace the values with `[personal data removed]`.
+5. If the evidence is not enough (fewer than 2 consistent lines, or the cause is only a guess),
+   stop and ask the human. Do not create a change.
+6. Ask the human to run `scripts/new-change.sh <slug>` (it refuses when the WIP limit is reached; relay that to the human).
+7. Write intent.md from the template:
+   - Problem: the symptom, number of occurrences and time window, citing `logs/...:<line>`.
+   - Success measure: for example, errors per hour from X to 0. Use numbers from the log only.
+   - Risk: per `docs/risk-tiers.md`. If the log contains personal data, consider `Risk: high`.
+   - Open questions: what the log does not tell you.
+8. For SEV1, notify the escalation person from pod.yml immediately, and recommend that the human consider the kill switch.
 
-## สิ่งที่ห้ามทำ
-- ห้ามรัน `scripts/gate.sh` และห้ามแก้ไฟล์ log
+## Do not
+- Run `scripts/gate.sh` or edit log files.
 
-## จบงาน
-แจ้งมนุษย์ว่า intent.md เป็นฉบับร่าง ให้ SuperBiz ตรวจและเป็น owner ของ gate 1
+## When done
+Tell the human that intent.md is a draft, and that SuperBiz reviews it and owns gate 1.

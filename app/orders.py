@@ -1,19 +1,19 @@
 """Order status lookup for customers (sample domain, in-memory data)."""
 
 STATUS_LABELS = {
-    "pending": "รอชำระเงิน",
-    "paid": "ชำระเงินแล้ว",
-    "packing": "กำลังเตรียมสินค้า",
-    "shipped": "จัดส่งแล้ว",
-    "delivered": "ได้รับสินค้าแล้ว",
-    "cancelled": "ยกเลิกแล้ว",
+    "pending": "Awaiting payment",
+    "paid": "Paid",
+    "packing": "Preparing order",
+    "shipped": "Shipped",
+    "delivered": "Delivered",
+    "cancelled": "Cancelled",
 }
 
 _ORDERS = {
-    "A1001": {"customer_id": "C001", "status": "shipped", "items": ["เสื้อยืด", "หมวก"]},
-    "A1002": {"customer_id": "C001", "status": "delivered", "items": ["รองเท้า"]},
-    "A1003": {"customer_id": "C002", "status": "pending", "items": ["กระเป๋า"]},
-    "A1004": {"customer_id": "C003", "status": "cancelled", "items": ["นาฬิกา"]},
+    "A1001": {"customer_id": "C001", "status": "shipped", "items": ["T-shirt", "Cap"]},
+    "A1002": {"customer_id": "C001", "status": "delivered", "items": ["Shoes"]},
+    "A1003": {"customer_id": "C002", "status": "pending", "items": ["Bag"]},
+    "A1004": {"customer_id": "C003", "status": "cancelled", "items": ["Watch"]},
 }
 
 
@@ -30,7 +30,7 @@ def get_order(order_id):
 
 
 def status_label(status):
-    """Thai label for a status code; unknown codes are shown as-is."""
+    """Customer-facing label for a status code; unknown codes are shown as-is."""
     return STATUS_LABELS.get(status, status)
 
 
@@ -42,7 +42,7 @@ def status_for_customer(customer_id, order_id):
     """
     order = get_order(order_id)
     if order is None or order["customer_id"] != customer_id:
-        raise OrderNotFound("ไม่พบคำสั่งซื้อ")
+        raise OrderNotFound("Order not found")
     return {
         "order_id": order_id,
         "status": order["status"],

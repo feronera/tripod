@@ -1,58 +1,58 @@
 ---
 name: arena
-description: Settle a contested design by building two approaches side by side in separate git worktrees against the same locked tests, then compare them on tests, test strength, diff size and reviewer findings. SuperDev picks; the choice and reason go to plan.md under Decision log. Use when the user says "arena", "ลองสองแบบ", "เทียบสองแนวทาง", "ตัดสินใจไม่ได้ว่าจะออกแบบแบบไหน".
+description: Settle a contested design by building two approaches side by side in separate git worktrees against the same locked tests, then compare them on tests, test strength, diff size and reviewer findings. SuperDev picks; the choice and reason go to plan.md under Decision log. Use when the user says "arena", "try both designs", "compare two approaches", "can't decide between two designs", "ลองสองแบบ", "เทียบสองแนวทาง", "ตัดสินใจไม่ได้ว่าจะออกแบบแบบไหน".
 ---
 
-# Arena: เทียบสองแนวทางด้วยของจริง (SuperDev: SA)
+# Arena: compare two approaches by building both (SuperDev: SA)
 
-ใช้เมื่อมีแนวทางออกแบบสองแบบที่โต้แย้งกันได้ทั้งคู่ และการลองทำจริงตัดสินได้ดีกว่าการถกเถียง
-มนุษย์ SuperDev เป็นผู้เลือก agent มีหน้าที่เตรียมหลักฐาน
+Use this when there are two design approaches that can both be argued for, and building them settles it better than debate.
+The human SuperDev chooses. The agent's job is to gather the evidence.
 
-## ก่อนเริ่ม
-1. gate 3 ผ่านแล้ว และ test ของ change ถูก commit บน `change/NNN` และล็อกแล้ว
-2. เขียนแนวทาง A และ B อย่างละ 2-3 บรรทัด ให้มนุษย์ยืนยันว่าเป็นสองแนวทางที่ต่างกันจริง
+## Before you start
+1. Gate 3 has passed, and the change's tests are committed on `change/NNN` and locked.
+2. Describe approach A and approach B in 2-3 lines each. Ask the human to confirm they are genuinely different.
 
-## ขั้นตอน
-1. ขอให้มนุษย์สร้าง worktree และล็อก tests ในทั้งสองที่
+## Steps
+1. Ask the human to create the worktrees and lock the tests in both:
    ```
    git worktree add ../arena-a -b change/NNN-arena-a change/NNN
    git worktree add ../arena-b -b change/NNN-arena-b change/NNN
    mkdir -p ../arena-a/.pod ../arena-b/.pod
    touch ../arena-a/.pod/lock-tests ../arena-b/.pod/lock-tests
    ```
-2. ให้ agent สองตัวทำพร้อมกัน ตัวละ worktree โดยใช้ `/superdev:build`
-   ทั้งสองตัวได้รับ test ที่ล็อกชุดเดียวกัน และคำอธิบายแนวทางของตัวเองเท่านั้น
-3. เมื่อทั้งสองเสร็จ เก็บผลในแต่ละ worktree
-   - `make test` ผ่านหรือไม่
-   - `scripts/test-strength.sh` ผ่านหรือไม่
-   - ขนาด diff: `git diff --shortstat change/NNN...HEAD`
-   - ผลของ agent `reviewer`: จำนวน Blocker, Major, Minor
-4. ทำตารางเทียบให้มนุษย์
+2. Run two agents in parallel, one per worktree, each using `/superdev:build`.
+   Both get the same locked tests and only the description of their own approach.
+3. When both finish, collect the results in each worktree:
+   - Does `make test` pass?
+   - Does `scripts/test-strength.sh` pass?
+   - Diff size: `git diff --shortstat change/NNN...HEAD`
+   - `reviewer` agent findings: number of Blocker, Major, Minor
+4. Build a comparison table for the human:
 
-   | เกณฑ์ | A | B |
+   | Criterion | A | B |
    |---|---|---|
    | make test | | |
    | test-strength | | |
-   | diff (บรรทัด) | | |
+   | diff (lines) | | |
    | Blocker / Major / Minor | | |
 
-5. มนุษย์ SuperDev เลือก หากผลใกล้กัน ให้เสนอแบบที่ diff เล็กกว่าและอ่านง่ายกว่า
-6. บันทึกใน plan.md
+5. The human SuperDev chooses. If the results are close, recommend the one with the smaller, more readable diff.
+6. Record the decision in plan.md:
    ```
    ## Decision log
-   - <วันที่> arena: เลือก A (<แนวทาง>) แทน B (<แนวทาง>) เพราะ <เหตุผลจากตาราง>
+   - <date> arena: chose A (<approach>) over B (<approach>) because <reason from the table>
    ```
-   การแก้ plan.md ทำให้การอนุมัติ gate 3 stale ต้องแจ้ง SuperDev และ SuperBiz ให้ลงชื่อใหม่
-7. นำแบบที่ชนะเข้า `change/NNN` แล้วขอให้มนุษย์ลบแบบที่แพ้
+   Editing plan.md makes the gate 3 approvals stale. Tell SuperDev and SuperBiz to sign again.
+7. Bring the winner into `change/NNN`, then ask the human to delete the loser:
    ```
    git switch change/NNN && git merge change/NNN-arena-a
    git worktree remove ../arena-a && git worktree remove ../arena-b
    git branch -D change/NNN-arena-b && git branch -d change/NNN-arena-a
    ```
 
-## สิ่งที่ห้ามทำ
-- ห้ามเลือกแทนมนุษย์ และห้ามรวมสองแบบเข้าด้วยกันโดยไม่มีการตัดสินใจ
-- ห้ามแก้ test ที่ล็อกในแบบใดแบบหนึ่งเพื่อให้ผ่าน
+## Do not
+- Choose on the human's behalf, or combine the two approaches without a decision.
+- Edit the locked tests in either approach to make it pass.
 
-## จบงาน
-แจ้งมนุษย์ให้ลงชื่อ gate 3 ใหม่ แล้วต่อด้วย `/superdev:review`
+## When done
+Tell the human to sign gate 3 again, then continue with `/superdev:review`.

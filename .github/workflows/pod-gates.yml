@@ -25,7 +25,7 @@ jobs:
         run: |
           git config --global user.name "ci"
           git config --global user.email "ci@example.com"
-      # project ที่ไม่ใช่ Python: เพิ่ม step ติดตั้ง stack ของ project ตรงนี้ (เช่น actions/setup-node และ npm ci)
+      # Non-Python project: add steps that install the project stack here (e.g. actions/setup-node and npm ci)
       - name: Tests and gate check
         run: make -f pod.mk pod-check
       - name: Approvals by risk

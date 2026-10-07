@@ -1,22 +1,22 @@
-# UX brief: <ชื่องาน>
+# UX brief: <change title>
 
-อ้างอิง: intent.md
+References: intent.md
 
 ## Screens
-| หน้าจอ | จุดประสงค์ | ข้อมูลที่แสดง | การกระทำหลัก |
+| Screen | Purpose | Data shown | Main action |
 |---|---|---|---|
-| <ชื่อหน้าจอ> | | | |
+| <screen name> | | | |
 
 ## States
-| หน้าจอ | empty | loading | error | success |
+| Screen | empty | loading | error | success |
 |---|---|---|---|---|
-| <ชื่อหน้าจอ> | <แสดงอะไรเมื่อไม่มีข้อมูล> | <แสดงอะไรระหว่างรอ> | <ข้อความเมื่อผิดพลาด และผู้ใช้ทำอะไรต่อได้> | <ผลลัพธ์ปกติ> |
+| <screen name> | <what is shown when there is no data> | <what is shown while waiting> | <error message and what the user can do next> | <normal result> |
 
-## Copy (ภาษาไทย)
-| key | ข้อความ | หมายเหตุ |
+## Copy
+| key | Text | Notes |
 |---|---|---|
-| <key> | <ข้อความที่ผู้ใช้เห็น> | <บริบท> |
+| <key> | <text the user sees, in the team's language> | <context> |
 
 ## Accessibility notes
-- ข้อความทุกจุดอ่านได้ด้วย screen reader และไม่สื่อความหมายด้วยสีอย่างเดียว
-- <ขนาดตัวอักษร ความต่างของสี การใช้งานด้วยคีย์บอร์ด>
+- All text is readable by a screen reader, and no meaning is conveyed by color alone
+- <font size, color contrast, keyboard use>

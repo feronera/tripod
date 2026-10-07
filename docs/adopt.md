@@ -1,149 +1,149 @@
-# นำ pod kit ไปใช้กับ project อื่น
+# Adopting Tripod in an existing project
 
-เอกสารนี้อธิบายการนำวิธีทำงาน SuperBiz x SuperDev ไปใช้กับ project ที่มีอยู่แล้ว ไม่จำกัด stack
-ทำตามลำดับ 9 ขั้น และใช้ checklist ท้ายเอกสารเพื่อตรวจว่าครบ
+This guide explains how to bring the SuperBiz x SuperDev way of working into a project that already exists, on any stack.
+Follow the 9 steps in order, and use the checklist at the end to confirm nothing is missing.
 
-## 1. ประเมินว่า project เหมาะหรือไม่
+## 1. Assess whether the project fits
 
-pod เหมาะกับงานที่
-- แบ่งเป็น change ขนาดเล็กได้ แต่ละ change ส่งมอบได้ภายในไม่กี่วัน
-- มีผู้ตัดสินใจฝั่งธุรกิจหนึ่งคน (SuperBiz) และผู้ดูแลเทคนิคหนึ่งคน (SuperDev) ที่ทำงานร่วมกันได้ทุกวัน
-- มี test อัตโนมัติ หรือพร้อมเริ่มเขียน test ก่อนโค้ด
-- ผลกระทบเมื่อผิดพลาดย้อนกลับได้ เช่น revert แล้วระบบกลับสู่สถานะเดิม
+A pod fits work that:
+- Can be split into small changes, each deliverable within a few days.
+- Has one business decision-maker (SuperBiz) and one technical owner (SuperDev) who can work together every day.
+- Has automated tests, or is ready to start writing tests before code.
+- Can be undone when something goes wrong, e.g. a revert returns the system to its previous state.
 
-งานที่ควรส่งให้ทีมเต็มแทน pod
-- งานที่ต้องตัดสินใจร่วมกันหลายทีม หรือมีผู้มีส่วนได้ส่วนเสียหลายฝ่าย
-- migration ข้อมูลขนาดใหญ่ หรือการเปลี่ยนที่ย้อนกลับไม่ได้
-- งานด้านความปลอดภัย การยืนยันตัวตน การเงิน หรือข้อมูลส่วนบุคคลที่ยังไม่มีผู้เชี่ยวชาญตรวจ
-- งานวิจัยที่ยังไม่ทราบว่าจะได้ผลลัพธ์แบบใด
+Send this work to a full team instead of a pod:
+- Work that needs joint decisions across several teams, or has many stakeholders.
+- Large data migrations, or changes that cannot be reversed.
+- Security, authentication, financial or personal data work that has not yet been reviewed by a specialist.
+- Research where the kind of outcome is not yet known.
 
-หาก project อยู่ระหว่างกลาง ให้เริ่มจากงานความเสี่ยงต่ำก่อน และให้งานกลุ่มหลังเป็น `Risk: high` เสมอ
+If a project sits somewhere in between, start with low-risk work, and always mark work from the second list as `Risk: high`.
 
-## 2. ติดตั้ง
+## 2. Install
 
-ต้องมี: git, Python 3.10 ขึ้นไป, make และ Claude Code ตัวติดตั้งไม่ใช้ network
+Requirements: git, Python 3.10 or later, make and Claude Code. The installer does not use the network.
 
 ```bash
 gh repo clone feronera/tripod ~/tripod
-cd ~/my-project                     # repo ของ project ที่มีอยู่แล้ว
+cd ~/my-project                     # your existing project's repository
 ~/tripod/scripts/pod-install.sh .
 ```
 
-ตัวเลือก
-- `--with-sample` คัดลอกแอปตัวอย่าง (`app/`, `tests/test_orders.py`, `logs/`) สำหรับ repo ฝึกอบรม
-- `--vendor-plugins` คัดลอก `plugins/` ลงใน repo (ใช้เมื่อไม่ติดตั้ง plugin จาก GitHub)
-- `--force` เขียนทับไฟล์ที่มีอยู่แล้ว โดยเก็บไฟล์เดิมเป็น `<ไฟล์>.pod-bak`
+Options:
+- `--with-sample` copies the sample app (`app/`, `tests/test_orders.py`, `logs/`), for training repositories.
+- `--vendor-plugins` copies `plugins/` into the repository (use it when the plugins are not installed from GitHub).
+- `--force` overwrites existing files, keeping the old version as `<file>.pod-bak`.
 
-ไฟล์ที่ติดตั้ง
+Installed files:
 
-| ไฟล์ | หน้าที่ |
+| File | Purpose |
 |---|---|
-| `pod.yml` | สมาชิก pod, บัญชี GitHub, WIP limit, ค่า auto-merge และ stack ของ project |
-| `pod.mk` | คำสั่ง `pod-setup`, `pod-test`, `pod-strength`, `pod-check`, `pod-metrics` |
-| `Makefile` | สร้างเฉพาะเมื่อ project ยังไม่มี โดย include `pod.mk` และตั้งชื่อย่อ setup, test, check |
-| `AGENTS.md` | เพิ่มส่วน `<!-- pod:begin -->` ถึง `<!-- pod:end -->` ต่อท้าย เนื้อหาเดิมไม่ถูกแก้ |
-| `CLAUDE.md` | เพิ่มบรรทัด `@AGENTS.md` หนึ่งครั้ง |
-| `.gitignore` | เพิ่ม `.pod/` และ `!**/skills/build/` |
-| `scripts/` | gate, gate-check, new-change, release-check, auto-merge-check, pr-check, test-strength และอื่น ๆ |
-| `docs/gates.md`, `docs/risk-tiers.md`, `docs/merge-by-risk.md` | กติกาของ gate, risk และสิทธิ์ merge |
-| `docs/risk-paths` | path อ่อนไหว change ที่แตะ path เหล่านี้ถือเป็น high |
-| `docs/test-strength.md` | test อ่อน 5 แบบ และการตั้งค่า strength |
-| `docs/pod-charter.md` | ข้อตกลงของ pod ให้กรอกร่วมกันก่อนเริ่ม |
-| `docs/parallel-agents.md`, `docs/credits.md` | การใช้ agent หลายตัว และที่มาของแนวคิด |
-| `docs/templates/` | template ของ intent, ux-brief, spec, plan, review, acceptance |
-| `docs/changes/` | ที่เก็บ change ของ pod |
-| `.github/workflows/pod-gates.yml` | CI รัน `make -f pod.mk pod-check` และ `scripts/pr-check.sh` |
+| `pod.yml` | Pod members, GitHub logins, WIP limit, auto-merge setting and the project's stack |
+| `pod.mk` | The `pod-setup`, `pod-test`, `pod-strength`, `pod-check` and `pod-metrics` targets |
+| `Makefile` | Created only if the project has none. It includes `pod.mk` and adds the short names setup, test and check |
+| `AGENTS.md` | Appends a `<!-- pod:begin -->` to `<!-- pod:end -->` section. Existing content is not changed |
+| `CLAUDE.md` | Adds an `@AGENTS.md` line, once |
+| `.gitignore` | Adds `.pod/` and `!**/skills/build/` |
+| `scripts/` | gate, gate-check, new-change, release-check, auto-merge-check, pr-check, test-strength and more |
+| `docs/gates.md`, `docs/risk-tiers.md`, `docs/merge-by-risk.md` | Rules for gates, risk and merge rights |
+| `docs/risk-paths` | Sensitive paths. A change that touches them is high risk |
+| `docs/test-strength.md` | The 5 kinds of weak test and the strength settings |
+| `docs/pod-charter.md` | The pod's working agreement, to fill in together before starting |
+| `docs/parallel-agents.md`, `docs/credits.md` | Running several agents, and where the ideas come from |
+| `docs/templates/` | Templates for intent, ux-brief, spec, plan, review and acceptance |
+| `docs/changes/` | Where the pod's changes live |
+| `.github/workflows/pod-gates.yml` | CI that runs `make -f pod.mk pod-check` and `scripts/pr-check.sh` |
 
-กติกาของตัวติดตั้ง
-- ไม่เขียนทับ `Makefile`, `AGENTS.md` และ `CLAUDE.md` ในทุกกรณี
-- ไฟล์อื่นที่มีอยู่แล้วและเนื้อหาต่างจาก kit จะถูกข้ามและแสดงรายการ เว้นแต่ใช้ `--force`
-- หาก project มี Makefile อยู่แล้ว ตัวติดตั้งจะแสดงบรรทัด `include pod.mk` ให้เพิ่มเอง
-  หากไม่เพิ่ม ให้เรียกผ่าน `make -f pod.mk <target>`
-- รันซ้ำได้ การรันครั้งที่สองโดยไม่มีการเปลี่ยนแปลงจะพิมพ์ "ไม่มีการเปลี่ยนแปลง"
+Installer rules:
+- `Makefile`, `AGENTS.md` and `CLAUDE.md` are never overwritten.
+- Other existing files whose content differs from the kit are skipped and listed, unless you use `--force`.
+- If the project already has a Makefile, the installer prints an `include pod.mk` line for you to add.
+  If you do not add it, run targets with `make -f pod.mk <target>`.
+- It is safe to re-run. A second run with nothing to change reports that there are no changes.
 
-## 3. ตั้งค่า
+## 3. Configure
 
-1. แก้ `pod.yml`
-   - ชื่อและอีเมลของ SuperBiz, SuperDev และ escalation อีเมลต้องตรงกับ `git config user.email` ของแต่ละคน
-   - บัญชี GitHub (`superbiz_github`, `superdev_github`, `escalation_github`)
-   - stack: ตัวติดตั้งตั้งค่าให้ตามไฟล์ที่พบ ให้ตรวจอีกครั้ง
+1. Edit `pod.yml`:
+   - Names and emails for SuperBiz, SuperDev and escalation. Each email must match that person's `git config user.email`.
+   - GitHub logins (`superbiz_github`, `superdev_github`, `escalation_github`).
+   - Stack: the installer fills this in from the files it finds. Check it.
 
-     | stack | `test_cmd` | `code_dirs` | `tests_dir` | `strength` |
+     | Stack | `test_cmd` | `code_dirs` | `tests_dir` | `strength` |
      |---|---|---|---|---|
-     | Node (package.json) | `npm test` | `src` | `tests`, `__tests__` หรือ `test` | `off` |
-     | Python | `python3 -m unittest discover -s tests -t . -v` | package บนสุด หรือ `src` | `tests` | `python` |
+     | Node (package.json) | `npm test` | `src` | `tests`, `__tests__` or `test` | `off` |
+     | Python | `python3 -m unittest discover -s tests -t . -v` | top-level package, or `src` | `tests` | `python` |
      | Go (go.mod) | `go test ./...` | `.` | `tests` | `off` |
-     | ไม่ทราบ | ค่าเริ่มต้นแบบ Python และแสดงคำเตือน | | | |
+     | Unknown | Python defaults, with a warning | | | |
 
-   - test ที่ไม่มีให้รัน (exit 5 ของ unittest และ pytest) ถือว่าผ่านเฉพาะเมื่อยังไม่มี change ใน `docs/changes/`
-   - `strength: off` ทำให้ auto-merge-check ตอบ DENY เสมอ ดู `docs/test-strength.md`
-2. แก้ `docs/risk-paths` ให้ตรงกับ path อ่อนไหวของ project เช่น โค้ดการชำระเงิน การยืนยันตัวตน และ migration
-3. รัน `scripts/sync-codeowners.sh` เพื่อสร้าง `.github/CODEOWNERS`
-4. รัน `make -f pod.mk pod-setup` แล้ว `make -f pod.mk pod-check` ต้องผ่าน
-5. project ที่ไม่ใช่ Python: เพิ่ม step ติดตั้ง stack ใน `.github/workflows/pod-gates.yml` ก่อน step `pod-check`
-6. ตั้งค่า GitHub: `scripts/setup-github.sh <owner/repo>` เพื่อดูแผน แล้วรันซ้ำพร้อม `--yes`
-   คำสั่งนี้เปิด auto-merge ของ repo และป้องกัน branch main (ต้องผ่าน check `pod-gates` และ review จาก code owner)
-7. กรอก `docs/pod-charter.md` ร่วมกัน แล้ว commit ทั้งหมดผ่าน PR
+   - When no tests run (exit 5 from unittest and pytest), the result counts as a pass only while `docs/changes/` has no changes.
+   - `strength: off` makes auto-merge-check always answer DENY. See `docs/test-strength.md`.
+2. Edit `docs/risk-paths` to match the project's sensitive paths, such as payment code, authentication and migrations.
+3. Run `scripts/sync-codeowners.sh` to generate `.github/CODEOWNERS`.
+4. Run `make -f pod.mk pod-setup`, then `make -f pod.mk pod-check`. It must pass.
+5. Projects not written in Python: add a step that installs the stack to `.github/workflows/pod-gates.yml`, before the `pod-check` step.
+6. Configure GitHub: run `scripts/setup-github.sh <owner/repo>` to see the plan, then run it again with `--yes`.
+   This enables auto-merge for the repository and protects the main branch (the `pod-gates` check must pass, and code owner review is required).
+7. Fill in `docs/pod-charter.md` together, then commit everything through a pull request.
 
-## 4. ติดตั้ง plugin (ทำทีละคน)
+## 4. Install the plugins (each person)
 
-plugin ติดตั้งจาก GitHub โดยตรง repo ของ kit เป็น marketplace ชื่อ `tripod`
+The plugins install directly from GitHub. The kit repository is a marketplace named `tripod`.
 
 ```
 /plugin marketplace add feronera/tripod
-/plugin install superbiz@tripod     # เครื่องของ SuperBiz
-/plugin install superdev@tripod     # เครื่องของ SuperDev
+/plugin install superbiz@tripod     # on SuperBiz's machine
+/plugin install superdev@tripod     # on SuperDev's machine
 ```
 
-- repo นี้เป็น private ผู้ติดตั้งต้องมีสิทธิ์อ่าน repo บน GitHub และตั้งค่า git credential ไว้แล้ว
-  (ตรวจได้ด้วย `git ls-remote https://github.com/feronera/tripod.git`)
-- plugin ทำงานกับไฟล์ของ project ผ่าน `CLAUDE_PROJECT_DIR` hook จะไม่บล็อกงานใน project ที่ไม่มี `pod.yml`
-  และจะพิมพ์หมายเหตุหนึ่งบรรทัด "ไม่พบ pod kit ใน project นี้"
-- อัปเดต plugin เมื่อ kit ออกเวอร์ชันใหม่: `/plugin marketplace update tripod`
-- ทางเลือกที่ไม่ติดตั้งถาวร: ติดตั้งด้วย `--vendor-plugins` แล้วใช้ `claude --plugin-dir ./plugins/superdev`
+- The repository is private. Each person needs read access to it on GitHub and working git credentials
+  (check with `git ls-remote https://github.com/feronera/tripod.git`).
+- The plugins work on the project's files through `CLAUDE_PROJECT_DIR`. The hooks do not block anything in a project without `pod.yml`;
+  they print a one-line notice that the pod kit was not found.
+- Update the plugins when the kit releases a new version: `/plugin marketplace update tripod`.
+- Without a permanent install: install with `--vendor-plugins`, then use `claude --plugin-dir ./plugins/superdev`.
 
-## 5. change แรกแบบนำร่อง
+## 5. Run a pilot change
 
-- เลือกงาน `Risk: low` ที่ไม่แตะ path ใน `docs/risk-paths` และส่งมอบได้ภายในหนึ่งถึงสองวัน
-- คง `auto_merge: off` ไว้ ทุก change ต้องมีมนุษย์ลงชื่อก่อน merge
-- เดินครบ 4 gate ตาม README ของ kit: `scripts/new-change.sh <slug>` แล้ว intent, spec, plan, test-first, build, review, acceptance
-- จดเวลาที่ติดขัดและกฎที่ไม่ชัด เพื่อปรับในขั้นที่ 8
+- Pick `Risk: low` work that does not touch any path in `docs/risk-paths` and can be delivered in one or two days.
+- Keep `auto_merge: off`. Every change needs a human signature before merge.
+- Walk through all 4 gates as described in the kit's README: `scripts/new-change.sh <slug>`, then intent, spec, plan, test-first, build, review and acceptance.
+- Note where you got stuck and which rules were unclear, so you can adjust them in step 8.
 
-## 6. บันไดความไว้วางใจ: เมื่อใดจึงเปิด `auto_merge: low`
+## 6. The trust ladder: when to enable `auto_merge: low`
 
-เปิดเมื่อครบทุกข้อ
-- pod ปิด change ครบ `auto_merge_min_track` ชิ้น (ค่าเริ่มต้น 10) ติดกันโดยไม่มี revert
-- `strength` เป็น `python` หรือ `cmd` (auto-merge ต้องมีผลวัด test-strength)
-- `make -f pod.mk pod-check` ผ่านใน CI ทุก PR และ branch protection เปิดแล้ว
-- SuperBiz และ SuperDev ตกลงร่วมกัน และ escalation อนุมัติ เพราะ pod.yml อยู่ใน `docs/risk-paths`
+Enable it only when all of the following hold:
+- The pod has closed `auto_merge_min_track` changes (default 10) in a row without a revert.
+- `strength` is `python` or `cmd` (auto-merge needs a test-strength result).
+- `make -f pod.mk pod-check` passes in CI on every pull request, and branch protection is on.
+- SuperBiz and SuperDev both agree, and escalation approves, because pod.yml is in `docs/risk-paths`.
 
-เมื่อมีการ revert ใน change ล่าสุด auto-merge-check จะตอบ DENY จนกว่าจะสะสมผลงานใหม่ครบ
-งาน medium และ high ไม่ merge อัตโนมัติไม่ว่าอยู่ขั้นใด
+If any of the most recent changes is reverted, auto-merge-check answers DENY until a new track record is built.
+Medium and high changes are never merged automatically, at any step.
 
-## 7. วัดผลที่ 30, 60 และ 90 วัน
+## 7. Measure at 30, 60 and 90 days
 
-ใช้ `scripts/metrics.sh docs/changes/NNN-slug` (หรือ `make -f pod.mk pod-metrics CHANGE=...`) กับทุก change ที่ปิดแล้ว
+Run `scripts/metrics.sh docs/changes/NNN-slug` (or `make -f pod.mk pod-metrics CHANGE=...`) on every closed change.
 
-| ตัวชี้วัด | ที่มา | 30 วัน | 60 วัน | 90 วัน |
+| Metric | Source | 30 days | 60 days | 90 days |
 |---|---|---|---|---|
-| lead time จาก intent ถึง gate 4 | metrics.sh | ค่าฐาน | ลดลง | คงที่ |
-| เวลารอที่แต่ละ gate | metrics.sh | หา gate ที่รอนานที่สุด | แก้ gate นั้น | |
-| จำนวน change ที่ปิดได้ | `docs/changes/` | | | |
-| จำนวน revert | `event=revert` ใน gates.log | | | ไม่เพิ่มขึ้น |
-| สัดส่วน change ที่ merge อัตโนมัติ | `role=auto` ใน gates.log | 0 | | |
+| Lead time from intent to gate 4 | metrics.sh | Baseline | Lower | Stable |
+| Waiting time at each gate | metrics.sh | Find the slowest gate | Fix that gate | |
+| Number of changes closed | `docs/changes/` | | | |
+| Number of reverts | `event=revert` in gates.log | | | Not increasing |
+| Share of changes merged automatically | `role=auto` in gates.log | 0 | | |
 
-ทบทวนตัวเลขร่วมกันทุกช่วง และบันทึกการตัดสินใจไว้ใน `docs/pod-charter.md`
+Review the numbers together at each checkpoint, and record decisions in `docs/pod-charter.md`.
 
-## 8. ปรับ kit ให้เป็นของทีม
+## 8. Make the kit your own
 
-- กฎที่ถูกฝ่าซ้ำ 2 ครั้ง ต้องย้ายจากคำแนะนำใน skill ไปเป็น hook, script หรือ CI check
-  และบันทึกการย้ายใน `docs/pod-charter.md`
-- กฎเฉพาะของทีมให้เขียนใน `AGENTS.md` นอกส่วน `<!-- pod:begin -->` ถึง `<!-- pod:end -->`
-- เมื่อแก้ plugin ใน repo ของ kit ให้เพิ่ม `version` ใน `plugins/<ชื่อ>/.claude-plugin/plugin.json`
-  และ `metadata.version` ใน `.claude-plugin/marketplace.json` แล้วรัน `claude plugin validate --strict`
-  ผู้ใช้จะได้รับเวอร์ชันใหม่เมื่อรัน `/plugin marketplace update tripod`
+- A rule that is broken twice must move from guidance in a skill into a hook, script or CI check.
+  Record the move in `docs/pod-charter.md`.
+- Write team-specific rules in `AGENTS.md`, outside the `<!-- pod:begin -->` to `<!-- pod:end -->` section.
+- When you change a plugin in the kit repository, bump `version` in `plugins/<name>/.claude-plugin/plugin.json`
+  and `metadata.version` in `.claude-plugin/marketplace.json`, then run `claude plugin validate --strict`.
+  Users get the new version when they run `/plugin marketplace update tripod`.
 
-## 9. อัปเดต kit จากต้นฉบับ
+## 9. Update the kit from upstream
 
 ```bash
 cd ~/tripod && git pull
@@ -152,26 +152,26 @@ cd ~/my-project && git switch -c chore/pod-kit-update
 git status && git diff
 ```
 
-- ไฟล์ที่เนื้อหาตรงกับ kit แล้วจะไม่เปลี่ยน ส่วนของ pod ใน `AGENTS.md` จะถูกแทนที่ด้วยฉบับใหม่
-- ไฟล์ที่ทีมแก้เองจะถูกข้ามและแสดงรายการ ให้เทียบกับ kit ด้วย
-  `diff ~/tripod/<ไฟล์> <ไฟล์>` แล้วตัดสินว่าจะรวมการเปลี่ยนแปลงเองหรือใช้ `--force`
-- เมื่อใช้ `--force` ให้ตรวจ `git diff` และไฟล์ `.pod-bak` ทุกไฟล์ แล้วลบไฟล์ `.pod-bak` ก่อน commit
-- `pod.yml` ที่มีอยู่แล้วไม่ถูกแก้ (เว้นแต่ใช้ `--force`) หาก kit เพิ่ม key ใหม่ ค่าเริ่มต้นจะถูกใช้จนกว่าทีมจะเพิ่ม key นั้นเอง
-- การอัปเดตแตะ `scripts/**` และ `.github/**` ซึ่งอยู่ใน `docs/risk-paths` จึงเป็น change ระดับ high
+- Files that already match the kit do not change. The pod section in `AGENTS.md` is replaced with the new version.
+- Files your team has edited are skipped and listed. Compare each with the kit using
+  `diff ~/tripod/<file> <file>`, then decide whether to merge the changes by hand or use `--force`.
+- If you use `--force`, review `git diff` and every `.pod-bak` file, then delete the `.pod-bak` files before committing.
+- An existing `pod.yml` is not changed (unless you use `--force`). If the kit adds a new key, its default applies until the team adds the key.
+- An update touches `scripts/**` and `.github/**`, which are in `docs/risk-paths`, so it is a high-risk change.
 
 ## Checklist
 
-- [ ] ประเมินแล้วว่างานของ project เหมาะกับ pod และกำหนดงานที่ต้องส่งทีมเต็ม
-- [ ] clone kit และรัน `pod-install.sh` แล้ว ตรวจรายการไฟล์ที่ถูกข้าม
-- [ ] Makefile เดิมมีบรรทัด `include pod.mk` หรือทีมตกลงใช้ `make -f pod.mk`
-- [ ] `pod.yml`: ชื่อ อีเมล บัญชี GitHub และ stack ถูกต้อง
-- [ ] `docs/risk-paths` ตรงกับ path อ่อนไหวของ project
-- [ ] `scripts/sync-codeowners.sh` รันแล้ว และ `.github/CODEOWNERS` ถูก commit
-- [ ] `make -f pod.mk pod-check` ผ่านบนเครื่องและใน CI
-- [ ] CI ติดตั้ง stack ของ project ก่อน `pod-check` (project ที่ไม่ใช่ Python)
-- [ ] `scripts/setup-github.sh <owner/repo>` ตรวจแผนแล้ว และรันพร้อม `--yes`
-- [ ] `docs/pod-charter.md` กรอกครบ
-- [ ] SuperBiz ติดตั้ง `superbiz@tripod` และ SuperDev ติดตั้ง `superdev@tripod`
-- [ ] change แรก `Risk: low` ผ่าน 4 gate โดย `auto_merge: off`
-- [ ] กำหนดวันทบทวนผลที่ 30, 60 และ 90 วัน
-- [ ] ตกลงเงื่อนไขการเปิด `auto_merge: low` และผู้มีสิทธิ์เปลี่ยนค่า
+- [ ] The project's work has been assessed as a fit for a pod, and the work that goes to a full team is defined
+- [ ] The kit is cloned and `pod-install.sh` has run; the list of skipped files has been reviewed
+- [ ] The existing Makefile has the `include pod.mk` line, or the team has agreed to use `make -f pod.mk`
+- [ ] `pod.yml`: names, emails, GitHub logins and stack are correct
+- [ ] `docs/risk-paths` matches the project's sensitive paths
+- [ ] `scripts/sync-codeowners.sh` has run, and `.github/CODEOWNERS` is committed
+- [ ] `make -f pod.mk pod-check` passes locally and in CI
+- [ ] CI installs the project's stack before `pod-check` (projects not written in Python)
+- [ ] The plan from `scripts/setup-github.sh <owner/repo>` has been reviewed, and it has run with `--yes`
+- [ ] `docs/pod-charter.md` is complete
+- [ ] SuperBiz has installed `superbiz@tripod`, and SuperDev has installed `superdev@tripod`
+- [ ] The first `Risk: low` change has passed all 4 gates with `auto_merge: off`
+- [ ] Review dates are set for 30, 60 and 90 days
+- [ ] The conditions for enabling `auto_merge: low`, and who may change the setting, are agreed

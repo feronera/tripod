@@ -24,14 +24,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lib  # noqa: E402
 
 ROOT = lib.ROOT
-OFF_MESSAGE = ("test-strength ปิดอยู่ใน pod.yml (stack นี้ยังไม่รองรับ) "
-               "ให้ reviewer ตรวจรูปแบบ test ที่อ่อนตาม docs/test-strength.md แทน")
+OFF_MESSAGE = ("test-strength is off in pod.yml (this stack is not supported yet). "
+               "The reviewer checks for weak test patterns from docs/test-strength.md instead")
 SKIP_DIRS = {"__pycache__", "node_modules", "venv", ".venv", ".git", ".pod"}
 
 
 def hint(dirs):
-    return ("test นี้ยังผ่านแม้ทุกฟังก์ชันใน %s คืนค่า None ให้ assert ผลลัพธ์จริงด้วยค่าที่ระบุชัด "
-            "หรือจับคู่กรณีไม่มีข้อมูลกับกรณีมีข้อมูลใน test เดียวกัน" % ", ".join(d + "/" for d in dirs))
+    return ("this test still passes when every function in %s returns None. Assert the real result "
+            "against an explicit value, or pair the empty case with a non-empty case in the same test" % ", ".join(d + "/" for d in dirs))
 
 
 def code_modules(dirs, tests_dir):
@@ -94,7 +94,7 @@ def load_modules(names):
         try:
             mods.append(importlib.import_module(name))
         except Exception as exc:  # noqa: BLE001 - a module that cannot import is reported, not fatal
-            print("ข้าม module %s: import ไม่ได้ (%s)" % (name, type(exc).__name__))
+            print("skip module %s: import failed (%s)" % (name, type(exc).__name__))
     return mods
 
 
@@ -147,7 +147,7 @@ def run_one(loader, test_id):
 
 def run_cmd_mode(cfg):
     if not cfg["strength_cmd"]:
-        print("test-strength: pod.yml ตั้ง strength: cmd แต่ไม่มี strength_cmd")
+        print("test-strength: pod.yml sets strength: cmd but has no strength_cmd")
         return 2
     print("test-strength: %s" % cfg["strength_cmd"], flush=True)
     return subprocess.run(cfg["strength_cmd"], shell=True, cwd=ROOT).returncode
@@ -162,7 +162,7 @@ def main():
     if mode == "cmd":
         return run_cmd_mode(cfg)
     if mode != "python":
-        print("test-strength: pod.yml มี strength: %s ซึ่งไม่รู้จัก (ใช้ได้: %s)"
+        print("test-strength: pod.yml has unknown strength: %s (allowed: %s)"
               % (mode, " | ".join(lib.STRENGTH_MODES)))
         return 2
     os.chdir(ROOT)
@@ -170,7 +170,7 @@ def main():
     tests_dir = cfg["tests_dir"]
     dirs = lib.code_dirs(cfg)
     if not os.path.isdir(os.path.join(ROOT, tests_dir)):
-        print("test-strength: ไม่พบโฟลเดอร์ %s/" % tests_dir)
+        print("test-strength: folder %s/ not found" % tests_dir)
         return 0
     names = code_modules(dirs, tests_dir)
     tops = {n.split(".")[0] for n in names}
@@ -179,7 +179,7 @@ def main():
     selected, test_modules = [], {}
     for test in iter_tests(suite):
         if isinstance(test, unittest.loader._FailedTest):  # import error: the test command reports it
-            print("ข้าม %s: import ไม่ได้ (ให้ make test แสดงรายละเอียด)" % test.id())
+            print("skip %s: import failed (make test shows the details)" % test.id())
             continue
         mod = sys.modules.get(type(test).__module__)
         path = getattr(mod, "__file__", "") or ""
@@ -201,13 +201,13 @@ def main():
         if still_passes:
             weak.append(test_id)
     for test_id in broken:
-        print("FAIL (ปกติ) %s: ไม่ผ่านตั้งแต่รันปกติ ให้ดูผลจาก make test" % test_id)
+        print("FAIL (normal run) %s: fails even in a normal run. See the output of make test" % test_id)
     for test_id in weak:
         print("WEAK %s\n  %s" % (test_id, hint(dirs)))
     if weak:
-        print("test-strength: พบ test ที่อ่อน %d จาก %d test" % (len(weak), checked))
+        print("test-strength: found %d weak tests out of %d" % (len(weak), checked))
         return 1
-    print("test-strength: ตรวจแล้ว %d test ไม่มี test ที่อ่อน" % checked)
+    print("test-strength: checked %d tests, no weak tests" % checked)
     return 0
 
 

@@ -1,29 +1,30 @@
 ---
 name: release-notes
-description: Write Thai release notes for customers and for internal teams from a change folder. Use when the user says "เขียน release notes", "ประกาศการเปลี่ยนแปลง", "แจ้งลูกค้า", "release notes", "changelog for customers".
+description: Write release notes for customers and for internal teams from a change folder, in the team's language (English by default). Use when the user says "เขียน release notes", "ประกาศการเปลี่ยนแปลง", "แจ้งลูกค้า", "release notes", "changelog for customers".
 ---
 
-# เขียน release notes (SuperBiz: PM)
+# Write release notes (SuperBiz: PM)
 
-เป้าหมาย: ได้ `docs/changes/NNN-slug/release-notes.md` สองส่วน: สำหรับลูกค้า และสำหรับทีมภายใน
+Goal: a `docs/changes/NNN-slug/release-notes.md` in two parts: one for customers and one for internal teams.
+Write it in the team's language (English by default).
 
-## ขั้นตอน
-1. อ่าน intent.md, spec.md, acceptance.md และ runbook.md (ถ้ามี) ของ change
-2. ตรวจว่าพร้อมปล่อย: `scripts/release-check.sh docs/changes/NNN-slug`
-   หากไม่ผ่าน ให้เขียนเป็นฉบับร่าง และระบุบรรทัดแรกว่า "ฉบับร่าง ยังไม่พร้อมปล่อย"
-3. ส่วนสำหรับลูกค้า
-   - ไม่เกิน 5 บรรทัด ใช้ภาษาสุภาพและเข้าใจง่าย
-   - บอกว่าผู้ใช้ได้อะไร และต้องทำอะไรหรือไม่
-   - ไม่ใช้ศัพท์เทคนิค ไม่อ้างชื่อไฟล์ ไม่ระบุข้อมูลภายใน
-4. ส่วนสำหรับทีมภายใน (ฝ่ายบริการลูกค้า ฝ่ายขาย ฝ่ายปฏิบัติการ)
-   - สิ่งที่เปลี่ยน อ้างอิง R1, R2, ... จาก spec.md
-   - สิ่งที่ไม่เปลี่ยน (Out of scope)
-   - คำถามที่ลูกค้าอาจถาม พร้อมคำตอบ
-   - ช่องทางแจ้งปัญหา และวิธีย้อนกลับโดยสรุปจาก runbook.md
-5. ห้ามสัญญาสิ่งที่ไม่อยู่ใน spec.md และห้ามระบุตัวเลขที่ไม่มีใน acceptance.md
+## Steps
+1. Read the change's intent.md, spec.md, acceptance.md and runbook.md (if present).
+2. Check that it is ready to release: `scripts/release-check.sh docs/changes/NNN-slug`.
+   If it fails, write a draft and make the first line "Draft: not ready to release".
+3. Customer section:
+   - At most 5 lines, in polite, plain language.
+   - Say what users get, and whether they need to do anything.
+   - No technical terms, no file names, no internal information.
+4. Internal section (customer support, sales, operations):
+   - What changed, citing R1, R2, ... from spec.md.
+   - What did not change (Out of scope).
+   - Questions customers may ask, with answers.
+   - Where to report problems, and a short summary of how to roll back, from runbook.md.
+5. Never promise anything that is not in spec.md, and never state numbers that are not in acceptance.md.
 
-## สิ่งที่ห้ามทำ
-- ห้ามแก้ไฟล์นอก `docs/`
+## Do not
+- Edit files outside `docs/`.
 
-## จบงาน
-แจ้งมนุษย์ให้ตรวจถ้อยคำก่อนเผยแพร่ และส่งส่วนภายในให้ทีมที่เกี่ยวข้อง
+## When done
+Ask the human to review the wording before publishing, and to send the internal section to the teams involved.

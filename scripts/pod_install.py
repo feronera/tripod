@@ -101,7 +101,7 @@ def detect_stack(target, with_sample):
                      "tests")
         return "node (package.json)", {"test_cmd": "npm test", "code_dirs": "src", "tests_dir": tests,
                                        "strength": "off", "strength_cmd": ""}, \
-            ["ตรวจว่า package.json มี script \"test\" และ code_dirs/tests_dir ใน pod.yml ตรงกับ project"]
+            ["check that package.json has a \"test\" script and that code_dirs/tests_dir in pod.yml match the project"]
     if any(has(n) for n in ("pyproject.toml", "setup.py", "requirements.txt")):
         tests = next((d for d in ("tests", "test") if os.path.isdir(os.path.join(target, d))), "tests")
         pkgs = sorted(d for d in os.listdir(target)
@@ -109,17 +109,17 @@ def detect_stack(target, with_sample):
                       and d not in NOT_CODE and d != tests
                       and os.path.isfile(os.path.join(target, d, "__init__.py")))
         code = pkgs[0] if len(pkgs) == 1 else "src"
-        warn = [] if len(pkgs) == 1 else ["ระบุ package ไม่ได้ชัดเจน จึงตั้ง code_dirs: src ให้ตรวจ code_dirs ใน pod.yml"]
-        warn.append("test_cmd ตั้งเป็น unittest หาก project ใช้ pytest ให้แก้เป็น `python3 -m pytest` "
-                    "(strength แบบ python ใช้ได้กับ test แบบ unittest.TestCase เท่านั้น)")
+        warn = [] if len(pkgs) == 1 else ["could not identify a single package, so code_dirs is set to src. Check code_dirs in pod.yml"]
+        warn.append("test_cmd is set to unittest. If the project uses pytest, change it to `python3 -m pytest` "
+                    "(python strength works only with unittest.TestCase tests)")
         return "python", {"test_cmd": PY_DEFAULT_CMD % tests, "code_dirs": code, "tests_dir": tests,
                           "strength": "python", "strength_cmd": ""}, warn
     if has("go.mod"):
         return "go (go.mod)", {"test_cmd": "go test ./...", "code_dirs": ".", "tests_dir": "tests",
                                "strength": "off", "strength_cmd": ""}, \
-            ["Go เก็บ test ไว้ข้างโค้ด (_test.go) hook protect-tests ล็อกได้เฉพาะ tests_dir ให้ตรวจค่านี้ใน pod.yml"]
-    return "unknown", py, ["ไม่พบไฟล์ที่ระบุ stack ได้ (package.json, pyproject.toml, go.mod) "
-                           "จึงใช้ค่าเริ่มต้นแบบ Python ให้แก้ test_cmd, code_dirs, tests_dir และ strength ใน pod.yml"]
+            ["Go keeps tests next to the code (_test.go), and the protect-tests hook can lock only tests_dir. Check this value in pod.yml"]
+    return "unknown", py, ["no file identifies the stack (package.json, pyproject.toml, go.mod), "
+                           "so Python defaults are used. Set test_cmd, code_dirs, tests_dir and strength in pod.yml"]
 
 
 def pod_yml_text(stack):
@@ -161,31 +161,31 @@ def agents_block(stack):
         kit = fh.read()
     tests = stack["tests_dir"]
     keep = [body for head, body in md_split(kit)
-            if head in ("Pod", "Gates", "กฎที่ห้ามละเมิด", "ที่อยู่ของงาน")]
+            if head in ("Pod", "Gates", "Rules that must never be broken", "Where the work lives")]
     text = "\n\n".join(b.strip() for b in keep)
     text = text.replace("`tests/`", "`%s/`" % tests).replace("`make check`", "`make -f pod.mk pod-check`")
     stack_md = "\n".join([
-        "## Stack และคำสั่งของ pod",
-        "- คำสั่ง test, โฟลเดอร์โค้ด, โฟลเดอร์ test และวิธีตรวจ test-strength อยู่ใน `pod.yml`"
+        "## Stack and pod commands",
+        "- The test command, code folders, test folder and test-strength mode are in `pod.yml`"
         " (`test_cmd`, `code_dirs`, `tests_dir`, `strength`)",
-        "- ใน skill ของ plugin คำว่า `make test` หมายถึง `make -f pod.mk pod-test`"
-        " และ `make check` หมายถึง `make -f pod.mk pod-check` (หรือ target ที่ Makefile ของ project ตั้งชื่อไว้)",
-        "- `app/` และ `tests/` ใน skill หมายถึง `code_dirs` และ `tests_dir` ใน pod.yml",
-        "- `make -f pod.mk pod-test`: รัน `test_cmd`",
-        "- `make -f pod.mk pod-strength`: `scripts/test-strength.sh` ตามโหมด `strength` (ดู `docs/test-strength.md`)",
-        "- `make -f pod.mk pod-check`: test, strength, ตรวจ CODEOWNERS และ `scripts/gate-check.sh --all` (CI ใช้คำสั่งนี้)",
-        "- `scripts/auto-merge-check.sh <dir> [--base main] [--record]`: ALLOW หรือ DENY สำหรับ merge อัตโนมัติ",
-        "- `scripts/release-check.sh <dir>`: พร้อมปล่อยขึ้น production หรือไม่",
-        "- `make -f pod.mk pod-metrics CHANGE=docs/changes/NNN-slug`: เวลาจาก intent ถึงแต่ละ gate",
+        "- In plugin skills, `make test` means `make -f pod.mk pod-test`"
+        " and `make check` means `make -f pod.mk pod-check` (or the target names in the project Makefile)",
+        "- In skills, `app/` and `tests/` mean `code_dirs` and `tests_dir` in pod.yml",
+        "- `make -f pod.mk pod-test`: run `test_cmd`",
+        "- `make -f pod.mk pod-strength`: `scripts/test-strength.sh` in the `strength` mode (see `docs/test-strength.md`)",
+        "- `make -f pod.mk pod-check`: tests, strength, the CODEOWNERS check and `scripts/gate-check.sh --all` (CI runs this)",
+        "- `scripts/auto-merge-check.sh <dir> [--base main] [--record]`: ALLOW or DENY for an automated merge",
+        "- `scripts/release-check.sh <dir>`: whether the change is ready to release to production",
+        "- `make -f pod.mk pod-metrics CHANGE=docs/changes/NNN-slug`: time from intent to each gate",
     ])
-    return "%s\n# Pod (ADLC SuperBiz x SuperDev)\n\nส่วนนี้สร้างโดย scripts/pod-install.sh ของ pod kit " \
-           "การรันติดตั้งซ้ำจะแทนที่ส่วนนี้ทั้งหมด ให้เพิ่มกฎของทีมไว้นอกส่วนนี้\n\n%s\n\n%s\n%s\n" \
+    return "%s\n# Pod (ADLC SuperBiz x SuperDev)\n\nThis section is generated by the pod kit's scripts/pod-install.sh. " \
+           "Re-running the installer replaces the whole section. Add team rules outside it.\n\n%s\n\n%s\n%s\n" \
            % (BEGIN, text, stack_md, END)
 
 
 def with_block(current, block):
     if current is None:
-        return "# AGENTS.md\n\nกฎสำหรับ agent ทุกตัวใน repo นี้ (Claude Code อ่านผ่าน CLAUDE.md)\n\n" + block
+        return "# AGENTS.md\n\nRules for every agent in this repository (Claude Code reads them through CLAUDE.md).\n\n" + block
     if BEGIN in current and END in current:
         head, rest = current.split(BEGIN, 1)
         tail = rest.split(END, 1)[1]
@@ -235,18 +235,18 @@ def main(argv):
         return 2
     target = os.path.realpath(target)
     if not os.path.isdir(target):
-        print("ไม่พบโฟลเดอร์ %s" % target, file=sys.stderr)
+        print("folder not found: %s" % target, file=sys.stderr)
         return 1
     res = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=target,
                          capture_output=True, text=True)
     if res.returncode != 0:
-        print("ปฏิเสธ: %s ไม่ใช่ git repo (รัน git init ก่อน)" % target, file=sys.stderr)
+        print("Refused: %s is not a git repo (run git init first)" % target, file=sys.stderr)
         return 1
     if os.path.realpath(res.stdout.strip()) != target:
-        print("ปฏิเสธ: ต้องระบุโฟลเดอร์บนสุดของ git repo (%s)" % res.stdout.strip(), file=sys.stderr)
+        print("Refused: give the top-level folder of the git repo (%s)" % res.stdout.strip(), file=sys.stderr)
         return 1
     if os.path.realpath(KIT) == target:
-        print("ปฏิเสธ: target คือ pod kit เอง", file=sys.stderr)
+        print("Refused: the target is the pod kit itself", file=sys.stderr)
         return 1
 
     stack_name, stack, warnings = detect_stack(target, opts["with_sample"])
@@ -316,41 +316,41 @@ def report(inst, target, stack_name, stack, warnings, include_hint, opts):
     print("pod-install: %s" % target)
     print("stack: %s (test_cmd: %s, code_dirs: %s, tests_dir: %s, strength: %s)"
           % (stack_name, stack["test_cmd"], stack["code_dirs"], stack["tests_dir"], stack["strength"]))
-    for label, items in (("สร้างใหม่", inst.created), ("แก้ไข", inst.updated),
-                         ("สำรองไฟล์เดิม", inst.backups)):
+    for label, items in (("Created", inst.created), ("Updated", inst.updated),
+                         ("Backed up", inst.backups)):
         if items:
-            print("%s %d ไฟล์:" % (label, len(items)))
+            print("%s %d files:" % (label, len(items)))
             for rel in items:
                 print("  + " + rel)
     if inst.skipped:
-        print("ข้าม %d ไฟล์ที่มีอยู่แล้วและเนื้อหาต่างจาก kit (ใช้ --force เพื่อเขียนทับ โดยสำรองเป็น .pod-bak):"
+        print("Skipped %d existing files whose content differs from the kit (use --force to overwrite, keeping a .pod-bak backup):"
               % len(inst.skipped))
         for rel in inst.skipped:
             print("  - " + rel)
-    print("ไม่เปลี่ยน %d ไฟล์ (เนื้อหาตรงกับ kit แล้ว)" % len(inst.unchanged))
+    print("Unchanged %d files (content already matches the kit)" % len(inst.unchanged))
     if not (inst.created or inst.updated):
-        print("ไม่มีการเปลี่ยนแปลง")
+        print("No changes")
     if include_hint:
-        print("Makefile ของ project มีอยู่แล้วและไม่ได้แก้ ให้เพิ่มบรรทัดนี้ใน Makefile หากต้องการเรียกผ่าน make:")
+        print("The project Makefile already exists and was not changed. To run the targets through make, add this line to it:")
         print("  " + include_hint)
     for w in warnings:
-        print("คำเตือน: " + w)
+        print("Warning: " + w)
     print("")
-    print("ขั้นตอนต่อไป")
+    print("Next steps")
     steps = [
-        "แก้ pod.yml: ชื่อ อีเมล (ตรงกับ git config user.email) และบัญชี GitHub ของ SuperBiz, SuperDev และ escalation"
-        " แล้วตรวจ test_cmd, code_dirs, tests_dir และ strength",
-        "แก้ docs/risk-paths ให้ตรงกับ path อ่อนไหวของ project นี้",
-        "รัน scripts/sync-codeowners.sh เพื่อสร้าง .github/CODEOWNERS",
-        "รัน make -f pod.mk pod-setup แล้ว make -f pod.mk pod-check ต้องผ่าน",
-        "ติดตั้ง plugin ต่อคน: /plugin marketplace add feronera/tripod แล้ว"
-        " /plugin install superbiz@tripod หรือ superdev@tripod",
-        "รัน scripts/setup-github.sh <owner/repo> เพื่อดูแผนก่อน แล้วรันซ้ำพร้อม --yes",
-        "commit ไฟล์ทั้งหมดผ่าน PR และอ่าน docs/adopt.md ของ kit สำหรับ change แรกแบบนำร่อง",
+        "Edit pod.yml: names, emails (matching git config user.email) and GitHub logins for SuperBiz, SuperDev"
+        " and escalation, then check test_cmd, code_dirs, tests_dir and strength",
+        "Edit docs/risk-paths to match this project's sensitive paths",
+        "Run scripts/sync-codeowners.sh to generate .github/CODEOWNERS",
+        "Run make -f pod.mk pod-setup, then make -f pod.mk pod-check, which must pass",
+        "Install a plugin per person: /plugin marketplace add feronera/tripod, then"
+        " /plugin install superbiz@tripod or superdev@tripod",
+        "Run scripts/setup-github.sh <owner/repo> to review the plan, then run it again with --yes",
+        "Commit all files through a PR, and read the kit's docs/adopt.md for a first pilot change",
     ]
     if opts["vendor_plugins"]:
-        steps[4] = ("plugin ถูกคัดลอกไว้ใน plugins/ แล้ว โหลดด้วย claude --plugin-dir ./plugins/superbiz"
-                    " หรือ ./plugins/superdev")
+        steps[4] = ("The plugins are copied to plugins/. Load one with claude --plugin-dir ./plugins/superbiz"
+                    " or ./plugins/superdev")
     for i, step in enumerate(steps, 1):
         print("%d. %s" % (i, step))
 

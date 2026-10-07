@@ -3,35 +3,35 @@ name: spec
 description: Turn intent.md and ux-brief.md into spec.md with numbered requirements, edge cases, flagged concerns and out-of-scope, using the ba-researcher agent for code impact. Use when the user says "เขียน spec", "ทำ spec", "แปลง intent เป็น spec", "write the spec", "spec this change".
 ---
 
-# ร่าง spec.md (SuperBiz: BA)
+# Draft spec.md (SuperBiz: BA)
 
-เป้าหมาย: ได้ `docs/changes/NNN-slug/spec.md` ที่พร้อมให้มนุษย์ลงชื่อ gate 2
+Goal: a `docs/changes/NNN-slug/spec.md` that is ready for a human to sign gate 2.
 
-## ขั้นตอน
-1. อ่าน intent.md, ux-brief.md (ถ้ามี) และ `docs/templates/spec.md`
-2. ตรวจว่า gate 1 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 1`
-   หากไม่ผ่าน ให้แจ้งมนุษย์และหยุด
-3. ส่งคำถามให้ agent `ba-researcher` เช่น
-   "intent นี้แตะโค้ดหรือข้อมูลส่วนใด และมีพฤติกรรมเดิมใดที่ต้องคงไว้"
-   ใช้คำตอบที่มีอ้างอิงไฟล์เท่านั้น
-4. เขียน Requirements เป็น R1, R2, ... แต่ละข้อขึ้นต้นด้วย "ระบบต้อง" และระบุวิธีตรวจ (test หรือ demo)
-5. เขียน Edge cases เป็น E1, E2, ... ให้ครอบคลุม
-   - ข้อมูลว่างหรือไม่พบ
-   - ข้อมูลผิดรูปแบบ
-   - สิทธิ์: ผู้ใช้ต้องไม่เห็นข้อมูลของผู้อื่น
-   - states จาก ux-brief.md
-6. Flagged concerns: สิ่งที่ขัดกับโค้ดเดิม ความเสี่ยงที่พบ และคำถามที่ต้องให้มนุษย์ตัดสิน พร้อมอ้างอิงไฟล์
-7. Out of scope: สิ่งที่ไม่ทำใน change นี้ เพื่อกันขอบเขตบานปลาย
-8. หาก Risk ใน intent.md ดูต่ำเกินจริงจากผลของ ba-researcher ให้ระบุใน Flagged concerns
-   ห้ามแก้ intent.md เอง เพราะ gate 1 จะ stale
-9. ตรวจด้วยคำถามของ Gate 2 ใน `docs/gates.md`
+## Steps
+1. Read intent.md, ux-brief.md (if present) and `docs/templates/spec.md`.
+2. Check that gate 1 has passed: `scripts/gate-check.sh docs/changes/NNN-slug 1`.
+   If it fails, tell the human and stop.
+3. Send a question to the `ba-researcher` agent, for example:
+   "Which code or data does this intent touch, and which existing behavior must be kept?"
+   Use only answers that cite files.
+4. Write Requirements as R1, R2, ... Start each one with "The system must" and state how it is verified (test or demo).
+5. Write Edge cases as E1, E2, ... Cover:
+   - Empty or not-found data
+   - Malformed data
+   - Permissions: users must never see other users' data
+   - The states from ux-brief.md
+6. Flagged concerns: conflicts with existing code, risks found, and questions a human must decide, with file references.
+7. Out of scope: what this change will not do, to prevent scope creep.
+8. If the ba-researcher findings suggest the Risk in intent.md is too low, say so under Flagged concerns.
+   Never edit intent.md yourself, because gate 1 would become stale.
+9. Check against the Gate 2 questions in `docs/gates.md`.
 
-## สิ่งที่ห้ามทำ
-- ห้ามรัน `scripts/gate.sh` และห้ามแก้ `gates.log`
-- ห้ามแก้ไฟล์นอก `docs/`
+## Do not
+- Run `scripts/gate.sh` or edit `gates.log`.
+- Edit files outside `docs/`.
 
-## จบงาน
-แจ้งมนุษย์ว่า
-1. SuperBiz รัน `scripts/gate.sh docs/changes/NNN-slug 2`
-2. SuperDev ตรวจทานแล้วรันคำสั่งเดียวกัน
-3. หาก `Risk: high` ผู้มีชื่อเป็น escalation ใน pod.yml ต้องรันคำสั่งเดียวกันด้วย
+## When done
+Tell the human:
+1. SuperBiz runs `scripts/gate.sh docs/changes/NNN-slug 2`.
+2. SuperDev cross-checks it, then runs the same command.
+3. If `Risk: high`, the person named as escalation in pod.yml must also run the same command.

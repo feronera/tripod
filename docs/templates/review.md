@@ -1,25 +1,25 @@
 blockers: 0
 majors_open: 0
 second_opinion: agree
-reviewed_head: <git rev-parse HEAD ของ commit ที่ตรวจ>
+reviewed_head: <git rev-parse HEAD of the reviewed commit>
 
-# Review: <ชื่องาน>
+# Review: <change title>
 
-4 บรรทัดแรกเป็น header ที่ `scripts/auto-merge-check.sh` อ่าน ห้ามเปลี่ยนชื่อ key
-`second_opinion: agree` หมายถึง reviewer-second ไม่พบ Blocker ที่ reviewer หลักพลาด และไม่โต้แย้งผล "ไม่มี Blocker"
+The first 4 lines are a header read by `scripts/auto-merge-check.sh`. Do not rename the keys.
+`second_opinion: agree` means reviewer-second found no Blocker that the main reviewer missed and does not dispute the "no Blocker" result.
 
 ## Blocker
-- <path:line ปัญหา (ข้อ checklist / R?) -> สิ่งที่ต้องแก้ หรือ "ไม่มี">
+- <path:line problem (checklist item / R?) -> what must be fixed, or "none">
 
 ## Major
-- <path:line ปัญหา -> แก้แล้ว หรือเหตุผลที่ไม่แก้>
+- <path:line problem -> fixed, or why it is not fixed>
 
 ## Minor
-- <path:line ปัญหา>
+- <path:line problem>
 
 ## Second opinion (reviewer-second)
-- <ผลของ reviewer-second และจุดที่เห็นต่าง>
+- <reviewer-second's result and any points of disagreement>
 
-## ผลการตรวจ
-- `make check`: <ผ่าน หรือไม่ผ่าน>
-- `scripts/test-strength.sh`: <ผ่าน หรือไม่ผ่าน>
+## Checks
+- `make check`: <pass or fail>
+- `scripts/test-strength.sh`: <pass or fail>

@@ -3,35 +3,35 @@ name: acceptance
 description: Business-side gate 4 check. Compare the PR against the Success measure in intent.md, run or collect demo steps, and write acceptance.md with accept or reject plus reason. Use when the user says "ตรวจรับงาน", "acceptance", "รับมอบงาน", "UAT", "accept the PR".
 ---
 
-# เขียน acceptance.md (SuperBiz: ตรวจรับ gate 4)
+# Write acceptance.md (SuperBiz: gate 4 acceptance)
 
-เป้าหมาย: ได้ `docs/changes/NNN-slug/acceptance.md` ที่ระบุ accept หรือ reject พร้อมเหตุผล
+Goal: a `docs/changes/NNN-slug/acceptance.md` that states accept or reject, with the reason.
 
-## ขั้นตอน
-1. อ่าน intent.md (Success measure), spec.md (Requirements) และ `docs/templates/acceptance.md`
-2. ตรวจว่า gate 3 ผ่านแล้ว: `scripts/gate-check.sh docs/changes/NNN-slug 3`
-   และดู `gates.log` ว่ามีบรรทัด `role=auto` หรือไม่ (merge อัตโนมัติแล้ว รอตรวจรับ)
-3. ขอสรุปการเปลี่ยนแปลงของ PR จากมนุษย์ หรืออ่านด้วย `git diff main...HEAD --stat`
-   แล้วสรุปเป็นภาษาที่ผู้ไม่ใช่นักพัฒนาเข้าใจ
-4. ใช้ demo steps ที่ SuperDev ให้ไว้ใน plan.md หรือ PR หากไม่มี ให้ถามมนุษย์ ห้ามคิดขั้นตอนเอง
-5. ทำ demo ทีละขั้น บันทึกผลที่คาดหวังและผลจริง
-6. เทียบผลกับ Success measure ทีละข้อ
-   - หากวัดได้หลัง release เท่านั้น ให้ระบุวิธีวัดและวันที่จะวัด
-7. เขียน Decision: `accept` หรือ `reject` พร้อมเหตุผลที่อ้างอิงผล demo
-   หาก reject ให้ระบุสิ่งที่ต้องแก้เป็นข้อ ๆ
-8. ห้ามตัดสินแทนมนุษย์ ให้เสนอคำตัดสินและให้ SuperBiz ยืนยัน
+## Steps
+1. Read intent.md (Success measure), spec.md (Requirements) and `docs/templates/acceptance.md`.
+2. Check that gate 3 has passed: `scripts/gate-check.sh docs/changes/NNN-slug 3`.
+   Check `gates.log` for a `role=auto` line (already auto-merged, awaiting acceptance).
+3. Ask the human for a summary of the PR's changes, or read it with `git diff main...HEAD --stat`.
+   Summarize it in language a non-developer can understand.
+4. Use the demo steps SuperDev provided in plan.md or the PR. If there are none, ask the human. Never make up steps.
+5. Run the demo one step at a time. Record the expected result and the actual result.
+6. Compare the results against the Success measure, item by item.
+   - If it can only be measured after release, state how it will be measured and on what date.
+7. Write the Decision: `accept` or `reject`, with a reason that cites the demo results.
+   If rejecting, list what must be fixed as bullet points.
+8. Never decide on the human's behalf. Propose a decision and let SuperBiz confirm it.
 
-## สิ่งที่ห้ามทำ
-- ห้ามรัน `scripts/gate.sh` และห้ามแก้ `gates.log`
-- ห้ามแก้โค้ดหรือ test
+## Do not
+- Run `scripts/gate.sh` or edit `gates.log`.
+- Edit code or tests.
 
-## จบงาน
-แจ้งมนุษย์ว่า
-1. SuperDev (owner ของ gate 4) รัน `scripts/gate.sh docs/changes/NNN-slug 4` ก่อน
-2. SuperBiz ยืนยันคำตัดสินแล้วรันคำสั่งเดียวกัน
-3. หาก `Risk: high` escalation ต้องรันคำสั่งเดียวกันด้วย
-4. งาน low ที่ merge อัตโนมัติแล้ว (มีบรรทัด `role=auto` ใน gates.log) เป็นการตรวจรับหลัง merge
-   SuperBiz ลงชื่อได้ก่อน SuperDev และต้องทำภายใน `acceptance_hours` ใน pod.yml
-   จากนั้น SuperDev ลงชื่อ owner ด้วย acceptance.md ฉบับเดียวกัน
-5. หาก reject หลัง merge ให้ SuperBiz หรือ SuperDev พิจารณา `git revert` และ
-   `scripts/mark-revert.sh docs/changes/NNN-slug "<เหตุผล>"` (มนุษย์เป็นผู้รัน)
+## When done
+Tell the human:
+1. SuperDev (owner of gate 4) runs `scripts/gate.sh docs/changes/NNN-slug 4` first.
+2. SuperBiz confirms the decision, then runs the same command.
+3. If `Risk: high`, the escalation person must also run the same command.
+4. For a low-risk change that was already auto-merged (a `role=auto` line in gates.log), this is acceptance after merge.
+   SuperBiz may sign before SuperDev, and must do so within `acceptance_hours` in pod.yml.
+   SuperDev then signs as owner against the same acceptance.md.
+5. If rejecting after merge, SuperBiz or SuperDev considers `git revert` and
+   `scripts/mark-revert.sh docs/changes/NNN-slug "<reason>"` (a human runs these).

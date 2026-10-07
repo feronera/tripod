@@ -330,7 +330,7 @@ class HookTests(PodRepo):
                   "docs/../app/x.py", "/etc/hosts", "docsx/a.md"):
             res = self.hook(hook, self.write_payload(p, "Edit"))
             self.assertEqual(res.returncode, 2, p)
-            self.assertIn("SuperBiz แก้ได้เฉพาะ docs/", res.stderr)
+            self.assertIn("SuperBiz may edit only docs/", res.stderr)
 
     def test_biz_scope_uses_cwd_without_env(self):
         hook = os.path.join(HOOKS_BIZ, "biz-scope.sh")
@@ -348,7 +348,7 @@ class HookTests(PodRepo):
         open(os.path.join(self.root, ".pod", "lock-tests"), "w").close()
         res = self.hook(hook, payload)
         self.assertEqual(res.returncode, 2)
-        self.assertIn("ถูกล็อก", res.stderr)
+        self.assertIn("tests are locked", res.stderr)
         abs_payload = self.write_payload(os.path.join(self.root, "tests", "new_test.py"))
         self.assertEqual(self.hook(hook, abs_payload).returncode, 2)
         self.assertEqual(self.hook(hook, self.write_payload("app/orders.py", "Edit")).returncode, 0)
@@ -362,7 +362,7 @@ class HookTests(PodRepo):
         open(os.path.join(self.root, ".pod", "kill-switch"), "w").close()
         res = self.hook(hook, payload)
         self.assertEqual(res.returncode, 2)
-        self.assertIn("kill switch เปิดอยู่", res.stderr)
+        self.assertIn("kill switch is on", res.stderr)
 
     # gate-guard
     def bash(self, command):
