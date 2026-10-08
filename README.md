@@ -105,6 +105,8 @@ In projects without a `pod.yml`, the plugin hooks allow every action and print a
 
 Use `/superdev:bug-fix` for defects and `/superdev:arena` when two designs need to be compared.
 
+A real run of one change through all four gates, with a merged pull request, CI, approvals, agent replies and costs: [feronera/tripod-example](https://github.com/feronera/tripod-example).
+
 ## Plugins
 
 | Plugin | Skills | Agents | Hooks |

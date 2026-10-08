@@ -82,6 +82,8 @@ Installer rules:
 4. Run `make -f pod.mk pod-setup`, then `make -f pod.mk pod-check`. It must pass.
 5. Projects not written in Python: add a step that installs the stack to `.github/workflows/pod-gates.yml`, before the `pod-check` step.
 6. Configure GitHub: run `scripts/setup-github.sh <owner/repo>` to see the plan, then run it again with `--yes`.
+   Branch protection needs a public repository or a paid GitHub plan for private ones; on a free plan the
+   script stops with that message and `main` stays unprotected.
    This enables auto-merge for the repository and protects the main branch (the `pod-gates` check must pass, and code owner review is required).
 7. Fill in `docs/pod-charter.md` together, then commit everything through a pull request.
 

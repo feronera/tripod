@@ -37,5 +37,14 @@ if [ "$APPLY" != "--yes" ]; then
   exit 0
 fi
 gh api -X PATCH "repos/$REPO" -F allow_auto_merge=true >/dev/null
-printf '%s' "$PROTECTION" | gh api -X PUT "repos/$REPO/branches/main/protection" --input - >/dev/null
+if ! out=$(printf '%s' "$PROTECTION" | gh api -X PUT "repos/$REPO/branches/main/protection" --input - 2>&1); then
+  if printf '%s' "$out" | grep -q "Upgrade to GitHub Pro"; then
+    echo "Branch protection is not available for this repository: GitHub requires a public repository" >&2
+    echo "or a paid plan (Pro, Team or Enterprise) for private ones. Auto-merge was turned on; main is NOT protected." >&2
+    echo "Make the repository public or upgrade the plan, then run this script again." >&2
+  else
+    printf '%s\n' "$out" >&2
+  fi
+  exit 1
+fi
 echo "Done"

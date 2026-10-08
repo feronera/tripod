@@ -60,6 +60,8 @@ Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
 1. Add the GitHub logins to `pod.yml` (`superbiz_github`, `superdev_github`, `escalation_github`).
 2. Run `scripts/sync-codeowners.sh` to generate `.github/CODEOWNERS` from `docs/risk-paths`, then commit it (`make check` verifies that they match).
 3. Run `scripts/setup-github.sh <owner/repo>` to see what will be configured, then run it again with `--yes`.
+   Branch protection needs a public repository or a paid GitHub plan for private ones; on a free plan the
+   script stops with that message and `main` stays unprotected.
    - Enables auto-merge for the repository.
    - Protects main: the `pod-gates` check must pass, code owner review is required, stale reviews are dismissed on new commits, and force pushes are blocked.
 4. CI (`.github/workflows/pod-gates.yml`) runs `make -f pod.mk pod-check` and `scripts/pr-check.sh`, which reads the PR author and approvers with `gh api`.

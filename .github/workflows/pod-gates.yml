@@ -7,6 +7,8 @@ on:
 permissions:
   contents: read
   pull-requests: read
+  # lets an approval re-run the earlier failed check on the same commit (see the last step)
+  actions: write
 
 jobs:
   pod-gates:
@@ -32,3 +34,18 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: scripts/pr-check.sh
+      # A check that failed before the approval stays failed and keeps the PR blocked, even after the
+      # run triggered by the approval passes. Re-run those earlier failed runs for this commit.
+      - name: Re-run earlier failed checks for this commit
+        if: github.event_name == 'pull_request_review'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow pod-gates --commit "$SHA" \
+            --json databaseId,event,conclusion \
+            --jq '.[] | select(.event == "pull_request" and .conclusion == "failure") | .databaseId' |
+          while read -r id; do
+            echo "re-running run $id"
+            gh run rerun "$id" --repo "$GITHUB_REPOSITORY" || true
+          done
