@@ -337,6 +337,19 @@ class MetricsTests(PodRepo):
         self.assertRegex(res.stdout, r"gate 4\s+\S+\s+\d+h \d{2}m")
         self.assertRegex(res.stdout, r"lead time intent -> gate 4: \d+h \d{2}m")
 
+    def test_metrics_after_squash_uses_first_signature(self):
+        c = self.new_change()
+        for gate in (1, 2, 3, 4):
+            self.pass_gate(c, gate)
+        run(["git", "add", "-A"], self.root)
+        later = {"GIT_COMMITTER_DATE": "2030-01-01T00:00:00+00:00", "GIT_AUTHOR_DATE": "2030-01-01T00:00:00+00:00"}
+        res = run(["git", "commit", "-q", "-m", "squash merge"], self.root, env=later)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        res = self.sh("metrics.sh", c)
+        self.assertEqual(res.returncode, 0, res.stderr)
+        self.assertIn("start = first gate signature", res.stdout)
+        self.assertNotIn("2030-01-01", res.stdout)
+
     def test_metrics_needs_committed_intent(self):
         c = self.new_change()
         self.assertEqual(self.sh("metrics.sh", c).returncode, 1)

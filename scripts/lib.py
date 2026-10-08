@@ -651,7 +651,16 @@ def cmd_metrics(args):
     cfg = read_pod_yml()
     entries = read_log(change_dir)
     risk = risk_of(change_dir)
+    signed = [parse_iso(e["at"]) for e in entries if e.get("at") and e.get("gate")]
+    note = None
+    if signed and min(signed) < start:
+        # A squash merge drops the branch history, so the first intent.md commit on this branch
+        # is later than the gates it led to. Fall back to the first signature.
+        start = min(signed)
+        note = "start = first gate signature (the branch history was squashed, so the intent commit time is lost)"
     print("change: %s   Risk: %s" % (os.path.basename(change_dir), risk))
+    if note:
+        print("note: " + note)
     print("%-8s %-27s %s" % ("step", "at", "since intent"))
     print("%-8s %-27s %s" % ("intent", start.isoformat(), "0h 00m"))
     finish = None
