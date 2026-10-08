@@ -515,6 +515,22 @@ class PrCheckTests(AutoMergeRepo):
         res = self.pr("dev-example", "")
         self.assertEqual(res.returncode, 0, res.stdout)
 
+    def test_docs_only_pr_after_auto_merge_uses_normal_approvals(self):
+        self.assertEqual(self.auto("--record").returncode, 0)
+        self.commit("chore(003): auto-merge record")
+        git(self.root, "checkout", "-q", "main")
+        git(self.root, "merge", "-q", "--squash", "change/003")
+        self.commit("feat(003): squash merge")
+        git(self.root, "checkout", "-q", "-b", "accept/003")
+        self.edit(self.c, "acceptance.md", "# acceptance\nDecision: accept\n")
+        self.commit("accept(003): post-merge acceptance")
+        res = self.pr("biz-example", "")
+        self.assertEqual(res.returncode, 1, res.stdout)
+        self.assertNotIn("auto record fails", res.stdout)
+        self.assertIn("no approval yet from SuperDev (dev-example)", res.stdout)
+        res = self.pr("biz-example", "dev-example")
+        self.assertEqual(res.returncode, 0, res.stdout)
+
     def test_gate_log_identity_still_checked(self):
         with open(os.path.join(self.c, "gates.log"), "a", encoding="utf-8") as fh:
             fh.write("gate=3 role=cross by=x@example.com at=2026-01-01T00:00:00+07:00 blob=0\n")

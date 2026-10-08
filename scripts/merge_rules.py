@@ -267,7 +267,11 @@ def pr_reasons(author, approvals, base, cfg):
     if risky:
         risk = "high"
     auto_ok = False
-    if risk == "low" and dirs and all(lib.auto_entry(lib.read_log(d)) for d in dirs):
+    # The auto record only covers the PR that carries the code. A later docs-only PR for the same change
+    # (post-merge acceptance, gate 4 signatures) follows the normal approval rules instead: after a squash
+    # merge the reviewed commit is no longer in history, so re-running auto-merge-check would always fail.
+    code_changed = any(not f.startswith("docs/") for f in files)
+    if risk == "low" and code_changed and dirs and all(lib.auto_entry(lib.read_log(d)) for d in dirs):
         auto_ok = True
         for d in dirs:
             deny = auto_merge_reasons(d, base, cfg)

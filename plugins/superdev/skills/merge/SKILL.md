@@ -14,9 +14,10 @@ Goal: merge into main according to the rights for each risk tier in `docs/merge-
    (`git diff --name-only main...HEAD`). If it does, treat the change as high.
 
 ## Risk: low
-1. Run `scripts/auto-merge-check.sh docs/changes/NNN-slug`.
+1. Run `git fetch origin` and compare with the up-to-date base: `scripts/auto-merge-check.sh docs/changes/NNN-slug --base origin/main`.
+   A stale local `main` makes already-merged work look like part of this change.
 2. If it prints `DENY`, give the human every reason line, then follow the medium flow (or fix the reasons).
-3. If it prints `ALLOW`, run `scripts/auto-merge-check.sh docs/changes/NNN-slug --record`,
+3. If it prints `ALLOW`, run `scripts/auto-merge-check.sh docs/changes/NNN-slug --base origin/main --record`,
    then commit and push gates.log: `git commit -m "chore(NNN): auto-merge record" -- docs/changes/NNN-slug/gates.log`.
 4. Run `gh pr merge --auto --squash` (the gate-guard hook checks again first).
 5. Tell SuperBiz to accept the change with `/superbiz:acceptance` and sign gate 4 within
