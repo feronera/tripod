@@ -44,6 +44,8 @@ class PodRepo(unittest.TestCase):
                         os.path.join(self.root, "docs", "templates"))
         os.makedirs(os.path.join(self.root, "docs", "changes"))
         self.write_pod_yml()
+        with open(os.path.join(self.root, ".gitignore"), "w", encoding="utf-8") as fh:
+            fh.write("!docs/changes/*/gates.log\n")
         run(["git", "init", "-q"], self.root)
         run(["git", "config", "user.name", "test"], self.root)
         self.as_user(BIZ)
@@ -259,6 +261,38 @@ class GateTests(PodRepo):
         res = self.check("--all")
         self.assertEqual(res.returncode, 1)
         self.assertIn("FAIL", res.stdout)
+
+
+class IgnoredLogTests(PodRepo):
+    """A global *.log ignore must not silently swallow approvals."""
+
+    def ignore_logs(self):
+        with open(os.path.join(self.root, ".gitignore"), "w", encoding="utf-8") as fh:
+            fh.write("")
+        with open(os.path.join(self.root, ".git", "info", "exclude"), "a", encoding="utf-8") as fh:
+            fh.write("*.log\n")
+
+    def test_gate_refused_when_log_is_ignored(self):
+        c = self.new_change()
+        self.ignore_logs()
+        res = self.sh("gate.sh", c, "1")
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("gates.log is ignored by git", res.stderr)
+        self.assertFalse(os.path.exists(os.path.join(c, "gates.log")))
+
+    def test_gate_check_fails_when_existing_log_is_ignored(self):
+        c = self.new_change()
+        self.assertEqual(self.sh("gate.sh", c, "1").returncode, 0)
+        self.ignore_logs()
+        res = self.sh("gate-check.sh", "--all")
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("gates.log is ignored by git", res.stdout)
+
+    def test_repo_exception_beats_global_ignore(self):
+        c = self.new_change()
+        with open(os.path.join(self.root, ".git", "info", "exclude"), "a", encoding="utf-8") as fh:
+            fh.write("*.log\n")
+        self.assertEqual(self.sh("gate.sh", c, "1").returncode, 0)
 
 
 class NewChangeTests(PodRepo):

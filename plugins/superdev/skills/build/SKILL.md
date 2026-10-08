@@ -22,7 +22,9 @@ Goal: code in `app/` that makes the locked tests pass, with every commit in a ch
 ## Loop, one unit at a time
 1. Pick the next unit from Order of work.
 2. Change only the code this unit needs. Do not edit anything outside Files to change.
-3. Run `make test`. Confirm this unit's tests pass and every test that passed before still passes.
+3. Run the tests in the foreground and wait for the result. For speed, run only the test files this change touches
+   (for example `python3 -m unittest tests.test_orders`). Confirm this unit's tests pass and every test that passed
+   before still passes.
 4. Commit immediately: `git commit -m "feat(NNN): <unit>"`.
 5. Do not start the next unit while any test that should already pass is red. Make it green first.
 6. If a unit can only pass by changing a locked test, stop immediately. Report the test, the reason and the options,
@@ -36,6 +38,7 @@ Goal: code in `app/` that makes the locked tests pass, with every commit in a ch
 - Add dependencies outside the Python standard library.
 - Combine several units in one commit, or commit while tests are red.
 - Run `scripts/gate.sh` or delete `.pod/lock-tests`.
+- Run commands in the background, or end your turn while a command is still running.
 
 ## When done
 Tell the human the next step is `/superdev:review`.

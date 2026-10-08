@@ -97,7 +97,7 @@ class InstallerTests(TempRepo):
         block = self.read("AGENTS.md").split("<!-- pod:begin -->", 1)[1]
         self.assertEqual(len(re.findall(r"^## ", block, re.M)), 5, block)
         self.assertEqual(self.read("CLAUDE.md"), "@AGENTS.md\n")
-        self.assertEqual(self.read(".gitignore").splitlines()[-2:], [".pod/", "!**/skills/build/"])
+        self.assertEqual(self.read(".gitignore").splitlines()[-3:], [".pod/", "!**/skills/build/", "!docs/changes/*/gates.log"])
         self.assertIn("make -f pod.mk pod-check", self.read(".github/workflows/pod-gates.yml"))
         self.assertIn("Warning: ", res.stdout)
         self.assertIn("Next steps", res.stdout)
@@ -122,7 +122,7 @@ class InstallerTests(TempRepo):
         self.assertEqual(text.count("<!-- pod:begin -->"), 1)
         self.assertTrue(text.rstrip().endswith("<!-- pod:end -->"))
         self.assertEqual(self.read("CLAUDE.md"), "# Claude\nUse tabs.\n\n@AGENTS.md\n")
-        self.assertEqual(self.read(".gitignore"), "node_modules/\n.pod/\n# pod kit\n!**/skills/build/\n")
+        self.assertEqual(self.read(".gitignore"), "node_modules/\n.pod/\n# pod kit\n!**/skills/build/\n!docs/changes/*/gates.log\n")
         before = self.snapshot()
         res = self.install()
         self.assertIn("No changes", res.stdout)
@@ -410,13 +410,13 @@ class ConfigTests(unittest.TestCase):
         for plugin in ("superbiz", "superdev"):
             with open(os.path.join(POD, "plugins", plugin, ".claude-plugin", "plugin.json")) as fh:
                 versions.add(json.load(fh)["version"])
-        self.assertEqual(versions, {"0.5.0"})
+        self.assertEqual(versions, {"0.5.1"})
         bases = [(POD, "./plugins/")]
         for base, prefix in bases:
             with open(os.path.join(base, ".claude-plugin", "marketplace.json")) as fh:
                 market = json.load(fh)
             self.assertEqual(market["name"], "tripod")
-            self.assertEqual(market["metadata"]["version"], "0.5.0")
+            self.assertEqual(market["metadata"]["version"], "0.5.1")
             for entry in market["plugins"]:
                 self.assertEqual(entry["source"], prefix + entry["name"])
                 self.assertTrue(os.path.isdir(os.path.join(base, entry["source"])), entry["source"])

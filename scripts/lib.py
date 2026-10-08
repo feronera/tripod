@@ -424,7 +424,25 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     return problems
 
 
+def log_ignored(change_dir):
+    """True when git would ignore this change's gates.log (e.g. a global *.log rule).
+    Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
+    path = os.path.join(change_dir, "gates.log")
+    try:
+        res = subprocess.run(["git", "check-ignore", "-q", path], cwd=ROOT,
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        return False
+    return res.returncode == 0
+
+
+IGNORED_HINT = ("gates.log is ignored by git (often a global *.log rule), so approvals would never be shared. "
+                "Add '!docs/changes/*/gates.log' to .gitignore")
+
+
 def check_change(change_dir, cfg, upto=None):
+    if os.path.exists(os.path.join(change_dir, "gates.log")) and log_ignored(change_dir):
+        return [IGNORED_HINT]
     entries = read_log(change_dir)
     if upto is None:
         upto = max([e["gate"] for e in entries if 1 <= e["gate"] <= 4], default=0)
@@ -522,6 +540,9 @@ def cmd_gate(args):
             print("Refused: the gate %d owner must approve the current %s before %s can sign"
                   % (gate, ARTIFACTS[gate], role), file=sys.stderr)
             return 1
+    if log_ignored(change_dir):
+        print("Refused: " + IGNORED_HINT, file=sys.stderr)
+        return 1
     line = "gate=%d role=%s by=%s at=%s blob=%s\n" % (gate, role, email, now_iso(), blob)
     with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
         fh.write(line)

@@ -5,3 +5,6 @@ __pycache__/
 !plugins/superdev/skills/build/
 !logs/
 !logs/sample-app.log
+# approvals must be committed even when a global gitignore ignores *.log
+!docs/changes/*/gates.log
+!examples/**/gates.log
