@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/feronera/tripod)](https://github.com/feronera/tripod/releases)
 [![Built with Claude Code](https://img.shields.io/badge/built%20for-Claude%20Code-5B6FF5)](https://claude.com/claude-code)
 
-**An agentic delivery practice for small teams.** Each role is a person paired with an agent: the agent drafts the work, the person makes the decision at four gates. The rules that matter are enforced by scripts, hooks and CI, not left to memory.
+**An agentic delivery practice.** Three agent legs (SuperBiz, SuperDev and SuperCEO) run every change through four gates. In **Pod mode** each leg is paired with a person who signs the gates. In **Autonomous mode** (planned) the agents sign and cross-check each other, and a human sponsor stays on the loop. The rules that matter are enforced by scripts, hooks and CI, not left to memory.
 
 Tripod ships as two Claude Code plugins, gate scripts, document templates and a CI workflow, and installs into new or existing repositories on any stack.
 
@@ -13,12 +13,13 @@ Tripod ships as two Claude Code plugins, gate scripts, document templates and a 
 ## Why Tripod
 
 - **Agents write faster than people can review.** The bottleneck in AI-assisted delivery is verification, not generation. Tripod puts the review where it matters: four gates, each with an owner and a cross-check.
-- **Small teams can cover every role.** A SuperBiz (product, analysis, design) and a SuperDev (architecture, build, test, release, operations) are each a person working with their own agent, which drafts that role's work.
+- **Agents can cover every role.** The SuperBiz agent covers product, analysis and design. The SuperDev agent covers architecture, build, test, release and operations. The SuperCEO agent covers priorities. People decide how much of the signing they keep.
 - **Rules hold because the system enforces them.** Stale approvals, risk tiers, locked tests, merge rules and kill switches are checked by code. Every decision leaves evidence in the repository.
 
 ## Contents
 
 - [Core concepts](#core-concepts)
+- [Two modes](#two-modes)
 - [How it works](#how-it-works)
 - [Team setups](#team-setups)
 - [Getting started](#getting-started)
@@ -31,23 +32,43 @@ Tripod ships as two Claude Code plugins, gate scripts, document templates and a 
 
 ## Core concepts
 
-Each of the three legs is a **person and an agent working as one**. The agent drafts, researches, builds and checks. The person decides, and only the person signs a gate.
+The three legs are **agents**. Each one covers a set of roles and owns part of the loop.
 
-| Leg | Covers | The agent | The person decides | Status |
+| Leg | Covers | The agent | Owns | Status |
 |---|---|---|---|---|
-| **SuperBiz** | PO, PM, BA, Designer | `superbiz` plugin: intent, UX brief, spec, acceptance, release notes | What to build and why | Available. One or more people |
-| **SuperDev** | SA, Dev, QA, Deploy, Maintenance | `superdev` plugin: plan, tests, build, review, merge, release, incidents | How to build it, and whether it is safe | Available. One or more people |
-| **SuperCEO** | Direction, priorities, high-risk approvals across a tribe | Planned `superceo` agent: tribe-wide priorities, metrics and escalation briefs | Whether the risk is worth taking | Planned. The `escalation` role in `pod.yml` stands in for the person today |
+| **SuperBiz** | PO, PM, BA, Designer | `superbiz` plugin: intent, UX brief, spec, acceptance, release notes | Gates 1 and 2: what to build and why | Available |
+| **SuperDev** | SA, Dev, QA, Deploy, Maintenance | `superdev` plugin: plan, tests, build, review, merge, release, incidents | Gates 3 and 4: how, and whether it is safe | Available |
+| **SuperCEO** | Direction, priorities, high-risk approvals across a tribe | `superceo` agent: priorities, metrics, escalation briefs | High-risk escalation | Planned. The `escalation` role in `pod.yml` (a person) stands in today |
 
-- A **pod** is one small team: one or more SuperBiz and one or more SuperDev, each with their agent.
+- A **pod** is one small team built from the legs: one or more SuperBiz and one or more SuperDev.
 - A **tribe** is a group of pods that share the kit and an escalation.
 - A **change** is one unit of work. It lives in `docs/changes/NNN-slug/`, with every artifact and the signatures in `gates.log`.
+
+## Two modes
+
+The loop and the four gates are the same in both modes. What changes is who signs them, and where the person stands.
+
+![Pod mode: each leg is a person with an agent and people sign. Autonomous mode: all three legs are agents on different models that sign and cross-check each other, with a human sponsor on the loop](docs/images/modes.svg)
+
+| | Pod mode | Autonomous mode |
+|---|---|---|
+| Status | **Available** | **Planned** (see [roadmap](#status-and-roadmap)) |
+| The legs | Agents, each paired with a person | Agents only, each on a different model |
+| Who signs a gate | The person in the leg (HITL at every gate) | The owner leg's agent; another leg's agent cross-checks |
+| Where the person is | In every leg | One **sponsor**, on the loop (HOTL) |
+| What the person controls | Every gate | Goals, budget, risk ceiling, kill switch, daily digest, revert |
+| High risk | Escalation signs | Always goes to a person |
+
+**Autonomous mode keeps one person on purpose.**
+- Someone must be accountable when a change goes wrong.
+- Someone must be able to stop the loop.
+- The sponsor does not approve each gate. The sponsor sets the limits the agents work inside, and reads the evidence they leave.
 
 ## How it works
 
 ### Four gates
 
-Every change passes four gates. Each gate has an owner who approves and a second person who cross-checks, so the author and the approver are never the same person.
+Every change passes four gates. Each gate has an owner who approves and a cross-check by the other leg, so the author and the approver are never the same. In Pod mode both signatures come from people.
 
 | Gate | Artifact | Owner approves | Cross-check |
 |---|---|---|---|
@@ -264,7 +285,7 @@ app/, tests/, logs/      Sample order-status service, the kit's tests and a synt
 
 ## Safety model
 
-- **The agent half of a leg never signs.** Only the person in each leg runs `scripts/gate.sh` and `scripts/mark-revert.sh`.
+- **In Pod mode, only people sign.** Only the person in each leg runs `scripts/gate.sh` and `scripts/mark-revert.sh`. Autonomous mode will record agent signatures as `role=agent`, together with the model that signed. The cross-check must come from a different model, and high risk stays with a person.
 - **Agents merge only low-risk work.** They can merge only after `scripts/auto-merge-check.sh` returns `ALLOW`. Auto-merge starts off and is earned by a track record (`docs/pod-charter.md`).
 - **The author never approves their own pull request.** If the agent opens pull requests with a SuperDev's account, another SuperDev or SuperBiz approves (`docs/merge-by-risk.md`).
 - **Local state stays local.** `.pod/` holds per-machine state (test lock, kill switch) and is never committed.
@@ -285,10 +306,15 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
 
 **Covered by tests, not yet run with real teams:** pods with several SuperDevs (peer review at gate 4) and revert handling on GitHub.
 
-**Planned:**
-- an agent activity log for HOTL
-- cost per change in `metrics.sh`
-- SuperCEO as the third leg: a `superceo` agent for tribe-wide priorities, metrics and escalation briefs, paired with the person who signs high-risk gates
+**Planned: Autonomous mode, built with Tripod itself, one change at a time:**
+1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost.
+2. Agent identities and agent signatures (`role=agent`, with the model), with cross-checks on a different model.
+3. Sponsor controls:
+   - a budget per change and per day
+   - a risk ceiling
+   - automatic stops on cost spikes, reverts or repeated CI failures
+   - a daily digest
+4. A loop driver that runs the legs on a schedule, and the `superceo` agent for priorities and high-risk briefs.
 
 ## Contributing
 

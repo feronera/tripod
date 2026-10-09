@@ -4,7 +4,7 @@
 <rect x="1" y="1" width="958" height="338" rx="16" fill="#FFFFFF" stroke="#DDE6F6"/>
 <g font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
 <text x="32" y="38" font-size="18" font-weight="700" fill="#345589">One change through the loop</text>
-<text x="32" y="60" font-size="13" fill="#5A6382">Agents draft every artifact. People sign the four gates. Each gate has an owner and a cross-check by the other role.</text>
+<text x="32" y="60" font-size="13" fill="#5A6382">Agents draft every artifact. Each gate has an owner and a cross-check by the other leg: people in Pod mode, agents in Autonomous mode.</text>
 <rect x="29.0" y="84" width="90" height="20" rx="10" fill="#EAF2FF"/><text x="74.0" y="98" font-size="11" font-weight="600" fill="#345589" text-anchor="middle">SuperBiz</text>
 <rect x="21.0" y="114" width="106" height="60" rx="10" fill="#FFFFFF" stroke="#345589" stroke-width="1.5"/>
 <text x="74.0" y="139" font-size="14" font-weight="700" fill="#1A1A3E" text-anchor="middle">Intent</text>
@@ -63,5 +63,5 @@
 <rect x="300" y="261" width="360" height="22" rx="11" fill="#FFFFFF"/>
 <text x="480" y="276" font-size="12" font-weight="600" fill="#5B6FF5" text-anchor="middle">incident in the log → next intent (/superdev:incident)</text>
 <rect x="35" y="303" width="12" height="12" transform="rotate(45 41 309)" fill="#BA9645"/>
-<text x="56" y="313" font-size="12" fill="#5A6382">Gate: the owner signs, the other role cross-checks (scripts/gate.sh). Risk: high adds an escalation signature at gates 2 and 4.</text>
+<text x="56" y="313" font-size="12" fill="#5A6382">Gate: the owner signs, the other leg cross-checks (scripts/gate.sh). Risk: high adds an escalation signature at gates 2 and 4, always a person.</text>
 </g></svg>
