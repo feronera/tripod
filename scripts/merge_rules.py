@@ -359,6 +359,9 @@ def cmd_pr_check(args):
         author, approvals, base = github_pr_context()
     cfg = lib.read_pod_yml(ROOT)
     risk, reasons = pr_reasons(author, approvals, base, cfg)
+    if lib.bootstrap_on(cfg) and risk == "high":
+        print("note: bootstrap mode, so one approval may count for SuperBiz and escalation when the same "
+              "person holds both (docs/scaling.md)")
     if reasons:
         print("PR-CHECK FAIL (effective Risk: %s)" % risk)
         for r in reasons:
