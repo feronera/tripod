@@ -73,6 +73,7 @@ def read_pod_yml(root=ROOT, missing_ok=False):
         except ValueError:
             cfg[key] = default
     cfg["auto_merge"] = cfg.get("auto_merge", "off").lower() or "off"
+    cfg["bootstrap"] = cfg.get("bootstrap", "off").lower() or "off"
     for key, default in STACK_DEFAULTS.items():
         cfg[key] = cfg.get(key, "") or default
     cfg["tests_dir"] = cfg["tests_dir"].strip("/") or STACK_DEFAULTS["tests_dir"]
@@ -108,19 +109,42 @@ def roles_of_email(cfg, email):
     return [r for r in ("superbiz", "superdev", "escalation") if email and email in role_emails(cfg, r)]
 
 
+def bootstrap_on(cfg):
+    """Bootstrap mode: a pod with fewer people than roles lets escalation share a person with one other
+    role. SuperBiz and SuperDev must still be different people (docs/scaling.md)."""
+    return cfg.get("bootstrap", "off") in ("on", "true", "yes")
+
+
+def acting_roles(cfg, email):
+    """roles_of_email without the escalation seat that bootstrap mode lets a person hold on the side."""
+    roles = roles_of_email(cfg, email)
+    if bootstrap_on(cfg) and len(roles) == 2 and "escalation" in roles:
+        return [r for r in roles if r != "escalation"]
+    return roles
+
+
+BOOTSTRAP_WARNING = ("bootstrap: on. %s also holds escalation, so Risk: high changes get no independent "
+                     "escalation check. Turn bootstrap off when a third person joins (docs/scaling.md).")
+BOOTSTRAP_UNUSED = "bootstrap: on, but nobody holds two roles. Set bootstrap: off"
+
 SCALING_WARNING = ("SuperBiz owns or cross-checks every gate; with more than 3 SuperDevs per SuperBiz, "
                    "changes will queue at SuperBiz. Add a SuperBiz or split into two pods (docs/scaling.md).")
 
 
 def pod_config_problems(cfg):
     """(errors, warnings) for the people in pod.yml."""
-    errors, warnings = [], []
+    errors, warnings, shared = [], [], set()
     for field in ("email", "github"):
         seen = {}
         for role in ("superbiz", "superdev", "escalation"):
             for value in {m[field] for m in members(cfg, role) if m[field]}:
                 seen.setdefault(value, []).append(LABEL[role])
         for value, roles in sorted(seen.items()):
+            if bootstrap_on(cfg) and len(roles) == 2 and "escalation" in roles:
+                shared.add(value)
+                if field == "email":
+                    warnings.append(BOOTSTRAP_WARNING % value)
+                continue
             if len(roles) > 1:
                 errors.append("pod.yml: %s %s appears in more than one role (%s). One person holds one role"
                               % ("email" if field == "email" else "GitHub login", value, ", ".join(roles)))
@@ -133,6 +157,8 @@ def pod_config_problems(cfg):
                 errors.append("pod.yml: the %s lists have different lengths (%s). Give one value per person, "
                               "in the same order" % (LABEL[role], ", ".join(
                                   "%s_%s: %d" % (role, f, n) for f, n in counts.items())))
+    if bootstrap_on(cfg) and not shared:
+        warnings.append(BOOTSTRAP_UNUSED)
     bizs, devs = len(role_emails(cfg, "superbiz")), len(role_emails(cfg, "superdev"))
     if bizs and devs > 3 * bizs:
         warnings.append(SCALING_WARNING)
@@ -596,7 +622,7 @@ def git_email(root=ROOT):
 def role_for(cfg, gate, email):
     """Return 'owner', 'cross', 'escalation' or None. Any member of a role acts for that role."""
     owner, cross = OWNERS[gate]
-    roles = roles_of_email(cfg, email)
+    roles = acting_roles(cfg, email)
     if len(roles) != 1:
         return None  # unknown, or misconfigured pod: one person cannot hold two roles
     return {owner: "owner", cross: "cross", "escalation": "escalation"}[roles[0]]
@@ -827,7 +853,7 @@ def cmd_gate(args):
     email = git_email()
     role = role_for(cfg, gate, email)
     if role is None:
-        held = roles_of_email(cfg, email)
+        held = acting_roles(cfg, email)
         if len(held) > 1:
             print("Refused: git email '%s' is listed in more than one role in pod.yml (%s). "
                   "One person holds one role" % (email, ", ".join(LABEL[r] for r in held)), file=sys.stderr)
@@ -875,10 +901,19 @@ def cmd_gate(args):
     if log_ignored(change_dir):
         print("Refused: " + IGNORED_HINT, file=sys.stderr)
         return 1
-    line = "gate=%d role=%s by=%s at=%s blob=%s\n" % (gate, role, email, now_iso(), blob)
+    lines = ["gate=%d role=%s by=%s at=%s blob=%s\n" % (gate, role, email, now_iso(), blob)]
+    # Bootstrap: the person who also holds escalation signs that seat in the same step, marked as such.
+    also_escalation = (role != "escalation" and bootstrap_on(cfg) and "escalation" in required_roles(gate, risk)
+                       and "escalation" in roles_of_email(cfg, email))
+    if also_escalation:
+        lines.append("gate=%d role=escalation by=%s at=%s blob=%s note=bootstrap\n"
+                     % (gate, email, now_iso(), blob))
     with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
-        fh.write(line)
+        fh.writelines(lines)
     print("Recorded: gate %d role=%s by=%s" % (gate, role, email))
+    if also_escalation:
+        print("Recorded: gate %d role=escalation by=%s (bootstrap: the same person holds escalation)"
+              % (gate, email))
     if gate == 4 and not check_gate(change_dir, 4, cfg):
         print("gate 4 is merge-ready (Risk: %s)" % risk)
     missing = check_gate(change_dir, gate, cfg, release=True)

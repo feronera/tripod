@@ -20,10 +20,30 @@ escalation_github: lee-gh
 
 - A single value works exactly as before.
 - Any member of a role acts for that role. Any SuperDev can sign gates 3 and 4 as owner and gates 1 and 2 as cross; any SuperBiz likewise.
-- One person holds one role. `scripts/gate-check.sh --all` (and so `make check` and CI) fails when an email or GitHub login appears in two roles, or when a role's lists have different lengths. A role's `_github` list may be left out.
+- One person holds one role. `scripts/gate-check.sh --all` (and so `make check` and CI) fails when an email or GitHub login appears in two roles, or when a role's lists have different lengths. A role's `_github` list may be left out. The one exception is bootstrap mode, below.
 - `.github/CODEOWNERS` lists every SuperDev and escalation login for each risk path. Run `scripts/sync-codeowners.sh` after changing `pod.yml`.
 
 ![Pod of three: one SuperBiz and two SuperDevs build parallel parts; the gate 4 owner is the SuperDev who did not write the code](images/setup-3.svg)
+
+## Starting with fewer people than roles (bootstrap)
+
+A pod needs three seats (SuperBiz, SuperDev, escalation) but sometimes starts with two people. `bootstrap: on` in `pod.yml` covers that period:
+
+```yaml
+bootstrap: on
+superbiz_email: bee@pod.example
+superbiz_github: bee-gh
+superdev_email: dan@pod.example
+superdev_github: dan-gh
+escalation_email: bee@pod.example
+escalation_github: bee-gh
+```
+
+- Escalation may share a person with one other role. SuperBiz and SuperDev must still be different people: the cross-check between them is what bootstrap keeps.
+- When that person signs a gate that needs escalation (gates 2 and 4 at Risk: high), `scripts/gate.sh` records the escalation signature in the same step, marked `note=bootstrap` in gates.log.
+- In CI, one GitHub approval from that person counts for both SuperBiz and escalation, and `pr-check` prints a note saying so.
+- `gate-check --all` prints a warning while bootstrap is on, naming the person who holds two seats, and another if bootstrap is on but nobody does.
+- Bootstrap is a starting state, not a setting to keep. Turn it off when a third person joins (or, later, when agent seats arrive).
 
 ## Peer review at gate 4
 
