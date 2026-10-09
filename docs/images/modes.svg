@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 470" width="960" height="470" role="img" aria-label="Two modes. Pod mode, available: each leg is a person with an agent, and people sign the gates. Autonomous mode, planned: all three legs are agents on different models that sign and cross-check each other, and a human sponsor watches on the loop with budget, risk ceiling and a kill switch">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5A6382"/></marker><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5B6FF5"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#BA9645"/></marker></defs>
+<rect x="1" y="1" width="958" height="468" rx="16" fill="#FFFFFF" stroke="#DDE6F6"/>
+<g font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<text x="32" y="38" font-size="18" font-weight="700" fill="#345589">Two modes: who signs the gates</text>
+<text x="32" y="60" font-size="13" fill="#5A6382">The loop and the four gates are the same. What changes is who signs them, and where the person stands.</text>
+<rect x="30" y="80" width="430" height="300" rx="12" fill="#FAFBFF" stroke="#345589" stroke-width="1.5"/>
+<text x="50" y="106" font-size="16" font-weight="700" fill="#345589" text-anchor="start">Pod mode</text>
+<rect x="150" y="92" width="73" height="20" rx="10" fill="#E3F4EA"/>
+<text x="186.72" y="106" font-size="11" font-weight="600" fill="#1F8E5A" text-anchor="middle">available</text>
+<text x="50" y="128" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">Each leg is a person with an agent. People sign. (HITL)</text>
+<rect x="50" y="146" width="390" height="58" rx="12" fill="#FFFFFF" stroke="#DDE6F6" stroke-width="1"/>
+<circle cx="76" cy="169" r="7" fill="#345589"/><path d="M64 187 Q64 177 76 177 Q88 177 88 187 Z" fill="#345589"/>
+<text x="98" y="171" font-size="13.5" font-weight="700" fill="#345589" text-anchor="start">SuperBiz</text>
+<text x="98" y="189" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">what and why</text>
+<rect x="300" y="165" width="100" height="20" rx="10" fill="#EAF2FF"/>
+<text x="350.16" y="179" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">+ agent drafts</text>
+<rect x="50" y="216" width="390" height="58" rx="12" fill="#FFFFFF" stroke="#DDE6F6" stroke-width="1"/>
+<circle cx="76" cy="239" r="7" fill="#345589"/><path d="M64 257 Q64 247 76 247 Q88 247 88 257 Z" fill="#345589"/>
+<text x="98" y="241" font-size="13.5" font-weight="700" fill="#345589" text-anchor="start">SuperDev</text>
+<text x="98" y="259" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">how, and is it safe</text>
+<rect x="300" y="235" width="100" height="20" rx="10" fill="#EAF2FF"/>
+<text x="350.16" y="249" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">+ agent drafts</text>
+<rect x="50" y="286" width="390" height="58" rx="12" fill="#FFFFFF" stroke="#DDE6F6" stroke-width="1"/>
+<circle cx="76" cy="309" r="7" fill="#345589"/><path d="M64 327 Q64 317 76 317 Q88 317 88 327 Z" fill="#345589"/>
+<text x="98" y="311" font-size="13.5" font-weight="700" fill="#345589" text-anchor="start">SuperCEO</text>
+<text x="98" y="329" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">high-risk approvals (escalation today)</text>
+<rect x="300" y="305" width="100" height="20" rx="10" fill="#EAF2FF"/>
+<text x="350.16" y="319" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">+ agent drafts</text>
+<text x="50" y="368" font-size="11.5" font-weight="600" fill="#1A1A3E" text-anchor="start">Signature: a person (git identity + GitHub approval)</text>
+<rect x="500" y="80" width="430" height="300" rx="12" fill="#FFFFFF" stroke="#5B6FF5" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="520" y="106" font-size="16" font-weight="700" fill="#5B6FF5" text-anchor="start">Autonomous mode</text>
+<rect x="680" y="92" width="61" height="20" rx="10" fill="#F6EEDF"/>
+<text x="710.56" y="106" font-size="11" font-weight="600" fill="#8A6F2F" text-anchor="middle">planned</text>
+<text x="520" y="128" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">All three legs are agents. Agents sign. A person is on the loop. (HOTL)</text>
+<rect x="520" y="146" width="390" height="58" rx="12" fill="#EAF2FF" stroke="#5B6FF5" stroke-width="1"/>
+<rect x="536" y="161" width="28" height="28" rx="7" fill="#5B6FF5"/>
+<text x="550" y="180" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">AI</text>
+<text x="576" y="171" font-size="13.5" font-weight="700" fill="#5B6FF5" text-anchor="start">SuperBiz agent</text>
+<text x="576" y="189" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">owns gates 1-2</text>
+<rect x="830" y="165" width="59" height="20" rx="10" fill="#FFFFFF"/>
+<text x="859.58" y="179" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">model A</text>
+<rect x="520" y="216" width="390" height="58" rx="12" fill="#EAF2FF" stroke="#5B6FF5" stroke-width="1"/>
+<rect x="536" y="231" width="28" height="28" rx="7" fill="#5B6FF5"/>
+<text x="550" y="250" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">AI</text>
+<text x="576" y="241" font-size="13.5" font-weight="700" fill="#5B6FF5" text-anchor="start">SuperDev agent</text>
+<text x="576" y="259" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">owns gates 3-4</text>
+<rect x="830" y="235" width="59" height="20" rx="10" fill="#FFFFFF"/>
+<text x="859.58" y="249" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">model B</text>
+<rect x="520" y="286" width="390" height="58" rx="12" fill="#EAF2FF" stroke="#5B6FF5" stroke-width="1"/>
+<rect x="536" y="301" width="28" height="28" rx="7" fill="#5B6FF5"/>
+<text x="550" y="320" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">AI</text>
+<text x="576" y="311" font-size="13.5" font-weight="700" fill="#5B6FF5" text-anchor="start">SuperCEO agent</text>
+<text x="576" y="329" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">priorities, high-risk briefs</text>
+<rect x="830" y="305" width="59" height="20" rx="10" fill="#FFFFFF"/>
+<text x="859.58" y="319" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">model C</text>
+<text x="520" y="368" font-size="11.5" font-weight="600" fill="#1A1A3E" text-anchor="start">Cross-check: another leg, on a different model</text>
+<rect x="500" y="398" width="430" height="58" rx="12" fill="#F6EEDF" stroke="#BA9645" stroke-width="1.5"/>
+<circle cx="526" cy="422" r="7" fill="#8A6F2F"/><path d="M514 440 Q514 430 526 430 Q538 430 538 440 Z" fill="#8A6F2F"/>
+<text x="548" y="422" font-size="13" font-weight="700" fill="#8A6F2F" text-anchor="start">Sponsor (a person, on the loop)</text>
+<text x="548" y="440" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">goals · budget · risk ceiling · kill switch · daily digest · revert</text>
+<path d="M715 398 L715 382" fill="none" stroke="#BA9645" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#g)"/>
+<text x="30" y="420" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">High risk always goes to a person,</text>
+<text x="30" y="438" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">in both modes.</text>
+</g></svg>
