@@ -7,4 +7,6 @@ __pycache__/
 !logs/sample-app.log
 # approvals must be committed even when a global gitignore ignores *.log
 !docs/changes/*/gates.log
+# the agent activity log is committed with the change too
+!docs/changes/*/activity.log
 !examples/**/gates.log

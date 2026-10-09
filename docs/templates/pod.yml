@@ -25,6 +25,8 @@ escalation_github: lead-example
 # Fewer people than roles? bootstrap: on lets escalation share a person with SuperBiz or SuperDev
 # (never SuperBiz with SuperDev). Turn it off when a third person joins: see docs/scaling.md
 bootstrap: off
+# Agent activity and cost per change, committed as docs/changes/*/activity.log: see docs/activity-log.md
+activity_log: on
 # Merge by risk: see docs/merge-by-risk.md
 auto_merge: off            # off | low
 auto_merge_max_lines: 200

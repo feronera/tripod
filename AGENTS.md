@@ -38,7 +38,8 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 
 ## Where the work lives
 - Each change's artifacts are in `docs/changes/NNN-slug/`
-  (intent.md, ux-brief.md, spec.md, plan.md, review.md, acceptance.md, runbook.md, gates.log).
+  (intent.md, ux-brief.md, spec.md, plan.md, review.md, acceptance.md, runbook.md, gates.log, activity.log).
+- The plugin hooks append to `activity.log` while you work on a `change/NNN-slug` branch. Commit it with each commit. It never holds prompts, output or command arguments (`docs/activity-log.md`).
 - Start a new change only with `scripts/new-change.sh <slug>`.
 - Templates are in `docs/templates/`.
 - Sensitive paths are listed in `docs/risk-paths`. A change that touches these paths is high risk.
@@ -54,4 +55,5 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 - `make check`: tests, strength, the CODEOWNERS check and `scripts/gate-check.sh --all` (CI runs this).
 - `scripts/auto-merge-check.sh <dir> [--base main] [--record]`: ALLOW or DENY for an automated merge.
 - `scripts/release-check.sh <dir>`: whether the change is ready to release to production.
-- `make metrics CHANGE=docs/changes/NNN-slug`: time from intent to each gate.
+- `make metrics CHANGE=docs/changes/NNN-slug`: time from intent to each gate, agent time and agent cost.
+- `scripts/activity.sh <dir>`: what the agents did in a change and what it cost.
