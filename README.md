@@ -204,6 +204,10 @@ app/, tests/, logs/      Sample order-status service, its tests and a synthetic 
 - The `.pod/` folder holds per-machine state and is never committed.
 - All data in `app/` and `logs/` is synthetic.
 
+## License
+
+MIT. See [LICENSE](LICENSE).
+
 ## Credits
 
 Several engineering methods are adapted from [pstack](https://github.com/cursor/plugins/tree/main/pstack) by Lauren Tan, used under the MIT License (Copyright (c) 2026 Lauren Tan). The adapted ideas are listed in [docs/credits.md](docs/credits.md).
