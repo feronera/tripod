@@ -181,6 +181,41 @@ class PlanCheckTests(V2Repo):
         self.assertEqual(res.returncode, 0, res.stdout)
         self.assertIn("OK: each part's tests import only its own files", res.stdout)
 
+    def built_parts(self, b_code):
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/b.py\ntests: tests/test_b.py\n")
+        c = self.plan_change(plan)
+        self.write("app/__init__.py", "")
+        self.write("tests/__init__.py", "")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "base")
+        git(self.root, "branch", "-M", "main")
+        git(self.root, "checkout", "-q", "-b", "change/x")
+        self.write("app/a.py", "def a():\n    return 1\n")
+        self.write("app/b.py", b_code)
+        self.write("tests/test_a.py", "import unittest\nfrom app.a import a\n\n\nclass T(unittest.TestCase):\n"
+                   "    def test_a(self):\n        self.assertEqual(a(), 1)\n")
+        self.write("tests/test_b.py", "import unittest\nfrom app.b import b\n\n\nclass T(unittest.TestCase):\n"
+                   "    def test_b(self):\n        self.assertEqual(b(), 2)\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "build")
+        return c
+
+    def test_parallel_run_finds_code_dependency(self):
+        c = self.built_parts("from app.a import a\n\n\ndef b():\n    return a() + 1\n")
+        res = self.sh("parallel-check.sh", c, "--run", "--base", "main")
+        self.assertEqual(res.returncode, 1, res.stdout + res.stderr)
+        self.assertIn("PASS A:", res.stdout)
+        self.assertIn("FAIL B:", res.stdout)
+        self.assertIn("B needs code from another part", res.stdout)
+        self.assertEqual(git(self.root, "worktree", "list").count("\n"), 0)
+
+    def test_parallel_run_passes_independent_parts(self):
+        c = self.built_parts("def b():\n    return 2\n")
+        res = self.sh("parallel-check.sh", c, "--run", "--base", "main")
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertIn("OK: every part's tests pass without the other parts' code", res.stdout)
+
     def test_parallel_check_needs_tests_written(self):
         plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_a.py\n"
                 "### B\nfiles: app/b.py\ntests: tests/test_b.py\n")

@@ -1,6 +1,6 @@
 {
   "name": "superdev",
-  "version": "0.5.5",
+  "version": "0.5.6",
   "description": "SuperDev seat of the agentic pod (SA, Dev, QA, Deploy, maintenance): plan, build, test-first, review with a second opinion, bug-fix, arena, merge by risk, release and incident skills, with test-lock, kill-switch and gate-guard hooks.",
   "author": { "name": "HarmonyX" }
 }

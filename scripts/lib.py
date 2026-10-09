@@ -364,9 +364,78 @@ def python_imports(path):
     return names
 
 
+def git_out(args, cwd):
+    res = subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True, check=False)
+    return res.returncode, res.stdout.strip(), res.stderr.strip()
+
+
+def run_parallel_isolated(change_dir, parts, base):
+    """After the build: run each part's tests in a throwaway worktree where every other part's files
+    are put back to how they are at `base`. A part that fails there depends on another part."""
+    import tempfile
+    rc, merge_base, err = git_out(["merge-base", "HEAD", base], ROOT)
+    if rc != 0:
+        print("cannot find the merge base of HEAD and %s: %s" % (base, err), file=sys.stderr)
+        return 2
+    results, notes = {}, []
+    for name, (_, tests) in parts.items():
+        py = [t for t in tests if t.endswith(".py")]
+        notes.extend("%s: %s is not Python, so it was not run" % (name, t) for t in tests if not t.endswith(".py"))
+        if not py:
+            continue
+        tmp = tempfile.mkdtemp(prefix="pod-parallel-")
+        wt = os.path.join(tmp, "wt")
+        rc, _, err = git_out(["worktree", "add", "--detach", "-q", wt, "HEAD"], ROOT)
+        if rc != 0:
+            print("cannot create a worktree: %s" % err, file=sys.stderr)
+            return 2
+        try:
+            for other, (files, _) in parts.items():
+                if other == name:
+                    continue
+                for f in files:
+                    in_base = git_out(["cat-file", "-e", "%s:%s" % (merge_base, f)], wt)[0] == 0
+                    if in_base:
+                        git_out(["checkout", merge_base, "--", f], wt)
+                    elif os.path.exists(os.path.join(wt, f)):
+                        os.remove(os.path.join(wt, f))
+            modules = [t[:-3].replace("/", ".") for t in py]
+            res = subprocess.run([sys.executable, "-m", "unittest"] + modules, cwd=wt,
+                                 capture_output=True, text=True, check=False)
+            summary = [l for l in res.stderr.splitlines() if l.startswith(("Ran ", "OK", "FAILED"))]
+            results[name] = (res.returncode == 0, " ".join(summary[-2:]))
+        finally:
+            git_out(["worktree", "remove", "--force", wt], ROOT)
+            shutil.rmtree(tmp, ignore_errors=True)
+    for n in notes:
+        print("note: " + n)
+    failed = [n for n, (ok, _) in results.items() if not ok]
+    for name, (ok, summary) in results.items():
+        print("%s %s: tests without the other parts' code: %s" % ("PASS" if ok else "FAIL", name, summary))
+    if failed:
+        print("The parts were not independent: %s needs code from another part. Merge the part it needs first, "
+              "and next time build that interface first as a Blocking first step." % ", ".join(failed))
+        return 1
+    print("OK: every part's tests pass without the other parts' code")
+    return 0
+
+
 def cmd_parallel_check(args):
+    run, base = False, "main"
+    rest = []
+    i = 0
+    while i < len(args):
+        if args[i] == "--run":
+            run = True
+        elif args[i] == "--base" and i + 1 < len(args):
+            base = args[i + 1]
+            i += 1
+        else:
+            rest.append(args[i])
+        i += 1
+    args = rest
     if len(args) != 1:
-        print("usage: scripts/parallel-check.sh <change-dir>", file=sys.stderr)
+        print("usage: scripts/parallel-check.sh <change-dir> [--run [--base <ref>]]", file=sys.stderr)
         return 2
     change_dir = os.path.abspath(args[0])
     plan = os.path.join(change_dir, "plan.md")
@@ -408,6 +477,8 @@ def cmd_parallel_check(args):
             print("  - " + p)
         return 1
     print("OK: each part's tests import only its own files (%s)" % ", ".join(parts))
+    if run:
+        return run_parallel_isolated(change_dir, parts, base)
     return 0
 
 
