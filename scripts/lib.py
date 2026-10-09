@@ -60,9 +60,13 @@ def read_pod_yml(root=ROOT, missing_ok=False):
             continue
         key, value = line.split(":", 1)
         cfg[key.strip()] = value.strip().strip('"').strip("'")
+    # Role keys may hold comma-separated lists, aligned by position (see members()).
     for key in ("superbiz_email", "superdev_email", "escalation_email",
                 "superbiz_github", "superdev_github", "escalation_github"):
-        cfg[key] = cfg.get(key, "").lower().lstrip("@")
+        cfg[key] = ", ".join(v.lower().lstrip("@") for v in split_list(cfg.get(key, "")))
+    for key in ("superbiz_name", "superdev_name", "escalation_name"):
+        cfg[key] = ", ".join(split_list(cfg.get(key, "")))
+    cfg["base_branch"] = cfg.get("base_branch", "") or "main"
     for key, default in INT_KEYS.items():
         try:
             cfg[key] = int(cfg.get(key, "") or default)
@@ -74,6 +78,65 @@ def read_pod_yml(root=ROOT, missing_ok=False):
     cfg["tests_dir"] = cfg["tests_dir"].strip("/") or STACK_DEFAULTS["tests_dir"]
     cfg["strength"] = cfg["strength"].lower()
     return cfg
+
+
+def split_list(value):
+    """Comma-separated pod.yml value as a list of non-empty, stripped items."""
+    return [v.strip() for v in (value or "").split(",") if v.strip()]
+
+
+def members(cfg, role):
+    """People in a role ("superbiz", "superdev" or "escalation") as a list of
+    {name, email, github}. The name, email and github lists are aligned by position;
+    a missing position is an empty string (pod_config_problems reports the mismatch)."""
+    lists = {f: split_list(cfg.get("%s_%s" % (role, f), "")) for f in ("name", "email", "github")}
+    count = max(len(v) for v in lists.values())
+    return [{f: (lists[f][i] if i < len(lists[f]) else "") for f in lists} for i in range(count)]
+
+
+def role_emails(cfg, role):
+    return [m["email"] for m in members(cfg, role) if m["email"]]
+
+
+def role_logins(cfg, role):
+    return [m["github"] for m in members(cfg, role) if m["github"]]
+
+
+def roles_of_email(cfg, email):
+    """Every role whose email list contains `email` (case-insensitive)."""
+    email = (email or "").lower()
+    return [r for r in ("superbiz", "superdev", "escalation") if email and email in role_emails(cfg, r)]
+
+
+SCALING_WARNING = ("SuperBiz owns or cross-checks every gate; with more than 3 SuperDevs per SuperBiz, "
+                   "changes will queue at SuperBiz. Add a SuperBiz or split into two pods (docs/scaling.md).")
+
+
+def pod_config_problems(cfg):
+    """(errors, warnings) for the people in pod.yml."""
+    errors, warnings = [], []
+    for field in ("email", "github"):
+        seen = {}
+        for role in ("superbiz", "superdev", "escalation"):
+            for value in {m[field] for m in members(cfg, role) if m[field]}:
+                seen.setdefault(value, []).append(LABEL[role])
+        for value, roles in sorted(seen.items()):
+            if len(roles) > 1:
+                errors.append("pod.yml: %s %s appears in more than one role (%s). One person holds one role"
+                              % ("email" if field == "email" else "GitHub login", value, ", ".join(roles)))
+    for role in ("superbiz", "superdev", "escalation"):
+        counts = {f: len(split_list(cfg.get("%s_%s" % (role, f), ""))) for f in ("name", "email", "github")}
+        size = max(counts.values())
+        if size > 1:
+            bad = [f for f, n in counts.items() if n != size and not (f == "github" and n == 0)]
+            if bad:
+                errors.append("pod.yml: the %s lists have different lengths (%s). Give one value per person, "
+                              "in the same order" % (LABEL[role], ", ".join(
+                                  "%s_%s: %d" % (role, f, n) for f, n in counts.items())))
+    bizs, devs = len(role_emails(cfg, "superbiz")), len(role_emails(cfg, "superdev"))
+    if bizs and devs > 3 * bizs:
+        warnings.append(SCALING_WARNING)
+    return errors, warnings
 
 
 def code_dirs(cfg):
@@ -227,8 +290,9 @@ def value_problem(value):
     return None
 
 
-def check_plan(path):
-    """Problems with the plan.md structure the checker relies on (empty = OK)."""
+def check_plan(path, cfg=None):
+    """Problems with the plan.md structure the checker relies on (empty = OK).
+    With cfg, a part's `owner:` must be a SuperDev in pod.yml."""
     with open(path, encoding="utf-8") as fh:
         sections = md_sections(fh.read())
     problems = []
@@ -259,12 +323,12 @@ def check_plan(path):
         problems.append(pre + "has no `## Parallel parts` heading "
                         "(if the work is not split, write `none: <reason>`)")
     else:
-        problems.extend(pre + p for p in check_parallel_parts(sections["Parallel parts"]))
+        problems.extend(pre + p for p in check_parallel_parts(sections["Parallel parts"], cfg))
     return problems
 
 
-def check_parallel_parts(lines):
-    parts, tests, order, none_reason = {}, {}, [], None
+def check_parallel_parts(lines, cfg=None):
+    parts, tests, owners, order, none_reason = {}, {}, {}, [], None
     current = None
     for raw in lines:
         line = raw.strip()
@@ -285,6 +349,9 @@ def check_parallel_parts(lines):
         if tm and current is not None:
             tests[current] = [f.strip().strip("`").strip() for f in tm.group(1).split(",")]
             tests[current] = [f for f in tests[current] if f]
+        om = re.match(r"^owner\s*:(.*)$", bare, re.I)
+        if om and current is not None:
+            owners[current] = om.group(1).strip().strip("`").strip().lower()
     if not order:
         if none_reason is None:
             return ["`## Parallel parts` needs a `none: <reason>` line "
@@ -325,6 +392,13 @@ def check_parallel_parts(lines):
     if shared:
         problems.append("Parallel parts share test files: %s (give each part its own test files)"
                         % ", ".join("%s (%s)" % (f, ", ".join(test_owner[f])) for f in shared))
+    if cfg is not None:
+        devs = role_emails(cfg, "superdev")
+        for name in order:
+            who = owners.get(name)
+            if who is not None and who not in devs:
+                problems.append("part `### %s` has owner: %s, who is not a SuperDev in pod.yml (superdev_email: %s)"
+                                % (name, who or "-", ", ".join(devs) or "-"))
     return problems
 
 
@@ -349,6 +423,28 @@ def parallel_parts(plan_path):
     return result
 
 
+def part_owners(plan_path):
+    """{part: owner email} for parts of plan.md that have an `owner:` line."""
+    with open(plan_path, encoding="utf-8") as fh:
+        lines = md_sections(fh.read()).get("Parallel parts", [])
+    owners, current = {}, None
+    for raw in lines:
+        line = raw.strip()
+        m = re.match(r"^###\s+(.+?)\s*$", line)
+        if m:
+            current = m.group(1)
+            continue
+        bare = line.lstrip("-* ").strip("`").strip()
+        om = re.match(r"^owner\s*:(.*)$", bare, re.I)
+        if om and current is not None and om.group(1).strip():
+            owners[current] = om.group(1).strip().strip("`").strip().lower()
+    return owners
+
+
+def part_label(name, owners):
+    return "%s (owner: %s)" % (name, owners[name]) if name in owners else name
+
+
 def python_imports(path):
     """Dotted module names a Python file imports, including `from pkg import name` as pkg.name."""
     import ast
@@ -369,10 +465,11 @@ def git_out(args, cwd):
     return res.returncode, res.stdout.strip(), res.stderr.strip()
 
 
-def run_parallel_isolated(change_dir, parts, base):
+def run_parallel_isolated(change_dir, parts, base, owners=None):
     """After the build: run each part's tests in a throwaway worktree where every other part's files
     are put back to how they are at `base`. A part that fails there depends on another part."""
     import tempfile
+    owners = owners or {}
     rc, merge_base, err = git_out(["merge-base", "HEAD", base], ROOT)
     if rc != 0:
         print("cannot find the merge base of HEAD and %s: %s" % (base, err), file=sys.stderr)
@@ -411,7 +508,8 @@ def run_parallel_isolated(change_dir, parts, base):
         print("note: " + n)
     failed = [n for n, (ok, _) in results.items() if not ok]
     for name, (ok, summary) in results.items():
-        print("%s %s: tests without the other parts' code: %s" % ("PASS" if ok else "FAIL", name, summary))
+        print("%s %s: tests without the other parts' code: %s"
+              % ("PASS" if ok else "FAIL", part_label(name, owners), summary))
     if failed:
         print("The parts were not independent: %s needs code from another part. Merge the part it needs first, "
               "and next time build that interface first as a Blocking first step." % ", ".join(failed))
@@ -443,6 +541,7 @@ def cmd_parallel_check(args):
         print("plan.md not found in %s" % args[0], file=sys.stderr)
         return 1
     parts = parallel_parts(plan)
+    owners = part_owners(plan)
     if not parts:
         print("OK: plan.md does not split the work into parallel parts")
         return 0
@@ -454,11 +553,12 @@ def cmd_parallel_check(args):
     problems, skipped = [], []
     for name, (_, tests) in parts.items():
         if not tests:
-            problems.append("part %s lists no tests" % name)
+            problems.append("part %s lists no tests" % part_label(name, owners))
         for t in tests:
             path = os.path.join(ROOT, t)
             if not os.path.exists(path):
-                problems.append("part %s: %s does not exist yet (write the tests before splitting)" % (name, t))
+                problems.append("part %s: %s does not exist yet (write the tests before splitting)"
+                                % (part_label(name, owners), t))
                 continue
             if not t.endswith(".py"):
                 skipped.append(t)
@@ -468,7 +568,8 @@ def cmd_parallel_check(args):
                 if other and other != name:
                     problems.append("part %s: %s imports %s, which part %s builds. These tests cannot pass "
                                     "until part %s is merged. Move the shared interface into a Blocking first "
-                                    "step, or test part %s through its own files only" % (name, t, mod, other, other, name))
+                                    "step, or test part %s through its own files only"
+                                    % (part_label(name, owners), t, mod, other, other, name))
     for t in skipped:
         print("note: %s is not Python, so its imports were not checked" % t)
     if problems:
@@ -476,9 +577,10 @@ def cmd_parallel_check(args):
         for p in problems:
             print("  - " + p)
         return 1
-    print("OK: each part's tests import only its own files (%s)" % ", ".join(parts))
+    print("OK: each part's tests import only its own files (%s)"
+          % ", ".join(part_label(n, owners) for n in parts))
     if run:
-        return run_parallel_isolated(change_dir, parts, base)
+        return run_parallel_isolated(change_dir, parts, base, owners)
     return 0
 
 
@@ -492,19 +594,12 @@ def git_email(root=ROOT):
 
 
 def role_for(cfg, gate, email):
-    """Return 'owner', 'cross', 'escalation' or None."""
+    """Return 'owner', 'cross', 'escalation' or None. Any member of a role acts for that role."""
     owner, cross = OWNERS[gate]
-    if not email:
-        return None
-    if cfg["superbiz_email"] == cfg["superdev_email"]:
-        return None  # misconfigured pod: one person cannot hold both seats
-    if email == cfg[owner + "_email"]:
-        return "owner"
-    if email == cfg[cross + "_email"]:
-        return "cross"
-    if email == cfg["escalation_email"]:
-        return "escalation"
-    return None
+    roles = roles_of_email(cfg, email)
+    if len(roles) != 1:
+        return None  # unknown, or misconfigured pod: one person cannot hold two roles
+    return {owner: "owner", cross: "cross", "escalation": "escalation"}[roles[0]]
 
 
 def required_roles(gate, risk):
@@ -534,10 +629,60 @@ def reverts(entries):
     return [e for e in entries if e.get("event") == "revert"]
 
 
-def expected_email(cfg, gate, role):
+def expected_emails(cfg, gate, role):
+    """Emails that may sign `role` at `gate` (every member of the required pod role)."""
     owner, cross = OWNERS[gate]
-    return {"owner": cfg[owner + "_email"], "cross": cfg[cross + "_email"],
-            "escalation": cfg["escalation_email"]}[role]
+    return role_emails(cfg, {"owner": owner, "cross": cross, "escalation": "escalation"}[role])
+
+
+def resolve_base(base, root=ROOT):
+    """origin/<base> when that ref exists, else <base>."""
+    if not base.startswith("origin/") and git_out(["rev-parse", "--verify", "--quiet",
+                                                   "origin/%s^{commit}" % base], root)[0] == 0:
+        return "origin/" + base
+    return base
+
+
+def code_authors(ref, root=ROOT):
+    """Author emails of the code commits in merge-base(HEAD, ref)..HEAD. A code commit touches at least
+    one file outside docs/. Returns (set of emails, None), or (None, note) when there is nothing to check."""
+    rc, merge_base, _ = git_out(["merge-base", "HEAD", ref], root)
+    if rc != 0 or not merge_base:
+        return None, "peer review skipped: no merge base between HEAD and %s" % ref
+    rc, out, err = git_out(["log", "--no-merges", "--format=%x00%ae", "--name-only",
+                            "%s..HEAD" % merge_base], root)
+    if rc != 0:
+        return None, "peer review skipped: cannot read the commits since %s (%s)" % (ref, err)
+    authors = set()
+    for chunk in out.split("\0")[1:]:
+        lines = [l.strip() for l in chunk.strip().splitlines() if l.strip()]
+        if lines and any(not f.startswith("docs/") for f in lines[1:]):
+            authors.add(lines[0].lower())
+    if not authors:
+        return None, "peer review skipped: no code commits (outside docs/) between %s and HEAD" % ref
+    return authors, None
+
+
+def peer_review_problem(cfg, email, root=ROOT):
+    """(refusal or None, note or None) for the gate 4 owner signature.
+    With 2 or more SuperDevs, the SuperDev who signs gate 4 as owner must not have written code in the change.
+    When every SuperDev wrote code, the rule falls back to the SuperBiz cross-check (as with one SuperDev)."""
+    devs = role_emails(cfg, "superdev")
+    if len(devs) < 2:
+        return None, None
+    ref = resolve_base(cfg["base_branch"], root)
+    authors, note = code_authors(ref, root)
+    if authors is None:
+        return None, note
+    free = [d for d in devs if d not in authors]
+    if email not in authors:
+        return None, None
+    if not free:
+        return None, ("peer review falls back: every SuperDev wrote code in this change (%s), so the SuperBiz "
+                      "cross-check is the second pair of eyes (docs/scaling.md)" % ", ".join(sorted(authors)))
+    return ("Refused: peer review. With 2 or more SuperDevs, the gate 4 owner must not have written code in "
+            "this change. Code commits since %s were authored by: %s. Ask another SuperDev to sign gate 4: %s"
+            % (ref, ", ".join(sorted(authors)), ", ".join(free))), None
 
 
 def role_label(gate, role):
@@ -564,7 +709,7 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     if current is None:
         problems.append("gate %d: %s not found (artifact missing)" % (gate, ARTIFACTS[gate]))
     elif gate == 3:
-        problems.extend(check_plan(artifact))
+        problems.extend(check_plan(artifact, cfg))
     indexed = [(i, e) for i, e in enumerate(entries) if e["gate"] == gate]
     latest = {}
     for i, e in indexed:
@@ -577,10 +722,10 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
                             % (gate, role_label(gate, role), extra, role))
             continue
         idx, e = latest[role]
-        want = expected_email(cfg, gate, role)
-        if e["by"] != want:
+        want = expected_emails(cfg, gate, role)
+        if e["by"] not in want:
             problems.append("gate %d: %s signed by %s, which does not match pod.yml (%s) (role mismatch)"
-                            % (gate, role, e["by"], want or "-"))
+                            % (gate, role, e["by"], ", ".join(want) or "-"))
         if current is not None and e.get("blob") != current:
             problems.append("gate %d: %s approval is stale because %s changed after approval"
                             % (gate, role, ARTIFACTS[gate]))
@@ -682,8 +827,13 @@ def cmd_gate(args):
     email = git_email()
     role = role_for(cfg, gate, email)
     if role is None:
-        print("Refused: git email '%s' may not sign gate %d according to pod.yml "
-              "(SuperBiz and SuperDev must use different emails)" % (email or "-", gate), file=sys.stderr)
+        held = roles_of_email(cfg, email)
+        if len(held) > 1:
+            print("Refused: git email '%s' is listed in more than one role in pod.yml (%s). "
+                  "One person holds one role" % (email, ", ".join(LABEL[r] for r in held)), file=sys.stderr)
+        else:
+            print("Refused: git email '%s' may not sign gate %d according to pod.yml "
+                  "(SuperBiz and SuperDev must use different emails)" % (email or "-", gate), file=sys.stderr)
         return 1
     risk = risk_of(change_dir)
     if role == "escalation" and role not in required_roles(gate, risk):
@@ -699,12 +849,19 @@ def cmd_gate(args):
                 print("  - " + p, file=sys.stderr)
             return 1
     if gate == 3:
-        plan_problems = check_plan(artifact)
+        plan_problems = check_plan(artifact, cfg)
         if plan_problems:
             print("Refused: plan.md does not follow the required structure, so gate 3 cannot be signed", file=sys.stderr)
             for p in plan_problems:
                 print("  - " + p, file=sys.stderr)
             return 1
+    if gate == 4 and role == "owner":
+        refusal, note = peer_review_problem(cfg, email)
+        if refusal:
+            print(refusal, file=sys.stderr)
+            return 1
+        if note:
+            print("note: " + note)
     blob = blob_hash(artifact)
     if role != "owner":
         owner_ok = any(e["gate"] == gate and e.get("role") == "owner" and e.get("blob") == blob
@@ -753,6 +910,15 @@ def cmd_check(args):
         print("usage: scripts/gate-check.sh <change-dir> [upto] | --all", file=sys.stderr)
         return 2
     failed = False
+    if args == ["--all"]:
+        errors, warnings = pod_config_problems(cfg)
+        for w in warnings:
+            print("Warning: " + w)
+        if errors:
+            failed = True
+            print("FAIL pod.yml")
+            for p in errors:
+                print("  - " + p)
     if not dirs:
         print("OK: no changes in docs/changes/ yet")
     for d in dirs:
@@ -923,8 +1089,8 @@ def cmd_mark_revert(args):
         return 1
     cfg = read_pod_yml()
     email = git_email()
-    members = {cfg["superbiz_email"], cfg["superdev_email"], cfg["escalation_email"]} - {""}
-    if email not in members:
+    people = {e for r in ("superbiz", "superdev", "escalation") for e in role_emails(cfg, r)}
+    if email not in people:
         print("Refused: git email '%s' is not a member in pod.yml" % (email or "-"), file=sys.stderr)
         return 1
     reason = " ".join(args[1].replace('"', "'").split())

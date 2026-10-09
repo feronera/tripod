@@ -1,14 +1,15 @@
 # Gates
 
-A pod has two people. Agents help draft the work of every role, but people make the decisions at 4 gates.
-The principle "the author and the approver are different people" is kept by cross-gating: every gate needs the owner's approval and a cross-check from the other person.
+A pod has two roles, SuperBiz and SuperDev, each held by one or more people. Agents help draft the work of every role, but people make the decisions at 4 gates.
+The principle "the author and the approver are different people" is kept by cross-gating: every gate needs the owner's approval and a cross-check from the other role.
+Any member of a role may sign for that role (see `docs/scaling.md`).
 
 | Gate | Artifact | Owner approves | Cross-check (cross) | Risk: high |
 |---|---|---|---|---|
 | 1 | intent.md | SuperBiz | SuperDev (feasible and measurable?) | - |
 | 2 | spec.md (+ ux-brief.md) | SuperBiz | SuperDev | + escalation |
 | 3 | plan.md | SuperDev | SuperBiz (still matches the intent?) | - |
-| 4 | PR / acceptance.md | SuperDev (code) | SuperBiz (accepted against the Success measure) | + escalation |
+| 4 | PR / acceptance.md | SuperDev (code; with 2+ SuperDevs, one who did not write it) | SuperBiz (accepted against the Success measure) | + escalation |
 
 ## Gate 4 has two checks
 
@@ -20,6 +21,18 @@ The principle "the author and the approver are different people" is kept by cros
 - Release-ready requires no stale approvals and no `event=revert` record.
 - Auto-merge details and conditions are in `docs/merge-by-risk.md`.
 
+## Gate 4 peer review (2 or more SuperDevs)
+
+- The SuperDev who signs gate 4 as owner must not be the author of any code commit in the change.
+  A code commit is a commit in `merge-base(HEAD, <base>)..HEAD` that touches a file outside `docs/`; its author is the commit author email.
+  `<base>` is `origin/<base_branch>` when that ref exists, else `<base_branch>` (`base_branch` in pod.yml, default `main`).
+- `scripts/gate.sh` refuses the signature, names the code authors and asks another SuperDev to sign.
+  `scripts/pr-check.sh` checks the same rule on GitHub approvals in CI.
+- When there is no merge base or no code commit (for example after the change has merged), the rule is skipped with a one-line note.
+  `scripts/gate-check.sh` on `main` after a merge cannot evaluate it, so it does not try.
+- When every SuperDev wrote code in the change, the rule falls back to the two-person rule: the SuperBiz cross-check is the second pair of eyes.
+- With one SuperDev the rule does not apply: there is no other SuperDev to review, and the SuperBiz cross-check already separates writer and approver.
+
 ## How to sign
 
 ```bash
@@ -27,7 +40,7 @@ scripts/gate.sh docs/changes/001-slug 1     # the owner signs first, then the cr
 scripts/gate-check.sh docs/changes/001-slug  # check every gate recorded in gates.log
 ```
 
-- Identity comes from `git config user.email`, and the role comes from `pod.yml`.
+- Identity comes from `git config user.email`, and the role comes from `pod.yml`. An email listed in two roles cannot sign.
 - Order: owner first, then cross, then escalation (when required).
   Exception: at gate 4, after a `role=auto` record, SuperBiz may sign cross first (acceptance after merge).
 - Gate N can be signed only once gate N-1 is complete.
@@ -60,5 +73,6 @@ scripts/gate-check.sh docs/changes/001-slug  # check every gate recorded in gate
 
 ### Gate 4: PR and acceptance.md
 - (SuperDev) `make check` passes (including test strength), review.md has `blockers: 0`, and the tests were not edited after they were locked.
+  With 2 or more SuperDevs, the signer did not write code in the change (review.md names the code authors).
 - (SuperBiz) The demo result matches the Success measure, and acceptance.md states accept or reject with a reason.
 - (Risk: high) Escalation has reviewed and signed.

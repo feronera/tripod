@@ -27,12 +27,15 @@ Goal: merge into main according to the rights for each risk tier in `docs/merge-
 1. acceptance.md must already exist (SuperBiz drafts it with `/superbiz:acceptance`).
    Ask SuperDev to review review.md and acceptance.md, then sign gate 4 themselves
    (`scripts/gate.sh docs/changes/NNN-slug 4`).
+   With 2 or more SuperDevs in pod.yml, ask a SuperDev who did not write the code (review.md names the code authors).
+   `gate.sh` refuses a code author, and pr-check needs that peer's GitHub approval too.
 2. Only after `scripts/gate-check.sh docs/changes/NNN-slug 4` passes, run `gh pr merge --auto --squash`.
 3. SuperBiz signs gate 4 (cross) before release. If SuperBiz edits acceptance.md, SuperDev's signature becomes stale and must be signed again.
 
 ## Risk: high
 - Stop. Never merge yourself. Tell SuperDev, SuperBiz and the escalation person that all three must sign gate 4
-  and all three must approve the PR on GitHub. Then a human merges.
+  and all three must approve the PR on GitHub (with 2 or more SuperDevs, the SuperDev is one who did not write the code).
+  Then a human merges.
 
 ## Do not
 - Run `scripts/gate.sh` or `scripts/mark-revert.sh`, or edit `gates.log` by hand

@@ -38,6 +38,12 @@ tests: tests/test_detail.py
 - If there is shared mutable state, first separate it into files owned by each part. If that is not possible, do those parts one at a time.
 - Build each part with `/superdev:build`, one unit at a time, and commit every unit whose tests pass.
 
+## Several SuperDevs
+
+- A part may name its owner with an `owner: <email>` line under its `files:` and `tests:` lines. Gate 3 checks that every owner listed is a SuperDev in pod.yml, and `parallel-check` prints each part's owner next to its result.
+- Each SuperDev builds their own part in their own clone or worktree. Merge the parts in the order `scripts/parallel-check.sh <dir> --run` reports.
+- The gate 4 owner must be a SuperDev who did not write code in the change. In a 2-SuperDev pod where both built parts, peer review falls back to the SuperBiz cross-check (see `docs/scaling.md`), so keep one SuperDev as the reviewer when possible.
+
 ## SuperBiz: fan out in one session
 
 In Claude Code with `plugins/superbiz` loaded:
@@ -85,4 +91,4 @@ The steps are in the `/superdev:arena` skill.
 - `.pod/` is not part of a new git worktree, so its tests are not locked yet. Run `touch .pod/lock-tests` in every worktree.
 - The kill switch works per folder. To stop every agent, run `touch .pod/kill-switch` in every worktree.
 - A merge conflict means the file split in plan.md was not real. Fix plan.md, then do the conflicting parts one at a time.
-- Do not run more code-writing agents at once than SuperDev can review. Two parts are usually enough.
+- Do not run more code-writing agents at once than the SuperDevs can review. Two parts are usually enough.

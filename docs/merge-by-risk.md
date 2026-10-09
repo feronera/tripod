@@ -13,7 +13,23 @@ Gate 4 is split into two checks:
 | high | owner + cross + escalation | a human | SuperDev, SuperBiz and escalation | owner + cross + escalation |
 
 - Effective risk is the Risk in intent.md, except that a diff touching any path in `docs/risk-paths` is always high.
-- The GitHub approver must not be the PR author. If the agent opens PRs with SuperDev's account, low and medium changes use SuperBiz's approval instead (the same cross-check as cross-gating). High changes need approval from everyone who is not the PR author.
+- Each column names a role. Any member of that role may approve, as long as they are not the PR author.
+- The GitHub approver must not be the PR author. If the agent opens PRs with SuperDev's account, low and medium changes use SuperBiz's approval instead (the same cross-check as cross-gating). High changes need approval from every role, by someone who is not the PR author.
+
+## Approvals with 2 or more SuperDevs
+
+pr-check treats each role as a set of people and adds peer review. A peer SuperDev is a SuperDev who is not the PR author and did not author any code commit in the PR (a commit that touches a file outside `docs/`).
+
+| Effective risk | Required GitHub approvals |
+|---|---|
+| low (no valid auto record), medium | A peer SuperDev. If there is none, the one-SuperDev rule: a SuperDev, or SuperBiz when a SuperDev opened the PR |
+| high | A SuperBiz member, an escalation member, and a peer SuperDev (if there is none, a SuperDev other than the PR author) |
+| low with a valid auto record | Unchanged: no human approval |
+
+- There is no peer when the pod has one SuperDev, or when every SuperDev wrote code in the change. Keep one SuperDev as the reviewer when you can.
+- The same rule applies to the gate 4 owner signature: `scripts/gate.sh` refuses a SuperDev who wrote code in the change (see `docs/gates.md`).
+- Low-risk auto-merge does not change. It relies on the agent reviewers, the second-model opinion and CI, not on a human peer.
+  The peer rule applies to the gate 4 owner signature and to pr-check approvals when no valid auto record is used.
 - A PR with no change folder follows the medium rules.
 - Release-ready requires no `event=revert` record.
 
@@ -51,15 +67,16 @@ Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
 ## Revert
 
 1. Revert the code: `git revert <commit>`, then open a PR as usual.
-2. A person on the team (SuperBiz, SuperDev or escalation) records it:
+2. A person on the team (any SuperBiz, SuperDev or escalation member) records it:
    `scripts/mark-revert.sh docs/changes/NNN-slug "<reason>"`
    which appends the line `event=revert by=<email> at=<ISO> reason="..."`.
 3. Result: release-check fails for that change, and auto-merge is disabled until `auto_merge_min_track` later changes have passed without a revert.
 
 ## GitHub setup
 
-1. Add the GitHub logins to `pod.yml` (`superbiz_github`, `superdev_github`, `escalation_github`).
+1. Add the GitHub logins to `pod.yml` (`superbiz_github`, `superdev_github`, `escalation_github`). Each may be a comma-separated list, in the same order as the emails.
 2. Run `scripts/sync-codeowners.sh` to generate `.github/CODEOWNERS` from `docs/risk-paths`, then commit it (`make check` verifies that they match).
+   Each risk path lists every SuperDev and escalation login.
 3. Run `scripts/setup-github.sh <owner/repo>` to see what will be configured, then run it again with `--yes`.
    Branch protection needs a public repository or a paid GitHub plan for private ones; on a free plan the
    script stops with that message and `main` stays unprotected.

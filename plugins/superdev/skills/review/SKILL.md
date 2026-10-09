@@ -61,4 +61,6 @@ Write a gate 4 summary in the PR description:
 2. The `make check` result
 3. Remaining Majors and Minors, with reasons
 4. Demo steps for SuperBiz to use in `/superbiz:acceptance`
+5. Code authors: the author emails of commits that touch files outside `docs/` (`git log main..HEAD --no-merges --format=%ae -- . ':!docs'`).
+   With 2 or more SuperDevs in pod.yml, a SuperDev who is not on this list signs gate 4 and approves the PR (peer review, `docs/scaling.md`).
 Tell the human the next step is `/superdev:merge`, which merges according to the change's Risk.

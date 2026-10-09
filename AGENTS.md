@@ -3,7 +3,7 @@
 Rules for every agent in this repository (Claude Code reads them through CLAUDE.md).
 
 ## Pod
-- The pod has two humans: **SuperBiz** (PO, PM, BA, Designer: what and why) and **SuperDev** (SA, Dev, QA, Deploy, MA: how, and whether it is safe).
+- The pod has two human roles: **SuperBiz** (PO, PM, BA, Designer: what and why) and **SuperDev** (SA, Dev, QA, Deploy, MA: how, and whether it is safe). A role can have several people (see `docs/scaling.md`).
 - Agents draft the work of every role. Humans make the decisions at the gates.
 - Member names and emails are in `pod.yml`.
 
@@ -16,6 +16,7 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 | 4 | acceptance.md + PR | SuperDev | SuperBiz |
 
 - `Risk: high` in intent.md requires an additional escalation signature at gates 2 and 4.
+- With 2 or more SuperDevs, the gate 4 owner is a SuperDev who did not write the code (checked by `scripts/gate.sh` and `scripts/pr-check.sh`).
 - Gate 3: plan.md must contain `## Data shape`, `## Throughput checkpoint` and `## Parallel parts` (checked by script).
 - Gate 4 is split into merge-ready (`scripts/gate-check.sh <dir> 4`) and release-ready (`scripts/release-check.sh <dir>`).
   Merge rights by risk are in `docs/merge-by-risk.md`.

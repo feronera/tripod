@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 660" width="960" height="660" role="img" aria-label="Where people are in the loop: for each step, what the agent does, whether a person must approve before it continues (HITL) or watches and can stop it (HOTL), and where to see the evidence">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5A6382"/></marker><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5B6FF5"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#BA9645"/></marker></defs>
+<rect x="1" y="1" width="958" height="658" rx="16" fill="#FFFFFF" stroke="#DDE6F6"/>
+<g font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<text x="32" y="38" font-size="18" font-weight="700" fill="#345589">Where people are in the loop</text>
+<text x="32" y="60" font-size="13" fill="#5A6382">HITL: the agent waits until a person approves. HOTL: the agent runs; a person watches and can stop it. Every step leaves evidence in the repo.</text>
+<text x="36" y="94" font-size="11.5" font-weight="700" fill="#5A6382" text-anchor="start">Step</text>
+<text x="128" y="94" font-size="11.5" font-weight="700" fill="#5A6382" text-anchor="start">What the agent does</text>
+<text x="426" y="94" font-size="11.5" font-weight="700" fill="#5A6382" text-anchor="start">Mode</text>
+<text x="494" y="94" font-size="11.5" font-weight="700" fill="#5A6382" text-anchor="start">What the person does</text>
+<text x="780" y="94" font-size="11.5" font-weight="700" fill="#5A6382" text-anchor="start">Where you see it</text>
+<rect x="30" y="104" width="900" height="46" rx="8" fill="#FAFBFF" stroke="#FAFBFF" stroke-width="0"/>
+<text x="36" y="133.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Intent</text>
+<text x="128" y="133.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Interviews the PO, drafts intent.md</text>
+<rect x="426" y="118.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="132.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="126.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">SuperBiz answers and signs gate 1; SuperDev</text>
+<text x="494" y="139.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">cross-checks</text>
+<text x="780" y="133.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">intent.md · gates.log</text>
+<text x="36" y="183.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">UX + spec</text>
+<text x="128" y="176.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Drafts brief and spec; ux-critic and</text>
+<text x="128" y="189.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">ba-researcher run in parallel (read-only)</text>
+<rect x="426" y="168.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="182.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="176.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Owner + cross-check sign gate 2 (+</text>
+<text x="494" y="189.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">escalation if high)</text>
+<text x="780" y="183.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">ux-brief.md · spec.md</text>
+<rect x="30" y="204" width="900" height="46" rx="8" fill="#FAFBFF" stroke="#FAFBFF" stroke-width="0"/>
+<text x="36" y="233.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Plan</text>
+<text x="128" y="226.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Plan mode: data shape, checkpoint, parallel</text>
+<text x="128" y="239.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">parts</text>
+<rect x="426" y="218.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="232.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="226.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">SuperDev signs gate 3; SuperBiz checks the</text>
+<text x="494" y="239.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">summary</text>
+<text x="780" y="233.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">plan.md · gates.log</text>
+<text x="36" y="283.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Tests first</text>
+<text x="128" y="283.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Writes failing tests from the spec</text>
+<rect x="426" y="268.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="282.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="283.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">A person locks the tests before any code</text>
+<text x="780" y="283.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">tests/ · .pod/lock-tests</text>
+<rect x="30" y="304" width="900" height="46" rx="8" fill="#FAFBFF" stroke="#FAFBFF" stroke-width="0"/>
+<text x="36" y="333.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Build</text>
+<text x="128" y="326.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Edits code unit by unit, one commit per unit;</text>
+<text x="128" y="339.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">parallel parts in worktrees</text>
+<rect x="426" y="318.0" width="52" height="20" rx="10" fill="#5B6FF5"/>
+<text x="452" y="332.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HOTL</text>
+<text x="494" y="326.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Watches commits; hooks block test edits;</text>
+<text x="494" y="339.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">kill switch stops agents</text>
+<text x="780" y="333.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">git log · hook refusals</text>
+<text x="36" y="383.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Review</text>
+<text x="128" y="376.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">3 lenses + reviewer-second on another model</text>
+<text x="128" y="389.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">(read-only)</text>
+<rect x="426" y="368.0" width="52" height="20" rx="10" fill="#5B6FF5"/>
+<text x="452" y="382.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HOTL</text>
+<text x="494" y="383.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Decides every open Major before gate 4</text>
+<text x="780" y="383.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">review.md</text>
+<rect x="30" y="404" width="900" height="46" rx="8" fill="#FAFBFF" stroke="#FAFBFF" stroke-width="0"/>
+<text x="36" y="433.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Merge</text>
+<text x="128" y="433.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Low risk: agent merges after 9 checks</text>
+<rect x="426" y="418.0" width="52" height="20" rx="10" fill="#5B6FF5"/>
+<text x="452" y="432.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HOTL</text>
+<text x="494" y="426.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">CI re-checks; a person can revert</text>
+<text x="494" y="439.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">(mark-revert)</text>
+<text x="780" y="433.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">PR checks · role=auto</text>
+<text x="128" y="483.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Medium and high: waits for people</text>
+<rect x="426" y="468.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="482.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="476.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Gate 4 signed (peer SuperDev, + escalation</text>
+<text x="494" y="489.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">if high)</text>
+<text x="780" y="483.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">gates.log · PR approvals</text>
+<rect x="30" y="504" width="900" height="46" rx="8" fill="#FAFBFF" stroke="#FAFBFF" stroke-width="0"/>
+<text x="36" y="533.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Accept</text>
+<text x="128" y="533.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Runs the demo, drafts acceptance.md</text>
+<rect x="426" y="518.0" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="452" y="532.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="494" y="526.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">SuperBiz accepts (before release; after</text>
+<text x="494" y="539.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">merge for low)</text>
+<text x="780" y="526.49" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">acceptance.md ·</text>
+<text x="780" y="539.615" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">release-check</text>
+<text x="36" y="583.0" font-size="13" font-weight="700" fill="#1A1A3E" text-anchor="start">Operate</text>
+<text x="128" y="583.0" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">monitor reads logs, drafts the next intent</text>
+<rect x="426" y="568.0" width="52" height="20" rx="10" fill="#5B6FF5"/>
+<text x="452" y="582.0" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HOTL</text>
+<text x="494" y="576.18" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">Charter limits; drills; kill switch; a</text>
+<text x="494" y="589.93" font-size="11" font-weight="400" fill="#1A1A3E" text-anchor="start">person starts the change</text>
+<text x="780" y="583.0" font-size="10.5" font-weight="500" fill="#5B6FF5" text-anchor="start">new change folder</text>
+<rect x="30" y="622" width="52" height="20" rx="10" fill="#BA9645"/>
+<text x="56" y="636" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HITL</text>
+<text x="90" y="636" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">approve before it continues</text>
+<rect x="300" y="622" width="52" height="20" rx="10" fill="#5B6FF5"/>
+<text x="326" y="636" font-size="11" font-weight="700" fill="#FFFFFF" text-anchor="middle">HOTL</text>
+<text x="360" y="636" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">watch, and stop or revert when needed: .pod/kill-switch, mark-revert, CI</text>
+</g></svg>

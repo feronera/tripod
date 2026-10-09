@@ -7,7 +7,7 @@ Follow the 9 steps in order, and use the checklist at the end to confirm nothing
 
 A pod fits work that:
 - Can be split into small changes, each deliverable within a few days.
-- Has one business decision-maker (SuperBiz) and one technical owner (SuperDev) who can work together every day.
+- Has one business decision-maker (SuperBiz) and one technical owner (SuperDev) who can work together every day. A pod can grow to a few SuperDevs per SuperBiz later (see `docs/scaling.md`).
 - Has automated tests, or is ready to start writing tests before code.
 - Can be undone when something goes wrong, e.g. a revert returns the system to its previous state.
 
@@ -50,6 +50,7 @@ Installed files:
 | `docs/test-strength.md` | The 5 kinds of weak test and the strength settings |
 | `docs/pod-charter.md` | The pod's working agreement, to fill in together before starting |
 | `docs/parallel-agents.md`, `docs/credits.md` | Running several agents, and where the ideas come from |
+| `docs/scaling.md` | Several people per role, peer review at gate 4, and when to split a pod |
 | `docs/templates/` | Templates for intent, ux-brief, spec, plan, review and acceptance |
 | `docs/changes/` | Where the pod's changes live |
 | `.github/workflows/pod-gates.yml` | CI that runs `make -f pod.mk pod-check` and `scripts/pr-check.sh` |
@@ -66,6 +67,17 @@ Installer rules:
 1. Edit `pod.yml`:
    - Names and emails for SuperBiz, SuperDev and escalation. Each email must match that person's `git config user.email`.
    - GitHub logins (`superbiz_github`, `superdev_github`, `escalation_github`).
+   - A role with several people takes comma-separated lists, aligned by position. The `_github` list may be left out:
+
+     ```yaml
+     superdev_name: Dan, Eve
+     superdev_email: dan@pod.example, eve@pod.example
+     superdev_github: dan-gh, eve-gh
+     ```
+
+     An email or login may not appear in two roles, and a role's lists must have the same length; `make -f pod.mk pod-check` fails otherwise.
+     With 2 or more SuperDevs, gate 4 needs a SuperDev who did not write the code. See `docs/scaling.md`.
+   - `base_branch` (default `main`): the branch changes merge into, used by that peer-review check.
    - Stack: the installer fills this in from the files it finds. Check it.
 
      | Stack | `test_cmd` | `code_dirs` | `tests_dir` | `strength` |
@@ -166,7 +178,7 @@ git status && git diff
 - [ ] The project's work has been assessed as a fit for a pod, and the work that goes to a full team is defined
 - [ ] The kit is cloned and `pod-install.sh` has run; the list of skipped files has been reviewed
 - [ ] The existing Makefile has the `include pod.mk` line, or the team has agreed to use `make -f pod.mk`
-- [ ] `pod.yml`: names, emails, GitHub logins and stack are correct
+- [ ] `pod.yml`: names, emails, GitHub logins (lists for roles with several people) and stack are correct
 - [ ] `docs/risk-paths` matches the project's sensitive paths
 - [ ] `scripts/sync-codeowners.sh` has run, and `.github/CODEOWNERS` is committed
 - [ ] `make -f pod.mk pod-check` passes locally and in CI

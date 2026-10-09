@@ -1,15 +1,24 @@
 # pod.yml: pod members (key: value, one per line)
-# Each email must match that person's `git config user.email`. SuperBiz and SuperDev must use different emails
+# Each email must match that person's `git config user.email`. One person holds one role: an email or
+# GitHub login may not appear in two roles (SuperBiz, SuperDev, escalation)
+# A role can have several people: give comma-separated lists, aligned by position, for example
+#   superdev_name: Dan, Eve
+#   superdev_email: dan@pod.example, eve@pod.example
+#   superdev_github: dan-gh, eve-gh
+# With 2 or more SuperDevs, the SuperDev who signs gate 4 as owner must not have written code in the change.
+# More than 3 SuperDevs per SuperBiz makes changes queue at SuperBiz: see docs/scaling.md
 superbiz_name: SuperBiz Example
 superbiz_email: biz@example.com
 superdev_name: SuperDev Example
 superdev_email: dev@example.com
-# Additional approver for Risk: high changes (gates 2 and 4)
+# Additional approver for Risk: high changes (gates 2 and 4); may also be a list
 escalation_name: Lead Example
 escalation_email: lead@example.com
-# How many changes may be open at once (past gate 1, not yet past gate 4)
+# How many changes may be open at once (past gate 1, not yet past gate 4), for the whole pod.
+# Start with 2 per SuperDev, capped by what SuperBiz can review
 wip_limit: 2
-# Members' GitHub logins (used to check PR approvals in CI and to generate .github/CODEOWNERS)
+# Members' GitHub logins (used to check PR approvals in CI and to generate .github/CODEOWNERS).
+# Lists follow the same order as the emails; a role's github list may be left out
 superbiz_github: biz-example
 superdev_github: dev-example
 escalation_github: lead-example
@@ -18,6 +27,7 @@ auto_merge: off            # off | low
 auto_merge_max_lines: 200
 auto_merge_min_track: 10   # recent completed changes with no revert needed before auto-merge is allowed
 acceptance_hours: 48
+base_branch: main          # the branch changes merge into (peer review compares HEAD with origin/<base_branch>)
 # Project stack: see docs/test-strength.md
 test_cmd: python3 -m unittest discover -s tests -t . -v
 code_dirs: app             # code folders, space separated (used by python test-strength)

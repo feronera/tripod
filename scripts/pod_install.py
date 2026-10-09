@@ -17,7 +17,7 @@ import sys
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALLER_FILES = {"pod-install.sh", "pod_install.py"}
-DOCS = ["gates.md", "risk-tiers.md", "risk-paths", "merge-by-risk.md", "parallel-agents.md",
+DOCS = ["gates.md", "risk-tiers.md", "risk-paths", "merge-by-risk.md", "parallel-agents.md", "scaling.md",
         "test-strength.md", "pod-charter.md", "credits.md"]
 SAMPLE_TESTS = ["__init__.py", "test_orders.py"]  # the kit's own tests stay in the kit
 BEGIN, END = "<!-- pod:begin -->", "<!-- pod:end -->"
@@ -260,6 +260,7 @@ def main(argv):
     for name in DOCS:
         inst.copy(os.path.join("docs", name))
     inst.copy_tree(os.path.join("docs", "templates"))
+    inst.copy_tree(os.path.join("docs", "images"))
     inst.copy(os.path.join("docs", "changes", ".gitkeep"))
     inst.copy(os.path.join(".github", "workflows", "pod-gates.yml"))
     inst.write_text("pod.yml", pod_yml_text(stack))
