@@ -75,7 +75,7 @@ class ConfigTests(MultiRepo):
         self.assertEqual(lib.roles_of_email(cfg, "EVE@pod.example"), ["superdev"])
 
     def test_single_values_unchanged(self):
-        cfg = lib.read_pod_yml(POD)
+        cfg = lib.read_pod_yml(os.path.join(POD, "docs", "templates"))
         self.assertEqual(cfg["superdev_email"], "dev@example.com")
         self.assertEqual(cfg["superbiz_github"], "biz-example")
         self.assertEqual(cfg["base_branch"], "main")

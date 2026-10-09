@@ -1,5 +1,3 @@
-# Tripod's own pod: the people who build Tripod with Tripod (dogfooding).
-# New projects do not get this file: pod-install.sh writes docs/templates/pod.yml instead.
 # pod.yml: pod members (key: value, one per line)
 # Each email must match that person's `git config user.email`. One person holds one role: an email or
 # GitHub login may not appear in two roles (SuperBiz, SuperDev, escalation)
