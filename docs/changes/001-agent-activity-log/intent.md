@@ -19,7 +19,8 @@ Evidence:
 Share of changes in this repository with an agent activity record and a cost total kept in the change folder:
 - Current value: 0 of 0 Tripod changes. In tripod-example, 0 of 3 changes had a recorded cost (all reconstructed by hand).
 - Target: every change in this repository merged after this change has both (100%), starting with change 002.
-- The cost total must be within <tolerance, see Open questions> of the cost Claude Code reports for the same sessions.
+- The cost total must be within ±5% of the cost Claude Code reports for the same sessions (`total_cost_usd` from `claude -p --output-format json`).
+- `scripts/metrics.sh` shows agent cost and agent time per change.
 
 ## Risk
 Risk: high
@@ -36,11 +37,16 @@ Question 4 is not a clear "no", and the work touches `scripts/**` and `plugins/*
 - Works offline. No external service or telemetry endpoint is required.
 - A project without pod.yml must keep working as today (hooks allow every action).
 - Logging must never block or slow an agent action noticeably. A logging failure is reported, not fatal.
+- Never log prompt text or command output. Log only the tool name, file paths, the first word of a command, timestamps, the model, token counts and cost.
+- The activity log is committed with the change, in the change folder next to gates.log, so every person and CI see the same record.
 - Bootstrap pod: one maintainer with two accounts (feronera: SuperBiz and escalation, hx-natthawat: SuperDev).
 
+## Decided (PO, 2026-10-09)
+- Privacy: no prompt text and no command output in the log (see Constraints).
+- Storage: the log is committed in the change folder.
+- Tolerance: ±5% against the cost Claude Code reports.
+- Scope: cost and agent time are added to `scripts/metrics.sh` in this change.
+- Cost source (checked by SuperDev on 2026-10-09): Claude Code session transcripts record token usage per message and model (input, output, cache creation, cache read) but no cost. Cost is computed from those tokens with a price table kept in the kit, and checked against `total_cost_usd` from `claude -p --output-format json`.
+
 ## Open questions
-- Where does the cost come from? The options are the Claude Code session transcripts, its usage or OpenTelemetry output, or the `claude -p` JSON result. SuperDev to check feasibility.
-- What tolerance is acceptable between the logged cost and the cost Claude Code reports (for example ±5%)?
-- What must never be logged? Proposal: no prompt text and no command output, only the tool name, the file paths, the command's first word, and timestamps.
-- Should the log be committed to git with the change, or kept local with only the totals committed?
-- Does this change include cost in `scripts/metrics.sh`, or is that left to a later change?
+- None blocking gate 1. The price table goes out of date when prices change; how it is updated is a question for the spec.
