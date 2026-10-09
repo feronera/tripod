@@ -2,7 +2,7 @@
 
 An agentic delivery practice for small teams. Agents draft the work of every role; a few accountable people make the decisions at defined gates, and the rules that matter are enforced by scripts, hooks and CI rather than by memory.
 
-Tripod packages that practice as two Claude Code plugins, a set of gate scripts, document templates and a CI workflow. Start a new project from this template, or install it into an existing repository of any stack.
+Tripod packages that practice as two Claude Code plugins, a set of gate scripts, document templates and a CI workflow. Install it into a new project or an existing repository of any stack.
 
 ![One change through the loop: eight steps from intent to release, four gates signed by people, and incidents that start the next change](docs/images/adlc-loop.svg)
 
@@ -91,13 +91,17 @@ Requirements: Python 3.10 or later, git, make and Claude Code. No other packages
 ### New project
 
 ```bash
-gh repo create my-pod --private --template feronera/tripod --clone
-cd my-pod
+git clone https://github.com/feronera/tripod ~/tripod
+mkdir my-pod && cd my-pod && git init
+~/tripod/scripts/pod-install.sh . --with-sample   # leave out --with-sample for an empty project
 # Edit pod.yml: names, emails (must match each person's git config user.email) and GitHub logins
+scripts/sync-codeowners.sh
 make setup
 make check
 git add -A && git commit -m "chore: start pod"
 ```
+
+This repository is itself a pod: Tripod is built with Tripod, and its own changes are in `docs/changes/`. That is why new projects start from the installer, which copies only the kit, rather than from a copy of this repository.
 
 ### Existing project
 

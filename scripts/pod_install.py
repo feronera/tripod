@@ -123,8 +123,9 @@ def detect_stack(target, with_sample):
 
 
 def pod_yml_text(stack):
-    """Kit pod.yml (placeholder people) with the stack keys of this project."""
-    with open(os.path.join(KIT, "pod.yml"), encoding="utf-8") as fh:
+    """The template pod.yml (placeholder people) with the stack keys of this project.
+    The kit's own pod.yml holds Tripod's own pod, so it is never copied."""
+    with open(os.path.join(KIT, "docs", "templates", "pod.yml"), encoding="utf-8") as fh:
         lines = fh.read().splitlines()
     out = []
     for line in lines:

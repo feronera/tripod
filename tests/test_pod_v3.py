@@ -401,7 +401,7 @@ class ConfigTests(unittest.TestCase):
         import sys
         sys.path.insert(0, os.path.join(POD, "scripts"))
         import lib
-        cfg = lib.read_pod_yml(POD)
+        cfg = lib.read_pod_yml(os.path.join(POD, "docs", "templates"))
         for key, value in lib.STACK_DEFAULTS.items():
             self.assertEqual(cfg[key], value, key)
 
