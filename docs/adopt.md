@@ -145,6 +145,7 @@ Run `scripts/metrics.sh docs/changes/NNN-slug` (or `make -f pod.mk pod-metrics C
 | Number of changes closed | `docs/changes/` | | | |
 | Number of reverts | `event=revert` in gates.log | | | Not increasing |
 | Share of changes merged automatically | `role=auto` in gates.log | 0 | | |
+| Agent cost and agent time per change | metrics.sh (activity.log, [docs/activity-log.md](activity-log.md)) | Baseline | | |
 
 Review the numbers together at each checkpoint, and record decisions in `docs/pod-charter.md`.
 

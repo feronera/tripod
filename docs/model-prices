@@ -1,0 +1,9 @@
+# Model prices for the agent activity log (docs/activity-log.md), in US$ per million tokens.
+# model                      input  output  cache_write_5m  cache_write_1h  cache_read
+# Source: https://www.anthropic.com/pricing. Each row was checked against the cost Claude Code itself
+# records in its session transcripts (cost-state) on 2026-10-09 (docs/activity-log.md, Cost).
+# A model missing here is still logged, with its cost as unknown.
+as_of: 2026-10-09
+claude-opus-5-5              4      20      5               8               0.2
+claude-sonnet-5-5            2      10      2.5             4               0.2
+claude-opus-4-7              5      25      6.25            10              0.5

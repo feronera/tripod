@@ -243,6 +243,7 @@ Use `/superdev:bug-fix` for defects, `/superdev:arena` to compare two designs, a
 | `scripts/gate.sh <dir> <1-4>` | Sign a gate as the current `git config user.email`, recorded in `gates.log` |
 | `scripts/gate-check.sh <dir> [gate]` | Check one change. Gate 4 means merge-ready for the change's risk |
 | `scripts/gate-check.sh --all` | Check every change and the pod configuration |
+| `scripts/activity.sh <dir>` | What the agents did in a change and what it cost ([docs/activity-log.md](docs/activity-log.md)) |
 
 **Merge and release**
 
@@ -309,7 +310,7 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
 **Covered by tests, not yet run with real teams:** pods with several SuperDevs (peer review at gate 4) and revert handling on GitHub.
 
 **Planned: Autonomous mode, built with Tripod itself, one change at a time:**
-1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost.
+1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost. **Done in 0.7.0** ([docs/activity-log.md](docs/activity-log.md)), built as Tripod's change 001.
 2. Agent identities and agent signatures (`role=agent`, with the model), with cross-checks on a different model.
 3. Sponsor controls:
    - a budget per change and per day

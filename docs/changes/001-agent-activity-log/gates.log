@@ -1,0 +1,10 @@
+gate=1 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-09T21:49:50+07:00 blob=645b24b33a5635ea31125e85d3fda114b6d427a3
+gate=1 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-09T21:49:50+07:00 blob=645b24b33a5635ea31125e85d3fda114b6d427a3
+gate=2 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-09T21:57:07+07:00 blob=e3a6728c9a90fa748281c6b378e8e5060731eca5
+gate=2 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-09T21:57:07+07:00 blob=e3a6728c9a90fa748281c6b378e8e5060731eca5 note=bootstrap
+gate=2 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-09T21:57:07+07:00 blob=e3a6728c9a90fa748281c6b378e8e5060731eca5
+gate=3 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-09T22:16:35+07:00 blob=455bdd6c15f5071f7b1951fae0d7ddc345ec8209
+gate=3 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-09T22:16:35+07:00 blob=455bdd6c15f5071f7b1951fae0d7ddc345ec8209
+gate=4 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-09T22:58:17+07:00 blob=fbdf1a651bd99404353eb8f30dc373e79dda4484
+gate=4 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-09T22:58:17+07:00 blob=fbdf1a651bd99404353eb8f30dc373e79dda4484
+gate=4 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-09T22:58:17+07:00 blob=fbdf1a651bd99404353eb8f30dc373e79dda4484 note=bootstrap

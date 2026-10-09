@@ -770,10 +770,10 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     return problems
 
 
-def log_ignored(change_dir):
-    """True when git would ignore this change's gates.log (e.g. a global *.log rule).
-    Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
-    path = os.path.join(change_dir, "gates.log")
+def log_ignored(change_dir, name="gates.log"):
+    """True when git would ignore this change's `name` (gates.log by default, or activity.log), e.g. through a
+    global *.log rule. Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
+    path = os.path.join(change_dir, name)
     try:
         res = subprocess.run(["git", "check-ignore", "-q", path], cwd=ROOT,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -782,6 +782,8 @@ def log_ignored(change_dir):
     return res.returncode == 0
 
 
+ACTIVITY_IGNORED_HINT = ("activity.log is ignored by git (often a global *.log rule), so it would never be shared. "
+                         "Add '!docs/changes/*/activity.log' to .gitignore")
 IGNORED_HINT = ("gates.log is ignored by git (often a global *.log rule), so approvals would never be shared. "
                 "Add '!docs/changes/*/gates.log' to .gitignore")
 
@@ -901,6 +903,8 @@ def cmd_gate(args):
     if log_ignored(change_dir):
         print("Refused: " + IGNORED_HINT, file=sys.stderr)
         return 1
+    if log_ignored(change_dir, "activity.log"):
+        print("Warning: " + ACTIVITY_IGNORED_HINT)
     lines = ["gate=%d role=%s by=%s at=%s blob=%s\n" % (gate, role, email, now_iso(), blob)]
     # Bootstrap: the person who also holds escalation signs that seat in the same step, marked as such.
     also_escalation = (role != "escalation" and bootstrap_on(cfg) and "escalation" in required_roles(gate, risk)
@@ -1060,6 +1064,10 @@ def cmd_metrics(args):
         print("lead time intent -> gate 4: %s" % fmt_duration((finish - start).total_seconds()))
     else:
         print("lead time intent -> gate 4: gate 4 not complete yet")
+    import activity  # scripts/activity.py imports lib, so import it here, not at the top
+    totals = activity.change_totals(change_dir)
+    print("agent time: %s" % (totals[0] if totals else "no activity.log"))
+    print("agent cost: %s" % (totals[1] if totals else "no activity.log"))
     return 0
 
 
