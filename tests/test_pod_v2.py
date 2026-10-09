@@ -126,8 +126,8 @@ class PlanCheckTests(V2Repo):
         self.assert_refused(c, "Independent workstreams")
 
     def test_overlapping_parallel_files_fail(self):
-        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py, app/b.py\n"
-                "### B\nfiles: app/c.py, app/b.py\n")
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py, app/b.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/c.py, app/b.py\ntests: tests/test_c.py\n")
         c = self.plan_change(plan)
         self.assert_refused(c, "app/b.py (A, B)")
 
@@ -142,12 +142,52 @@ class PlanCheckTests(V2Repo):
         self.assertEqual(self.check(c).returncode, 0)
 
     def test_disjoint_parts_are_accepted(self):
-        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py, app/b.py\n"
-                "### B\nfiles: app/c.py\n")
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py, app/b.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/c.py\ntests: tests/test_c.py\n")
         c = self.plan_change(plan)
         self.pass_gate(c, 3)
         res = self.check(c)
         self.assertEqual(res.returncode, 0, res.stdout)
+
+    def test_parts_need_their_own_tests_line(self):
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/c.py\n")
+        c = self.plan_change(plan)
+        self.assert_refused(c, "part `### B` has no `tests:` line")
+
+    def test_parts_cannot_share_test_files(self):
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_all.py\n"
+                "### B\nfiles: app/c.py\ntests: tests/test_all.py\n")
+        c = self.plan_change(plan)
+        self.assert_refused(c, "share test files: tests/test_all.py (A, B)")
+
+    def parallel_change(self, b_test_imports):
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/b.py\ntests: tests/test_b.py\n")
+        c = self.plan_change(plan)
+        self.write("tests/test_a.py", "from app import a\n")
+        self.write("tests/test_b.py", b_test_imports)
+        return c
+
+    def test_parallel_check_flags_cross_part_imports(self):
+        c = self.parallel_change("from app.b import thing\nfrom app import a\n")
+        res = self.sh("parallel-check.sh", c)
+        self.assertEqual(res.returncode, 1, res.stdout)
+        self.assertIn("tests/test_b.py imports app.a, which part A builds", res.stdout)
+
+    def test_parallel_check_passes_independent_parts(self):
+        c = self.parallel_change("import app.b\n")
+        res = self.sh("parallel-check.sh", c)
+        self.assertEqual(res.returncode, 0, res.stdout)
+        self.assertIn("OK: each part's tests import only its own files", res.stdout)
+
+    def test_parallel_check_needs_tests_written(self):
+        plan = (PLAN_HEAD + CHECKPOINT + "## Parallel parts\n### A\nfiles: app/a.py\ntests: tests/test_a.py\n"
+                "### B\nfiles: app/b.py\ntests: tests/test_b.py\n")
+        c = self.plan_change(plan)
+        res = self.sh("parallel-check.sh", c)
+        self.assertEqual(res.returncode, 1)
+        self.assertIn("does not exist yet", res.stdout)
 
     def test_template_plan_is_refused(self):
         c = self.new_change()

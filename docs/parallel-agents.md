@@ -24,12 +24,16 @@ The split must be written in plan.md before gate 3, and gate 3 checks this forma
 ## Parallel parts
 ### A
 files: app/history.py
+tests: tests/test_history.py
 ### B
 files: app/detail.py
+tests: tests/test_detail.py
 ```
 
 - If the work is not split, write `none: <reason>` under `## Parallel parts`.
-- Each part's files must not overlap. If they do, gate 3 fails and names the duplicated files.
+- Each part's files must not overlap, and each part lists its own test files under `tests:`. If either is shared, gate 3 fails and names the files.
+- Each part must be testable on its own. After the tests are written and before you create the worktrees, run `scripts/parallel-check.sh docs/changes/NNN-slug`. It fails when a part's tests import a file that another part builds, because those tests cannot pass until the other part is merged. In that case, build the shared interface first as a Blocking first step.
+- `parallel-check` only sees direct imports in test files. It cannot see a part's code calling another part, or a test that checks output another part produces. In tripod-example change 003, the server part called the page renderer, so its tests could only pass after the page part was merged, and `parallel-check` passes on that plan. Name every interface between parts in the plan and build it first.
 - If there is shared mutable state, first separate it into files owned by each part. If that is not possible, do those parts one at a time.
 - Build each part with `/superdev:build`, one unit at a time, and commit every unit whose tests pass.
 

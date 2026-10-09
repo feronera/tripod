@@ -22,6 +22,8 @@ Goal: tests that fail for the right reason, check real behavior, and are locked 
    - Pinned constant: asserts a constant or config value copied from the code instead of testing the mechanism that uses it.
    - Fixture checks fixture: asserts data the test built itself without calling the code under test.
 5. Run `make test` and confirm the new tests fail for the right reason (not an import error or a typo).
+   If plan.md has Parallel parts, put each part's tests only in that part's `tests:` files, import only that part's files,
+   and run `scripts/parallel-check.sh docs/changes/NNN-slug`. It must pass before the work is split.
 6. Run `scripts/test-strength.sh` before locking. (If pod.yml sets `strength: off`, check the 5 kinds above yourself and record it in review.md.)
    - `WEAK <test id>`: fix the test as suggested, then run again until there is no WEAK.
    - `FAIL (normal run) <test id>`: a test that is still red cannot be measured yet. Check it yourself against the 5 kinds above.

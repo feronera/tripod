@@ -15,8 +15,10 @@ References: intent.md, spec.md
 <optional. If the work is not split, write `none: <reason>`>
 ### A
 files: app/a.py, app/b.py
+tests: tests/test_a.py
 ### B
 files: app/c.py
+tests: tests/test_c.py
 
 ## Files to change
 | File | What changes | Requirement |

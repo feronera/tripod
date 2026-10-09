@@ -461,7 +461,7 @@ class PluginFilesTests(unittest.TestCase):
     def test_scripts_are_executable(self):
         for name in ("new-change.sh", "gate.sh", "gate-check.sh", "metrics.sh", "test-strength.sh",
                      "release-check.sh", "mark-revert.sh", "auto-merge-check.sh", "pr-check.sh",
-                     "sync-codeowners.sh", "setup-github.sh"):
+                     "sync-codeowners.sh", "setup-github.sh", "parallel-check.sh"):
             self.assertTrue(os.access(os.path.join(POD, "scripts", name), os.X_OK), name)
 
 

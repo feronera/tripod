@@ -24,8 +24,13 @@ Goal: a `docs/changes/NNN-slug/plan.md` that is ready for a human to sign gate 3
    - Smallest safe decomposition: the smallest split where each piece ends in a check.
 7. Write `## Parallel parts`:
    - If the work is not split, write `none: <reason>`.
-   - If it is split, there must be at least 2 parts as `### <name>`, each with a `files: a.py, b.py` line,
-     and no file may appear in more than one part. If parts must edit the same file, separate the state first, or do them one at a time.
+   - If it is split, there must be at least 2 parts as `### <name>`, each with a `files: a.py, b.py` line
+     and a `tests: tests/test_a.py` line. No file and no test file may appear in more than one part.
+     If parts must edit the same file, separate the state first, or do them one at a time.
+   - Each part must be testable on its own: its tests may import only its own files and code that already exists,
+     and its code must not call code that another part is still writing. If one part needs another part's interface
+     (for example a server that calls the page renderer), build that interface first as a Blocking first step,
+     or do the parts one at a time.
 8. Draft the remaining sections from the template:
    - Files to change: every file is tied to a requirement (R1, R2, ...).
    - Order of work: always start with failing tests, then lock the tests, then small units,

@@ -264,7 +264,7 @@ def check_plan(path):
 
 
 def check_parallel_parts(lines):
-    parts, order, none_reason = {}, [], None
+    parts, tests, order, none_reason = {}, {}, [], None
     current = None
     for raw in lines:
         line = raw.strip()
@@ -281,6 +281,10 @@ def check_parallel_parts(lines):
         if fm and current is not None:
             parts[current] = [f.strip().strip("`").strip() for f in fm.group(1).split(",")]
             parts[current] = [f for f in parts[current] if f]
+        tm = re.match(r"^tests\s*:(.*)$", bare, re.I)
+        if tm and current is not None:
+            tests[current] = [f.strip().strip("`").strip() for f in tm.group(1).split(",")]
+            tests[current] = [f for f in tests[current] if f]
     if not order:
         if none_reason is None:
             return ["`## Parallel parts` needs a `none: <reason>` line "
@@ -304,7 +308,107 @@ def check_parallel_parts(lines):
     if overlap:
         problems.append("Parallel parts share files: %s (each part must edit separate files)"
                         % ", ".join("%s (%s)" % (f, ", ".join(owner[f])) for f in overlap))
+    # Each part needs its own tests, so it can go green without waiting for another part.
+    test_owner = {}
+    for name in order:
+        files = tests.get(name)
+        if not files or any("<" in f for f in files):
+            problems.append("part `### %s` has no `tests:` line listing its own test files "
+                            "(each part must be testable on its own)" % name)
+            continue
+        for f in files:
+            test_owner.setdefault(f, []).append(name)
+            if f in owner and name not in owner[f]:
+                problems.append("part `### %s` lists %s under tests:, but part %s edits it"
+                                % (name, f, ", ".join(owner[f])))
+    shared = sorted(f for f, names in test_owner.items() if len(set(names)) > 1)
+    if shared:
+        problems.append("Parallel parts share test files: %s (give each part its own test files)"
+                        % ", ".join("%s (%s)" % (f, ", ".join(test_owner[f])) for f in shared))
     return problems
+
+
+def parallel_parts(plan_path):
+    """{part: (files, tests)} from plan.md, or {} when the work is not split."""
+    with open(plan_path, encoding="utf-8") as fh:
+        lines = md_sections(fh.read()).get("Parallel parts", [])
+    result, current = {}, None
+    for raw in lines:
+        line = raw.strip()
+        m = re.match(r"^###\s+(.+?)\s*$", line)
+        if m:
+            current = m.group(1)
+            result[current] = ([], [])
+            continue
+        bare = line.lstrip("-* ").strip("`").strip()
+        for i, key in enumerate(("files", "tests")):
+            km = re.match(r"^%s\s*:(.*)$" % key, bare, re.I)
+            if km and current is not None:
+                result[current][i].extend(f.strip().strip("`").strip()
+                                          for f in km.group(1).split(",") if f.strip())
+    return result
+
+
+def python_imports(path):
+    """Dotted module names a Python file imports, including `from pkg import name` as pkg.name."""
+    import ast
+    with open(path, encoding="utf-8") as fh:
+        tree = ast.parse(fh.read(), path)
+    names = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            names.update(a.name for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            names.add(node.module)
+            names.update("%s.%s" % (node.module, a.name) for a in node.names)
+    return names
+
+
+def cmd_parallel_check(args):
+    if len(args) != 1:
+        print("usage: scripts/parallel-check.sh <change-dir>", file=sys.stderr)
+        return 2
+    change_dir = os.path.abspath(args[0])
+    plan = os.path.join(change_dir, "plan.md")
+    if not os.path.exists(plan):
+        print("plan.md not found in %s" % args[0], file=sys.stderr)
+        return 1
+    parts = parallel_parts(plan)
+    if not parts:
+        print("OK: plan.md does not split the work into parallel parts")
+        return 0
+    module_owner = {}
+    for name, (files, _) in parts.items():
+        for f in files:
+            if f.endswith(".py"):
+                module_owner[f[:-3].replace("/", ".")] = name
+    problems, skipped = [], []
+    for name, (_, tests) in parts.items():
+        if not tests:
+            problems.append("part %s lists no tests" % name)
+        for t in tests:
+            path = os.path.join(ROOT, t)
+            if not os.path.exists(path):
+                problems.append("part %s: %s does not exist yet (write the tests before splitting)" % (name, t))
+                continue
+            if not t.endswith(".py"):
+                skipped.append(t)
+                continue
+            for mod in sorted(python_imports(path)):
+                other = module_owner.get(mod)
+                if other and other != name:
+                    problems.append("part %s: %s imports %s, which part %s builds. These tests cannot pass "
+                                    "until part %s is merged. Move the shared interface into a Blocking first "
+                                    "step, or test part %s through its own files only" % (name, t, mod, other, other, name))
+    for t in skipped:
+        print("note: %s is not Python, so its imports were not checked" % t)
+    if problems:
+        print("FAIL: the parallel parts are not independent")
+        for p in problems:
+            print("  - " + p)
+        return 1
+    print("OK: each part's tests import only its own files (%s)" % ", ".join(parts))
+    return 0
 
 
 def git_email(root=ROOT):
@@ -777,7 +881,7 @@ def cmd_test(args):
 
 COMMANDS = {"test": cmd_test, "gate": cmd_gate, "check": cmd_check, "new-change": cmd_new_change,
             "metrics": cmd_metrics, "release-check": cmd_release_check,
-            "mark-revert": cmd_mark_revert}
+            "mark-revert": cmd_mark_revert, "parallel-check": cmd_parallel_check}
 
 
 def main(argv):

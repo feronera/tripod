@@ -132,6 +132,7 @@ A real run of one change through all four gates, with a merged pull request, CI,
 | `scripts/mark-revert.sh <dir> "<reason>"` | Record that a change was reverted. Humans only |
 | `scripts/pr-check.sh` | CI: check GitHub approvals against the change's effective risk |
 | `scripts/sync-codeowners.sh [--check]` | Generate or verify `.github/CODEOWNERS` from `docs/risk-paths` |
+| `scripts/parallel-check.sh <dir>` | Before splitting a change into parallel worktrees: each part's tests exist and import only that part's files |
 | `scripts/setup-github.sh <owner/repo> [--yes]` | Enable auto-merge and protect `main`. Prints the plan; applies it only with `--yes` |
 | `scripts/pod-install.sh <repo> [--with-sample] [--vendor-plugins] [--force]` | Install Tripod into another repository |
 | `touch .pod/lock-tests` | Lock the tests so agents cannot edit them |
