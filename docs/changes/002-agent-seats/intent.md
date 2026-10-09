@@ -17,7 +17,7 @@ Evidence:
 - Reviewers and auditors: they need to see which agent and which model signed, and to check that the cross-check really ran on a different model.
 
 ## Success measure
-- Human signatures needed for a low-risk change in Autonomous mode: from 8 today to 0. Measured on one low-risk demo change in tripod-example, run end to end by agents, with the sponsor able to stop it (kill switch) and revert it.
+- Human signatures needed for a low-risk change in Autonomous mode: from 8 today to 1 (a person sets the risk at gate 1). Measured on one low-risk demo change in tripod-example, run end to end by agents after gate 1, with the sponsor able to stop it (kill switch) and revert it.
 - Cross-checks that catch a planted defect: a spec that misses a requirement from intent.md, and a plan that misses a spec requirement, must be refused by the cross-checking agent in 3 of 3 runs each.
 - Medium and high risk: 0 gates signed by agents (they still need people), proven by tests.
 
@@ -45,8 +45,8 @@ This changes who may approve work, which is governance (the "may not do alone" l
 - Scope: Autonomous mode for Risk: low only. Medium and high stay with people.
 - Budget per change and per day, risk ceiling, automatic stops and the daily digest are change 003. The loop driver and the superceo agent are change 004.
 - Tripod's own pod keeps bootstrap mode and Pod mode after this change.
+- Gate 1 always has a person: a person signs intent.md and so decides that the change is low. Agents may sign gates 2 to 4 of a low-risk change. Risk can still only go up after gate 1, and docs/risk-paths still makes a change high at merge.
+- The sponsor is named in pod.yml (`sponsor_name`, `sponsor_email`, `sponsor_github`) and signs nothing else. The sponsor is on the loop: reads the evidence in the PR, gates.log and activity.log after merge, and can use the kill switch and revert.
 
 ## Open questions
-- How does an agent sign without being able to impersonate a person? Proposal: a separate command (not `gate.sh`, which stays for people) that writes `role=owner` or `role=cross` with `by=agent:<leg>` and `model=<model>` and `session=<id>`; gate-check accepts it only in Autonomous mode, only at Risk: low, and only when activity.log has usage for that session and model. SuperDev to check feasibility.
-- Who is the sponsor in pod.yml, and does the sponsor need to sign anything (for example, accept at gate 4 after merge, as in today's post-merge acceptance)?
-- Can an agent lower a change's risk to get around the low-only rule? Today risk can only go up after gate 1, and risk-paths make a change high at merge. Is that enough when no person signs gate 1?
+- Feasibility (SuperDev, for the spec): an agent signs through a separate command, not `gate.sh`, which stays for people. The command writes `role=owner` or `role=cross` with `by=agent:<leg>`, `model=<model>` and `session=<id>`. gate-check accepts it only in Autonomous mode, only at Risk: low, only at gates 2 to 4, and only when activity.log has usage for that session and model. How the cross-checking agent is started on a different model (for example `claude -p --model`) is decided in the plan.
