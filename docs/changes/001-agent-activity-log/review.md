@@ -48,5 +48,8 @@ Open, for the PO at gate 4 (1):
 - `claude plugin validate --strict`: pass for the marketplace and both plugins
 - Tests locked at 9cc6274. Later test changes, all approved by the PO: 4 lines in tests/test_pod_v3.py (gitignore lines, version 0.7.0) and the new tests/test_activity_review.py (21 tests).
 
+## After review
+- CI found that test_work_on_main_is_not_charged_to_the_next_change checked out `main`, which does not exist where git's default branch is `master`. The test now switches to its own non-change branch. Test-only fix, no code change; approved test file.
+
 ## Code authors
 64177747+hx-natthawat@users.noreply.github.com (one SuperDev in the pod, so peer review does not apply)

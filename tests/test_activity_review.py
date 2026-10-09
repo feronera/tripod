@@ -30,7 +30,7 @@ class SessionEndTests(ActivityRepo):
 
 class BranchSwitchTests(ActivityRepo):
     def test_work_on_main_is_not_charged_to_the_next_change(self):
-        run(["git", "checkout", "-q", "main"], self.root)
+        run(["git", "checkout", "-q", "-b", "feature/elsewhere"], self.root)  # not main: CI's default may be master
         self.add_lines([user("2026-10-09T09:00:00Z"), assistant("msg_main", "2026-10-09T09:30:00Z", out=9999)])
         self.hook("Stop")
         run(["git", "checkout", "-q", "change/001-demo"], self.root)
