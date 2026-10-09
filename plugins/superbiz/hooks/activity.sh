@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PostToolUse (*), Stop, SubagentStop: record agent activity and cost for the active change
+# PostToolUse (*), Stop, SubagentStop, SessionEnd: record agent activity and cost for the active change
 # (docs/activity-log.md). The logic lives in the project's scripts/activity.py, so the project's kit
 # version decides the format. Never blocks the agent: always exits 0.
 INPUT="$(cat)"

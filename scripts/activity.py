@@ -7,7 +7,7 @@
 activity.log sits next to gates.log in the change folder. One `key=value` record per line:
     event=tool  at session id tool [files] [cmd]                       (PostToolUse)
     event=usage at session agent model input output cache_write cache_write_1h cache_read usd seconds
-                                                                       (Stop, SubagentStop)
+                                                                       (Stop, SubagentStop, SessionEnd)
 Never logged: prompt text, file contents, tool output, and anything after the first word of a command.
 """
 import collections
@@ -317,7 +317,7 @@ def cmd_hook(args):
                 if already_logged(log, rec["id"]):
                     return 0
                 lines, warnings, cursor = [format_record(rec)], [], None
-            elif event in ("Stop", "SubagentStop"):
+            elif event in ("Stop", "SubagentStop", "SessionEnd"):
                 recs, warnings, cursor_path, cursors = usage_records(data, root, folder)
                 lines, cursor = [format_record(r) for r in recs], (cursor_path, cursors)
             else:

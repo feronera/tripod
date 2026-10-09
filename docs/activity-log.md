@@ -9,7 +9,7 @@ The `superbiz` and `superdev` plugins run `scripts/activity.py` from three Claud
 | Hook | Writes |
 |---|---|
 | PostToolUse (every tool) | one `event=tool` record |
-| Stop (end of a turn) and SubagentStop | one `event=usage` record per transcript and model with new tokens |
+| Stop (end of a turn), SubagentStop and SessionEnd | one `event=usage` record per transcript and model with new tokens. Claude Code writes a session's last response after the Stop hook, so SessionEnd picks it up |
 
 Activity goes to the change whose folder matches the current branch: branch `change/001-agent-activity-log` writes to `docs/changes/001-agent-activity-log/activity.log`. On any other branch, or in a project without `pod.yml`, nothing is recorded.
 
@@ -49,6 +49,8 @@ In a public repository, file paths and command names are still visible to everyo
 Claude Code transcripts record tokens per message and model, but no cost. `scripts/activity.py` counts each API response once (Claude Code writes one response on several lines with the same message id), includes subagent transcripts (`<session>/subagents/agent-*.jsonl`), and prices the tokens with `docs/model-prices`. One-hour cache writes are priced separately from five-minute ones.
 
 Checked on 2026-10-09 with this code against the cost Claude Code itself records (`cost-state` in the transcripts) for one maintainer's sessions: Opus 5.5 within 1% in 101 of 103 sessions and within 5% in 102; Opus 4.7 within 1% in 362 of 364 and within 5% in 363. Sessions whose transcript was incomplete were left out of the check.
+
+Two small gaps remain. Claude Code's own background calls (for example a small Haiku classifier, about US$0.001 per session) are not in the transcript, so they are not counted. And the transcript can record slightly fewer output tokens than Claude Code bills. In the change 001 demo (`claude -p`, with a subagent) the logged cost was 1.4% below `total_cost_usd`.
 
 ### Updating the price table
 
