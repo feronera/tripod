@@ -130,6 +130,8 @@ Every role in `pod.yml` accepts a comma-separated list. Two SuperDevs can build 
 
 SuperBiz owns or cross-checks every gate, so keep to about three SuperDevs per SuperBiz. Beyond that, add a SuperBiz or split into two pods. Pods that share the kit and an escalation form a tribe.
 
+Starting with fewer people than seats? `bootstrap: on` lets escalation share a person with SuperBiz or SuperDev (never SuperBiz with SuperDev) until a third person joins. See [docs/scaling.md](docs/scaling.md).
+
 ![Many pods install the same versioned kit, share an escalation for high-risk work, and feed lessons back into the kit](docs/images/setup-n.svg)
 
 When to grow, when to split, and how to size the WIP limit: [docs/scaling.md](docs/scaling.md).
