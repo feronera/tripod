@@ -68,7 +68,7 @@ When prices change or a new model is used, update the line and the date from the
 ```
 $ scripts/activity.sh docs/changes/001-agent-activity-log
 change: 001-agent-activity-log   Risk: high
-activity: 2026-10-09T14:02:11Z -> 2026-10-09T16:40:02Z   sessions: 3
+activity: 2026-10-09 14:02 → 2026-10-09 16:40   sessions: 3
 tool calls: 214   Bash 92, Read 61, Edit 38, Write 15, Grep 8
 files (top 10): scripts/lib.py 41, tests/test_activity.py 22, ...
 tokens: claude-opus-5-5  in 1.2M  out 84k  cache write 310k  cache read 9.8M

@@ -21,6 +21,7 @@ import re
 import shlex
 import subprocess
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import lib  # noqa: E402
@@ -29,14 +30,21 @@ LOG = "activity.log"
 PRICES = os.path.join("docs", "model-prices")
 STALE_DAYS = 90
 TOOL_ID_WINDOW = 64 * 1024  # duplicate hooks (both plugins) run at nearly the same time: scan the log tail only
+FILE_TOOLS = ("Read", "Write", "Edit", "MultiEdit", "NotebookEdit", "Grep", "Glob", "LS")
+LOCK_WAIT = 2.0  # seconds; a hook never waits longer than this for another hook (R13)
 TOKEN_KINDS = ("input", "output", "cache_write_5m", "cache_write_1h", "cache_read")
 Price = collections.namedtuple("Price", TOKEN_KINDS)
 
 
 # ---------- data ----------
 
+def clean(value):
+    """A value as one safe token: control characters (a newline would start a forged record) become `?`."""
+    return re.sub(r"[\x00-\x1f\x7f]", "?", str(value))
+
+
 def format_record(fields):
-    return " ".join("%s=%s" % (k, shlex.quote(str(v))) for k, v in fields.items() if v not in (None, "")) + "\n"
+    return " ".join("%s=%s" % (k, shlex.quote(clean(v))) for k, v in fields.items() if v not in (None, "")) + "\n"
 
 
 def read_records(path):
@@ -158,7 +166,15 @@ def locked(root):
     folder = os.path.join(root, ".pod", "activity")
     os.makedirs(folder, exist_ok=True)
     with open(os.path.join(folder, ".lock"), "w") as fh:
-        fcntl.flock(fh, fcntl.LOCK_EX)
+        deadline = time.monotonic() + LOCK_WAIT
+        while True:
+            try:
+                fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    raise OSError("another activity hook is still running (lock busy for %.0f s)" % LOCK_WAIT)
+                time.sleep(0.02)
         try:
             yield folder
         finally:
@@ -186,18 +202,21 @@ def first_word(command):
     try:
         words = shlex.split(command or "")
     except ValueError:
-        words = (command or "").split()
+        return "?"  # a plain split could cut a quoted VAR="secret value" in half and log the second half
     for w in words:
         if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w):
             continue
-        return os.path.basename(w)
+        name = os.path.basename(w)
+        return name if re.match(r"^[A-Za-z0-9._+-]+$", name) else "?"
     return ""
 
 
 def tool_record(data, root):
     ti = data.get("tool_input") or {}
-    files = [repo_path(root, ti.get(k), data.get("cwd")) for k in ("file_path", "notebook_path", "path")]
-    files = [f for f in files if f]
+    files = []
+    if data.get("tool_name") in FILE_TOOLS:  # other tools (MCP) use `path` for things that are not repository files
+        files = [repo_path(root, ti.get(k), data.get("cwd")) for k in ("file_path", "notebook_path", "path")]
+        files = [f for f in files if f]
     return {"event": "tool", "at": now_iso(), "session": data.get("session_id", ""),
             "id": data.get("tool_use_id", ""), "tool": data.get("tool_name", "?"),
             "files": ",".join(dict.fromkeys(files)),
@@ -229,13 +248,14 @@ def new_usage(path, cursor):
     Claude Code writes one API response on several lines with the same message id: count each id once."""
     size = os.path.getsize(path)
     offset, seen = cursor.get("offset", 0), cursor.get("seen", [])
-    if size < cursor.get("size", 0) or offset > size:
-        offset, seen = 0, []  # truncated or replaced transcript: start again
+    reset = size < cursor.get("size", 0) or offset > size
+    if reset:
+        offset = 0  # truncated or replaced transcript: read again, but keep `seen` so old messages count once
     with open(path, "rb") as fh:
         fh.seek(offset)
         chunk = fh.read()
     end = chunk.rfind(b"\n") + 1
-    by_model, stamps, seen_set = {}, [], set(seen)
+    by_model, stamps, seen_set = {}, [], set(seen)  # stamps: (time, is a person's prompt)
     for raw in chunk[:end].splitlines():
         try:
             d = json.loads(raw)
@@ -244,14 +264,15 @@ def new_usage(path, cursor):
         if not isinstance(d, dict):
             continue
         if d.get("timestamp") and d.get("type") in ("user", "assistant"):
-            stamps.append(d["timestamp"])
+            stamps.append((d["timestamp"], is_prompt(d)))
         m = d.get("message")
         if d.get("type") != "assistant" or not isinstance(m, dict) or not isinstance(m.get("usage"), dict):
             continue
-        if m.get("id") in seen_set:
-            continue
-        seen_set.add(m.get("id"))
-        seen.append(m.get("id"))
+        if m.get("id"):
+            if m["id"] in seen_set:
+                continue
+            seen_set.add(m["id"])
+            seen.append(m["id"])
         u = m["usage"]
         split = u.get("cache_creation") or {}
         cw1 = to_int(split.get("ephemeral_1h_input_tokens"))
@@ -262,27 +283,53 @@ def new_usage(path, cursor):
         t["cache_write_5m"] += cw5
         t["cache_write_1h"] += cw1
         t["cache_read"] += to_int(u.get("cache_read_input_tokens"))
+    # Agent time: the gaps between transcript lines, except a gap that ends at a person's prompt (idle time)
     seconds = 0
-    if len(stamps) > 1:
-        seconds = int((lib.parse_iso(max(stamps)) - lib.parse_iso(min(stamps))).total_seconds())
+    for (before, _), (after, prompt) in zip(stamps, stamps[1:]):
+        if not prompt:
+            seconds += max(0, int((lib.parse_iso(after) - lib.parse_iso(before)).total_seconds()))
     by_model = {k: v for k, v in by_model.items() if k != "<synthetic>" and any(v.values())}
-    return by_model, seconds, {"offset": offset + end, "size": size, "seen": seen[-500:]}
+    return by_model, seconds, {"offset": offset + end, "size": size, "seen": seen[-500:]}, reset
+
+
+def is_prompt(d):
+    """A line a person typed (not a tool result, which Claude Code also writes as type=user)."""
+    if d.get("type") != "user":
+        return False
+    content = (d.get("message") or {}).get("content")
+    if isinstance(content, list):
+        return not any(isinstance(c, dict) and c.get("type") == "tool_result" for c in content)
+    return True
 
 
 def usage_records(data, root, folder):
     main = data.get("transcript_path") or ""
-    if not os.path.exists(main):
-        raise OSError("transcript not found (%s)" % (main or "no transcript_path"))
     session = data.get("session_id", "")
+    if not os.path.exists(main):
+        # E5: the turn happened but its tokens cannot be read; record that, so the gap is visible
+        rec = {"event": "usage", "at": now_iso(), "session": session, "agent": "main", "model": "?",
+               "tokens": "unknown", "usd": "unknown", "seconds": 0}
+        return [rec], ["activity log not written: transcript not found, so this turn is recorded with tokens=unknown. "
+                       "The tool call was not affected"], None, None
     cursor_path = os.path.join(folder, "%s.json" % re.sub(r"[^A-Za-z0-9_.-]", "_", session or "session"))
-    cursors = {}
+    cursors, warnings = {}, []
     if os.path.exists(cursor_path):
-        with open(cursor_path, encoding="utf-8") as fh:
-            cursors = json.load(fh)
+        try:
+            with open(cursor_path, encoding="utf-8") as fh:
+                cursors = json.load(fh)
+        except ValueError:
+            # Start from the end of each transcript: this turn's tokens may be missed, but never counted twice
+            cursors = {path: {"offset": os.path.getsize(path), "size": os.path.getsize(path), "seen": []}
+                       for _, path in transcripts(main)}
+            warnings.append("activity log: the read position for this session was damaged, so it was reset to "
+                            "the end of the transcript; this turn's tokens are not recorded")
     prices, _, _ = read_prices(root)
-    records, warnings = [], []
+    records = []
     for agent, path in transcripts(main):
-        by_model, seconds, cursors[path] = new_usage(path, cursors.get(path, {}))
+        by_model, seconds, cursors[path], reset = new_usage(path, cursors.get(path, {}))
+        if reset:
+            warnings.append("activity log: %s got shorter (truncated or replaced), so it was read again from "
+                            "the start; messages already counted are skipped" % os.path.basename(path))
         for model, t in sorted(by_model.items()):
             price = prices.get(model)
             if price is None:
@@ -304,13 +351,19 @@ def cmd_hook(args):
         root = args[args.index("--root") + 1] if "--root" in args else None
         data = json.loads(sys.stdin.read() or "{}")
         root = os.path.realpath(root or os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or os.getcwd())
-        if not os.path.isfile(os.path.join(root, "pod.yml")) or not enabled(root):
+        if not os.path.isfile(os.path.join(root, "pod.yml")):
             return 0
-        change = branch_change(root)
+        event = data.get("hook_event_name")
+        change = branch_change(root) if enabled(root) else None
         if change is None:
+            # Nothing is recorded, but usage hooks still move the read position on, so this work is never
+            # charged to the next change after a branch switch (E3, E8).
+            if event in ("Stop", "SubagentStop", "SessionEnd") and os.path.exists(data.get("transcript_path") or ""):
+                with locked(root) as folder:
+                    _, _, cursor_path, cursors = usage_records(data, root, folder)
+                    save_cursor(cursor_path, cursors)
             return 0
         log = os.path.join(change, LOG)
-        event = data.get("hook_event_name")
         with locked(root) as folder:
             if event == "PostToolUse":
                 rec = tool_record(data, root)
@@ -319,15 +372,14 @@ def cmd_hook(args):
                 lines, warnings, cursor = [format_record(rec)], [], None
             elif event in ("Stop", "SubagentStop", "SessionEnd"):
                 recs, warnings, cursor_path, cursors = usage_records(data, root, folder)
-                lines, cursor = [format_record(r) for r in recs], (cursor_path, cursors)
+                lines, cursor = [format_record(r) for r in recs], (cursor_path, cursors) if cursor_path else None
             else:
                 return 0
             if lines:
                 with open(log, "a", encoding="utf-8") as fh:
                     fh.writelines(lines)
             if cursor:
-                with open(cursor[0], "w", encoding="utf-8") as fh:
-                    json.dump(cursor[1], fh)
+                save_cursor(*cursor)
         for w in warnings:
             print(w, file=sys.stderr)
     except Exception as exc:  # never block the agent (R13)
@@ -335,8 +387,15 @@ def cmd_hook(args):
     return 0
 
 
+def save_cursor(path, cursors):
+    """Replace atomically: a half-written cursor would stop usage logging for the session."""
+    with open(path + ".tmp", "w", encoding="utf-8") as fh:
+        json.dump(cursors, fh)
+    os.replace(path + ".tmp", path)
+
+
 def fmt_tokens(n):
-    if n >= 1_000_000:
+    if n >= 999_500:
         return "%.1fM" % (n / 1e6)
     if n >= 1000:
         return "%dk" % round(n / 1000)
@@ -349,9 +408,16 @@ def fmt_cost(s, as_of):
     return "US$%.2f + unknown (%s)" % (s.usd, ", ".join("%s has no price in %s" % (m, PRICES) for m in s.unknown))
 
 
+def short_time(stamp):
+    """2026-10-09T14:02:11Z -> 2026-10-09 14:02 (UTC), as in ux-brief.md."""
+    return stamp[:16].replace("T", " ") if stamp else "-"
+
+
 def change_totals(change_dir):
     """(time line, cost line) for metrics.sh, or None when there is no activity.log."""
     path = os.path.join(change_dir, LOG)
+    if not enabled(lib.ROOT):
+        return "off (activity_log: off)", "off (activity_log: off)"
     if not os.path.exists(path):
         return None
     s = summarize(*read_records(path))
@@ -380,7 +446,7 @@ def cmd_summary(args):
     s = summarize(*read_records(path))
     _, as_of, problem = read_prices(root)
     print("change: %s   Risk: %s" % (name, lib.risk_of(change_dir)))
-    print("activity: %s -> %s   sessions: %d" % (s.first or "-", s.last or "-", s.sessions))
+    print("activity: %s → %s   sessions: %d" % (short_time(s.first), short_time(s.last), s.sessions))
     print("tool calls: %d   %s" % (sum(s.tools.values()), ", ".join(
         "%s %d" % (t, n) for t, n in sorted(s.tools.items(), key=lambda x: (-x[1], x[0])))))
     top = sorted(s.files.items(), key=lambda x: (-x[1], x[0]))[:10]
@@ -389,8 +455,9 @@ def cmd_summary(args):
         print("tokens: %s  in %s  out %s  cache write %s  cache read %s" % (
             model, fmt_tokens(t["input"]), fmt_tokens(t["output"]), fmt_tokens(t["cache_write"]),
             fmt_tokens(t["cache_read"])))
-    if problem and not s.unknown:
-        print("cost: US$%.2f (%s)" % (s.usd, problem))
+    if problem:
+        known = "US$%.2f + " % s.usd if s.usd else ""
+        print("cost: %sunknown (%s)" % (known, problem))
     else:
         print("cost: %s" % fmt_cost(s, as_of))
     print("agent time: %s" % lib.fmt_duration(s.seconds))

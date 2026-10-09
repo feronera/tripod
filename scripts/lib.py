@@ -771,8 +771,8 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
 
 
 def log_ignored(change_dir, name="gates.log"):
-    """True when git would ignore this change's gates.log (e.g. a global *.log rule).
-    Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
+    """True when git would ignore this change's `name` (gates.log by default, or activity.log), e.g. through a
+    global *.log rule. Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
     path = os.path.join(change_dir, name)
     try:
         res = subprocess.run(["git", "check-ignore", "-q", path], cwd=ROOT,
