@@ -1,6 +1,6 @@
 # Growing the pod
 
-A pod starts with one SuperBiz and one SuperDev. It can grow by giving a role more than one person. This page covers what changes when it does, where the work starts to queue, and when to split into two pods instead.
+A pod starts with one SuperBiz and one SuperDev. It can grow by giving a role more than one person. This page covers what changes when it does, where the work starts to queue, and when to split into two pods instead. Pods that share the kit and an escalation form a **tribe**.
 
 ## More than one person per role
 
@@ -76,4 +76,4 @@ Tripod reads one `pod.yml` per repository, so each pod works in its own reposito
 
 ## SuperCEO
 
-The `escalation` role can be a list too, so a high-risk approval can come from any of several leads. SuperCEO, a role for direction, priorities and high-risk approvals, remains planned; escalation stands in for it today.
+The `escalation` role can be a list too, so a high-risk approval can come from any of several leads. SuperCEO, a role for direction, priorities and high-risk approvals across a tribe, remains planned; escalation stands in for it today. To share escalation across the pods of a tribe, list the same people as `escalation` in each pod's `pod.yml`.

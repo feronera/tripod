@@ -12,7 +12,9 @@ Tripod packages that practice as two Claude Code plugins, a set of gate scripts,
 |---|---|---|---|
 | **SuperBiz** | PO, PM, BA, Designer | What to build and why | Available. One or more people |
 | **SuperDev** | SA, Dev, QA, Deploy, Maintenance | How to build it, and whether it is safe | Available. One or more people |
-| **SuperCEO** | Direction, priorities, high-risk approvals | Whether the risk is worth taking | Planned. The `escalation` role in `pod.yml` (one or more people) stands in today |
+| **SuperCEO** | Direction, priorities, high-risk approvals across a tribe | Whether the risk is worth taking | Planned. The `escalation` role in `pod.yml` (one or more people) stands in today |
+
+Two words for team size: a **pod** is one small team (SuperBiz and SuperDev, one or more of each). A **tribe** is a group of pods that share the kit and an escalation.
 
 ## How it works
 
@@ -74,9 +76,9 @@ Every role in `pod.yml` accepts a comma-separated list. With two SuperDevs, para
 
 ![Pod of three: one SuperBiz and two SuperDevs build parallel parts; the gate 4 owner is the SuperDev who did not write the code](docs/images/setup-3.svg)
 
-### N pods: one kit, many teams
+### Tribe: N pods, one kit
 
-SuperBiz owns or cross-checks every gate, so keep to about 3 SuperDevs per SuperBiz. Beyond that, add a SuperBiz or split into two pods that share the kit.
+SuperBiz owns or cross-checks every gate, so keep to about 3 SuperDevs per SuperBiz. Beyond that, add a SuperBiz or split into two pods. Pods that share the kit and an escalation form a tribe.
 
 ![Many pods install the same versioned kit, share an escalation for high-risk work, and feed lessons back into the kit](docs/images/setup-n.svg)
 

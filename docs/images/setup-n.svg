@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" width="960" height="500" role="img" aria-label="Many pods: each pod has its own repo and pod.yml; all install the same versioned Tripod kit; a shared escalation (SuperCEO later) signs high-risk gates; lessons flow back into the kit">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" width="960" height="500" role="img" aria-label="A tribe: many pods, each with its own repo and pod.yml, install the same versioned Tripod kit; a shared escalation (the SuperCEO role, planned) signs high-risk gates; lessons flow back into the kit">
 <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5A6382"/></marker><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5B6FF5"/></marker><marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#BA9645"/></marker></defs>
 <rect x="1" y="1" width="958" height="498" rx="16" fill="#FFFFFF" stroke="#DDE6F6"/>
 <g font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
-<text x="32" y="38" font-size="18" font-weight="700" fill="#345589">N pods: one kit, many teams</text>
-<text x="32" y="60" font-size="13" fill="#5A6382">Each pod is small and owns its repo. The kit is shared and versioned, and what one pod learns becomes a rule for every pod.</text>
+<text x="32" y="38" font-size="18" font-weight="700" fill="#345589">Tribe: N pods, one kit</text>
+<text x="32" y="60" font-size="13" fill="#5A6382">A tribe is a group of pods that share the kit and an escalation. Each pod owns its repo; what one pod learns becomes a rule for every pod.</text>
 <rect x="330" y="80" width="300" height="74" rx="12" fill="#FAFBFF" stroke="#5B6FF5" stroke-width="2"/>
 <text x="480" y="106" font-size="15" font-weight="700" fill="#5B6FF5" text-anchor="middle">Tripod kit (versioned)</text>
 <text x="480" y="126" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="middle">template · plugins · scripts · docs</text>
@@ -36,10 +36,10 @@
 <text x="480" y="186" font-size="10.5" font-weight="600" fill="#5B6FF5" text-anchor="middle">template · pod-install.sh · /plugin install</text>
 <rect x="40" y="342" width="880" height="44" rx="12" fill="#F6EEDF" stroke="#BA9645" stroke-width="1.5" stroke-dasharray="5 4"/>
 <circle cx="66" cy="360" r="7" fill="#BA9645"/><path d="M54 378 Q54 368 66 368 Q78 368 78 378 Z" fill="#BA9645"/>
-<text x="86" y="362" font-size="12.5" font-weight="700" fill="#8A6F2F" text-anchor="start">Escalation, shared across pods (SuperCEO later)</text>
-<text x="86" y="378" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">signs gates 2 and 4 for any change at Risk: high, in any pod</text>
+<text x="86" y="362" font-size="12.5" font-weight="700" fill="#8A6F2F" text-anchor="start">Escalation for the tribe (SuperCEO, planned)</text>
+<text x="86" y="378" font-size="11" font-weight="400" fill="#5A6382" text-anchor="start">signs gates 2 and 4 for any change at Risk: high, in any pod of the tribe</text>
 <rect x="40" y="400" width="430" height="80" rx="12" fill="#FAFBFF" stroke="#DDE6F6" stroke-width="1"/>
-<text x="56" y="422" font-size="12.5" font-weight="700" fill="#345589" text-anchor="start">Measure every pod the same way</text>
+<text x="56" y="422" font-size="12.5" font-weight="700" fill="#345589" text-anchor="start">Measure every pod in the tribe the same way</text>
 <text x="56" y="442" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">metrics.sh: lead time per change and per gate</text>
 <text x="56" y="460" font-size="11.5" font-weight="400" fill="#5A6382" text-anchor="start">cost per change, revert rate, WIP at the limit</text>
 <rect x="490" y="400" width="430" height="80" rx="12" fill="#FAFBFF" stroke="#DDE6F6" stroke-width="1"/>
