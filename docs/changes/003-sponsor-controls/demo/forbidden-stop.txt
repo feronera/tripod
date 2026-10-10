@@ -1,1 +1,1 @@
-Refused: this change touches a sensitive path (scripts/sponsor.py), so its effective risk is high and people sign it
+Refused: spec.md not found in docs/changes/005-open-orders. The artifact must exist before gate 2 is signed
