@@ -125,3 +125,9 @@ It lists spend (total, per change, per model, unknown), agent signatures, refuse
   There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
 - **Cost.** Every agent signature is one `claude -p` run. Its cost lands in activity.log.
+- **Limits are checked before a run, not during it.**
+  - Several agent-sign runs started at the same moment all pass the same check, so spend can overshoot by one estimate per run.
+  - Branches that are not merged do not see each other's spend or merges.
+  - A run that fails before it returns a verdict is not counted as a refusal.
+  - The budget warning also reaches a person's own Claude Code session in the repository, because the hook cannot tell people from agents.
+  - The digest shows all of this the next day.
