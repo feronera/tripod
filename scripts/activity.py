@@ -382,6 +382,14 @@ def cmd_hook(args):
                     fh.writelines(lines)
             if cursor:
                 save_cursor(*cursor)
+        if event == "PostToolUse":
+            try:
+                import sponsor  # the budget warning in the agent's session (change 003)
+                warning = sponsor.hook_warning(root, change, data.get("session_id", ""))
+                if warning:
+                    print(warning)
+            except Exception as exc:  # the warning must never break logging
+                warnings.append("activity log: budget check failed: %s" % exc)
         for w in warnings:
             print(w, file=sys.stderr)
     except Exception as exc:  # never block the agent (R13)

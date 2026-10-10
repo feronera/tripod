@@ -128,6 +128,19 @@ def auto_merge_reasons(change_dir, base, cfg):
     governance = lib.governance_files(files)
     if governance:
         reasons.append("edits agent instructions or gate rules (%s), so people merge it" % ", ".join(governance))
+    import sponsor  # the sponsor's ceiling (change 003)
+    limits, problems = sponsor.read_limits(cfg)
+    reasons.extend(problems)
+    banned = sponsor.forbidden_files(files, limits)
+    if banned:
+        reasons.append("touches %s, which agents may not change (agent_forbidden_paths); people merge it"
+                       % ", ".join(banned))
+    if limits.merges_per_day is not None:
+        at = sponsor.now()
+        done = sponsor.merges_today(sponsor.ledger(ROOT, at)[0], at)
+        if done >= limits.merges_per_day:
+            reasons.append("%d changes were auto-merged in the last 24 hours (agent_merges_per_day: %d); "
+                           "people merge this one" % (done, limits.merges_per_day))
     # 4. gates 1-3 complete and fresh
     for p in lib.check_change(change_dir, cfg, 3):
         reasons.append("gates 1-3 not complete: %s" % p)

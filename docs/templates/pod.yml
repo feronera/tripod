@@ -34,6 +34,12 @@ bootstrap: off
 #   sponsor_email: sam@example.com
 #   sponsor_github: sam-gh
 mode: pod
+# Sponsor controls for agent work (docs/autonomous.md). Leave a key out for no limit:
+#   budget_per_change_usd: 2.00        # agent-sign refuses when spend + the next run would pass it
+#   budget_per_day_usd: 10.00          # the same, over the last 24 hours, for the whole pod
+#   max_refusals_per_gate: 3           # refused agent checks on a gate before a person must run scripts/resume.sh
+#   agent_merges_per_day: 3            # auto-merges in the last 24 hours before people merge
+#   agent_forbidden_paths: app/billing*   # paths agents may not change, even at Risk: low
 # Agent activity and cost per change, committed as docs/changes/*/activity.log: see docs/activity-log.md
 activity_log: on
 # Merge by risk: see docs/merge-by-risk.md

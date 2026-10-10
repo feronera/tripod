@@ -25,6 +25,7 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 ## Rules that must never be broken
 1. Agents must not run `scripts/gate.sh` or `scripts/mark-revert.sh`, and must not edit `gates.log` by hand.
    In `mode: autonomous` only, an agent may sign gates 2 to 4 of a Risk: low change with `scripts/agent-sign.sh` (`docs/autonomous.md`).
+   Agents never run `scripts/resume.sh`: after repeated refusals, a person reviews and resumes.
    Approvals and revert records belong to humans only.
 2. When `.pod/lock-tests` exists, do not edit files in `tests/`. If a test looks wrong, stop and tell the human.
 3. When `.pod/kill-switch` exists, stop work immediately. Never delete this file.

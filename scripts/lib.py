@@ -1083,6 +1083,8 @@ def cmd_check(args):
     failed = False
     if args == ["--all"]:
         errors, warnings = pod_config_problems(cfg)
+        import sponsor  # limits for the sponsor's controls (change 003)
+        errors = errors + sponsor.read_limits(cfg)[1]
         for w in warnings:
             print("Warning: " + w)
         if errors:

@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import activity  # noqa: E402
 import lib  # noqa: E402
+import sponsor  # noqa: E402
 
 READ_ONLY_TOOLS = "Read,Grep,Glob"
 INPUTS = {2: ("intent.md", "ux-brief.md", "spec.md"), 3: ("intent.md", "spec.md", "plan.md"),
@@ -164,6 +165,8 @@ def main(args):
     if cfg["mode"] != "autonomous":
         return refuse("pod.yml sets mode: %s. Agents may sign only in mode: autonomous" % cfg["mode"])
     errors, _ = lib.pod_config_problems(cfg)
+    limits, limit_problems = sponsor.read_limits(cfg)
+    errors += limit_problems
     if errors:
         return refuse("pod.yml has problems, so no agent was started:\n  - " + "\n  - ".join(errors))
     if gate == 1:
@@ -196,6 +199,15 @@ def main(args):
     if steering:
         return refuse("this change edits agent instructions (%s), which could steer its own checker, so people "
                       "sign it" % ", ".join(steering))
+    banned = sponsor.forbidden_files(files, limits)
+    if banned:
+        return refuse("this change touches %s, which agents may not change (agent_forbidden_paths); people sign it"
+                      % ", ".join(banned))
+    at = sponsor.now()
+    events, _ = sponsor.ledger(lib.ROOT, at)
+    stopped = sponsor.stops(events, limits, os.path.basename(change_dir), gate, at)
+    if stopped:
+        return refuse("\n  - ".join(stopped) if len(stopped) > 1 else stopped[0])
     entries = lib.read_log(change_dir)
     if gate == 4 and not lib.auto_entry(entries):
         return refuse("agents sign gate 4 only after an auto-merge (no role=auto record in gates.log)")

@@ -1,6 +1,7 @@
 """Tests for change 003: sponsor controls (budget, ceiling, automatic stops, daily digest)."""
 import json
 import os
+import re
 import shutil
 
 from tests.test_agent_seats import AUTONOMOUS, OPUS, SONNET, SeatRepo
@@ -27,6 +28,13 @@ class SponsorRepo(SeatRepo):
     def setUp(self):
         super().setUp()
         self.env["TRIPOD_NOW"] = NOW
+        # gate 1 was signed with the real clock; pin it before the fixed test times, so results never depend
+        # on the time of day the tests run
+        path = os.path.join(self.change, "gates.log")
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(re.sub(r" at=\S+", " at=2026-10-10T00:00:00+00:00", text))
 
     def limits(self, text):
         self.set_mode(AUTONOMOUS + text)
@@ -293,7 +301,7 @@ class DigestTests(SponsorRepo):
 
     def test_hours_window(self):
         self.fill()
-        self.assertIn("spend: US$0.25", self.digest("--hours", "5").stdout)
+        self.assertIn("spend: US$1.75", self.digest("--hours", "3").stdout)  # since 09:00: leaves out 08:00
 
     def test_empty(self):
         shutil.rmtree(os.path.join(self.root, "docs", "changes"))
