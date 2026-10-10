@@ -20,7 +20,9 @@ import lib  # noqa: E402
 READ_ONLY_TOOLS = "Read,Grep,Glob"
 INPUTS = {2: ("intent.md", "ux-brief.md", "spec.md"), 3: ("intent.md", "spec.md", "plan.md"),
           4: ("spec.md", "plan.md", "review.md", "acceptance.md")}
-VERDICT = re.compile(r"^\s*VERDICT:\s*(APPROVE|REFUSE)\s*$", re.M)
+VERDICT = re.compile(r"^\s*`?VERDICT:\s*(APPROVE|REFUSE)`?\s*$")
+# Files that steer agents. A change that edits them could steer its own checker, so people sign it.
+AGENT_CONTEXT = ("CLAUDE.md", "AGENTS.md", ".claude/", ".mcp.json")
 
 
 def refuse(message):
@@ -61,11 +63,35 @@ def prompt(change_dir, gate, role, leg):
     ])
 
 
+def read_verdict(result):
+    """APPROVE only when the last non-empty line is `VERDICT: APPROVE` and it is the only VERDICT line.
+    Anything else is REFUSE, so text quoted from an artifact cannot decide the verdict."""
+    lines = [l for l in (result or "").splitlines() if l.strip()]
+    found = [l for l in lines if VERDICT.match(l)]
+    if not lines or len(found) != 1 or found[0] is not lines[-1]:
+        return "REFUSE", len(found)
+    return VERDICT.match(lines[-1]).group(1), 1
+
+
+def changed_files(cfg):
+    """Files this branch changes against the base branch (empty on the base branch itself)."""
+    base = lib.resolve_base(cfg["base_branch"])
+    rc, merge_base, _ = lib.git_out(["merge-base", "HEAD", base], lib.ROOT)
+    if rc != 0 or not merge_base:
+        return []
+    rc, out, _ = lib.git_out(["diff", "--name-only", merge_base, "HEAD"], lib.ROOT)
+    return [f for f in out.splitlines() if f] if rc == 0 else []
+
+
 def next_role(entries, gate, blob):
-    """The seat that signs next: owner until a fresh owner signature exists, then cross; None when both are done."""
-    fresh = {e.get("role") for e in entries if e["gate"] == gate and e.get("blob") == blob}
+    """The seat that signs next, judged like gate-check (the latest signature per role): owner until it is
+    current, then cross; None when both are current."""
+    latest = {}
+    for e in entries:
+        if e["gate"] == gate and e.get("role") in ("owner", "cross"):
+            latest[e["role"]] = e
     for role in ("owner", "cross"):
-        if role not in fresh:
+        if role not in latest or latest[role].get("blob") != blob:
             return role
     return None
 
@@ -73,8 +99,9 @@ def next_role(entries, gate, blob):
 def run_claude(text, model, timeout):
     cmd = [os.environ.get("TRIPOD_CLAUDE", "claude"), "-p", text, "--model", model,
            "--output-format", "json",
-           # --tools limits which tools exist; --allowedTools alone only adds permissions to the user's settings
-           "--tools", READ_ONLY_TOOLS, "--allowedTools", READ_ONLY_TOOLS]
+           # --tools limits which tools exist (--allowedTools alone only adds permissions to the user's settings);
+           # --safe-mode and --strict-mcp-config keep the repo's CLAUDE.md, hooks, plugins and MCP servers out
+           "--tools", READ_ONLY_TOOLS, "--allowedTools", READ_ONLY_TOOLS, "--safe-mode", "--strict-mcp-config"]
     try:
         out = subprocess.run(cmd, cwd=lib.ROOT, capture_output=True, text=True, timeout=timeout, check=False,
                              stdin=subprocess.DEVNULL)
@@ -111,6 +138,14 @@ def write_evidence(change_dir, data):
         fh.writelines(lines)
 
 
+def record_verdict(change_dir, session, gate, role, by, model, verdict):
+    """`event=verdict` in activity.log. A refused run can never back a signature (gate-check reads it)."""
+    with open(os.path.join(change_dir, activity.LOG), "a", encoding="utf-8") as fh:
+        fh.write(activity.format_record({"event": "verdict", "at": activity.now_iso(), "run": session,
+                                         "gate": gate, "role": role, "by": by, "model": model,
+                                         "verdict": verdict.lower()}))
+
+
 def main(args):
     if len(args) != 2 or args[1] not in ("1", "2", "3", "4"):
         print("usage: scripts/agent-sign.sh <change-dir> <2|3|4>", file=sys.stderr)
@@ -145,7 +180,21 @@ def main(args):
             return refuse("plan.md does not follow the required structure\n  - " + "\n  - ".join(plan_problems))
     if lib.log_ignored(change_dir):
         return refuse(lib.IGNORED_HINT)
+    if lib.log_ignored(change_dir, "activity.log"):
+        print("Warning: " + lib.ACTIVITY_IGNORED_HINT + ". The evidence for agent signatures lives there, "
+              "so gate-check in CI will reject them")
+    files = changed_files(cfg)
+    risky = lib.risky_files(files, lib.ROOT)
+    if risky:
+        return refuse("this change touches a sensitive path (%s), so its effective risk is high and people sign it"
+                      % ", ".join(risky))
+    steering = [f for f in files if f in AGENT_CONTEXT or any(f.startswith(p) for p in AGENT_CONTEXT if p.endswith("/"))]
+    if steering:
+        return refuse("this change edits agent instructions (%s), which could steer its own checker, so people "
+                      "sign it" % ", ".join(steering))
     entries = lib.read_log(change_dir)
+    if gate == 4 and not lib.auto_entry(entries):
+        return refuse("agents sign gate 4 only after an auto-merge (no role=auto record in gates.log)")
     blob = lib.blob_hash(artifact)
     role = next_role(entries, gate, blob)
     if role is None:
@@ -159,6 +208,10 @@ def main(args):
     if data is None:
         print("agent-sign: claude did not return a verdict (%s). Nothing was recorded" % error)
         return 1
+    session = data.get("session_id", "")
+    if not session:
+        print("agent-sign: claude did not return a session id, so the check cannot be traced. Nothing was recorded")
+        return 1
     write_evidence(change_dir, data)
     used = set((data.get("modelUsage") or {}).keys())
     if model not in used:
@@ -166,16 +219,14 @@ def main(args):
               % (", ".join(sorted(used)) or "an unknown model", model, by))
         return 1
     result = data.get("result") or ""
-    found = VERDICT.findall(result)
-    verdict = found[-1] if found else "REFUSE"
-    reasons = VERDICT.sub("", result).strip() or "(no reasons given)"
+    verdict, count = read_verdict(result)
+    record_verdict(change_dir, session, gate, role, by, model, verdict)
     if verdict != "APPROVE":
-        print("REFUSE gate %d %s (%s, %s): %s" % (gate, role, by, model,
-                                                   reasons if found else "no VERDICT line, so it counts as REFUSE. "
-                                                   + reasons))
+        reasons = "\n".join(l for l in result.splitlines() if not VERDICT.match(l)).strip() or "(no reasons given)"
+        note = "" if count == 1 else ("no single VERDICT line at the end (found %d), so it counts as REFUSE. " % count)
+        print("REFUSE gate %d %s (%s, %s): %s%s" % (gate, role, by, model, note, reasons))
         return 1
 
-    session = data.get("session_id", "")
     lines = []
     if not any(e.get("event") == "mode" for e in entries):
         lines.append("event=mode mode=autonomous superbiz_agent_model=%s superdev_agent_model=%s at=%s\n"

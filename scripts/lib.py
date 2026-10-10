@@ -11,6 +11,7 @@ Used as a library and as a CLI:
     python3 scripts/lib.py mark-revert <change-dir> "<reason>"
     python3 scripts/lib.py test
 """
+import collections
 import hashlib
 import os
 import re
@@ -165,6 +166,11 @@ def pod_config_problems(cfg):
         warnings.append(BOOTSTRAP_UNUSED)
     if cfg.get("mode", "pod") not in MODES:
         errors.append("pod.yml: mode: %s is not known (use pod or autonomous)" % cfg["mode"])
+    for role in ("superbiz", "superdev", "escalation"):
+        for m in members(cfg, role):
+            if m["email"].startswith(AGENT_PREFIX) or m["github"].startswith(AGENT_PREFIX):
+                errors.append("pod.yml: %s %s starts with `agent:`, which is reserved for agent seats"
+                              % (LABEL[role], m["email"] or m["github"]))
     if cfg.get("mode") == "autonomous":
         for key in AUTONOMOUS_KEYS:
             if not cfg.get(key):
@@ -729,28 +735,57 @@ def is_agent(entry):
     return entry.get("by", "").startswith(AGENT_PREFIX)
 
 
-def change_mode(entries, cfg):
-    """The mode a change was signed in: its `event=mode` record, else the pod's mode (C2 of change 002)."""
-    for e in entries:
-        if e.get("event") == "mode":
-            return e.get("mode", "pod")
+def mode_record_on_base(change_dir, cfg, root=ROOT):
+    """The `event=mode` record of this change as it is on the base branch, or None.
+    Only a record that is already on the base branch (a finished, merged change) can outlive a switch back to
+    `mode: pod`; a record written on a branch cannot turn Autonomous mode on by itself."""
+    rel = os.path.relpath(os.path.join(change_dir, "gates.log"), root)
+    rc, text, _ = git_out(["show", "%s:%s" % (resolve_base(cfg["base_branch"], root), rel)], root)
+    if rc != 0:
+        return None
+    for line in text.splitlines():
+        if line.startswith("event=mode "):
+            try:
+                return dict(p.split("=", 1) for p in shlex.split(line) if "=" in p)
+            except ValueError:
+                return None
+    return None
+
+
+def change_mode(entries, cfg, change_dir=None):
+    """Autonomous when pod.yml says so. In `mode: pod`, a change keeps Autonomous mode only when its
+    `event=mode` record is already on the base branch (C2 of change 002), so a line forged on a branch
+    never counts."""
+    if cfg.get("mode") == "autonomous":
+        return "autonomous"
+    if change_dir and any(e.get("event") == "mode" for e in entries):
+        record = mode_record_on_base(change_dir, cfg)
+        if record and record.get("mode") == "autonomous":
+            return "autonomous"
     return cfg.get("mode", "pod")
 
 
-def change_seats(entries, cfg):
-    """The seat models a change was signed with: those recorded with its `event=mode`, else pod.yml's."""
-    for e in entries:
-        if e.get("event") == "mode":
-            return {leg: e.get("%s_agent_model" % leg) or cfg.get("%s_agent_model" % leg, "")
-                    for leg in ("superbiz", "superdev")}
-    return {leg: cfg.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
+def change_seats(entries, cfg, change_dir=None):
+    """The seat models to check against: pod.yml's in Autonomous mode, else those recorded on the base branch
+    for a finished change."""
+    if cfg.get("mode") == "autonomous" or not change_dir:
+        return {leg: cfg.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
+    record = mode_record_on_base(change_dir, cfg) or {}
+    return {leg: record.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
 
 
 def agent_usage(change_dir):
     """{(session, model)} with usage in the change's activity.log: the evidence an agent signature needs."""
     import activity  # activity imports lib
     records, _ = activity.read_records(os.path.join(change_dir, "activity.log"))
-    return {(r.get("session"), r.get("model")) for r in records if r.get("event") == "usage"}
+    return {(r.get("session"), r.get("model")) for r in records if r.get("event") == "usage" and r.get("session")}
+
+
+def refused_runs(change_dir):
+    """Sessions whose check ended in REFUSE (`event=verdict ... verdict=refuse` in activity.log)."""
+    import activity
+    records, _ = activity.read_records(os.path.join(change_dir, "activity.log"))
+    return {r.get("run") for r in records if r.get("event") == "verdict" and r.get("verdict") != "approve"}
 
 
 def agent_signature_problem(seats, gate, role, entry, risk, mode, usage):
@@ -763,6 +798,9 @@ def agent_signature_problem(seats, gate, role, entry, risk, mode, usage):
         return "gate %d: agent signature not allowed here (Risk: %s)" % (gate, risk)
     if gate == 1:
         return "gate %d: agent signature not allowed here (gate 1 is signed by people)" % gate
+    if not entry.get("session") or not entry.get("model"):
+        return "gate %d: agent signature by %s has no %s, so it cannot be traced" % (
+            gate, by, "session" if not entry.get("session") else "model")
     owner, cross = OWNERS[gate]
     need = {"owner": owner, "cross": cross}.get(role)
     if leg != need:
@@ -803,7 +841,9 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     elif gate == 3:
         problems.extend(check_plan(artifact, cfg))
     indexed = [(i, e) for i, e in enumerate(entries) if e["gate"] == gate]
-    mode, usage, seats = change_mode(entries, cfg), None, change_seats(entries, cfg)
+    mode, usage = change_mode(entries, cfg, change_dir), None
+    seats = change_seats(entries, cfg, change_dir)
+    agent_sessions = collections.Counter(e.get("session") for e in entries if is_agent(e) and e.get("session"))
     latest = {}
     for i, e in indexed:
         latest[e.get("role", "")] = (i, e)
@@ -818,6 +858,14 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
         if is_agent(e):
             usage = agent_usage(change_dir) if usage is None else usage
             problem = agent_signature_problem(seats, gate, role, e, risk, mode, usage)
+            if not problem and agent_sessions[e["session"]] > 1:
+                problem = ("gate %d: session %s backs more than one agent signature; each check is one run"
+                           % (gate, e["session"][:8]))
+            if not problem and e["session"] in refused_runs(change_dir):
+                problem = "gate %d: session %s ended in REFUSE, so it cannot back a signature" % (gate, e["session"][:8])
+            if not problem and gate == 4 and not auto_entry(entries):
+                problem = ("gate 4: agent signature not allowed here (no auto-merge record: agents sign gate 4 "
+                           "only after an auto-merge)")
             if problem:
                 problems.append(problem)
         else:

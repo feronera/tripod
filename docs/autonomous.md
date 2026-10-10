@@ -43,16 +43,19 @@ The command does the following:
    - the gate before is incomplete;
    - the artifact is missing;
    - the gate is already signed;
-   - `.pod/kill-switch` exists.
-2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob` (only these tools exist in that session, whatever the user's settings allow) with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
-3. Reads the verdict from a last line `VERDICT: APPROVE` or `VERDICT: REFUSE`. Anything else counts as REFUSE.
+   - `.pod/kill-switch` exists;
+   - the branch touches a path in `docs/risk-paths` (its effective risk is high);
+   - the branch edits agent instructions (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`), which could steer its own checker;
+   - it is gate 4 and there is no auto-merge record yet.
+2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob --safe-mode --strict-mcp-config`. Only these tools exist in that session, whatever the user's settings allow; the repository's CLAUDE.md, hooks, plugins and MCP servers are not loaded with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
+3. Reads the verdict from the last line, `VERDICT: APPROVE` or `VERDICT: REFUSE`. It approves only when that is the one and only VERDICT line, so text quoted from an artifact cannot decide it. Anything else counts as REFUSE.
 4. Checks that Claude Code's `modelUsage` shows the seat's model actually ran.
 5. On APPROVE, appends to gates.log. On the first agent signature it also records the mode and the seat models:
    ```
    event=mode mode=autonomous superbiz_agent_model=claude-sonnet-5-5 superdev_agent_model=claude-opus-5-5 at=…
    gate=2 role=owner by=agent:superbiz model=claude-sonnet-5-5 session=7cc5c1d8-… at=… blob=…
    ```
-6. Makes sure activity.log has usage for that session. The plugin hooks write it; if they are not loaded, agent-sign writes one record from Claude Code's own numbers, marked `source=agent-sign`.
+6. Records the run in activity.log for every run, approved or refused: one usage record per model from Claude Code's own numbers (`source=agent-sign`), and an `event=verdict` record. A run that times out or fails before returning JSON has no numbers to record.
 
 Agents run `agent-sign.sh`, never `scripts/gate.sh`, which stays for people and signs as the git email.
 
@@ -64,13 +67,15 @@ An agent signature counts only when all of these hold:
 1. The change was signed in Autonomous mode.
 2. The change is `Risk: low`.
 3. The gate is 2, 3 or 4.
-4. `by=agent:<leg>` is the seat that role needs at that gate.
-5. `model` is the seat model recorded for the change.
+4. `by=agent:<leg>` is the seat that role needs at that gate, and the line has a `session` and a `model`.
+5. `model` is the seat's model in pod.yml (for a finished change in a pod that switched back, the model recorded with it on the base branch).
 6. activity.log has usage for that `session` and `model`.
+7. That session backs no other signature, and its run did not end in REFUSE.
+8. At gate 4, gates.log has an auto-merge record.
 
 Owner and cross must also be on different models. Staleness, signing order, "risk only goes up after gate 1" and risk-paths all apply as for people. A change that touches a path in `docs/risk-paths` is high at merge, so auto-merge refuses it and people take over.
 
-A change keeps the mode and seat models it was signed with. A pod that switches back to `mode: pod` stops new agent signatures, and its finished changes keep passing.
+In `mode: pod`, agent signatures count only for a finished change: one whose `event=mode` record is already on the base branch. A record written on a branch never turns Autonomous mode on by itself. So a pod that switches back stops new agent signatures, and its merged changes keep passing.
 
 ## The sponsor
 
@@ -89,6 +94,6 @@ Budgets, a risk ceiling, automatic stops and a daily digest are planned (roadmap
   - CI, and the sponsor reading the diff;
   - the kill switch and revert.
 
-  There are no cryptographic signatures.
+  There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
 - **Cost.** Every agent signature is one `claude -p` run. Its cost lands in activity.log.

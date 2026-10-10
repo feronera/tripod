@@ -313,6 +313,10 @@ class CheckTests(SeatRepo):
 
     def test_finished_change_keeps_its_mode(self):
         self.sign_gate(2)
+        # finished = merged: its event=mode record is on the base branch (B1 of the change 002 review)
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-q", "-m", "docs: change 001")
+        git(self.root, "branch", "-f", "main", "HEAD")
         self.write_pod_yml()  # the pod switches back to mode: pod
         self.assertEqual(self.check(self.change, "2").returncode, 0)
         res = self.agent_sign(3)
@@ -328,8 +332,12 @@ class CheckTests(SeatRepo):
         self.assert_problem("gate 2: agent signature not allowed here (mode: pod)")
 
     def test_full_low_change_through_release(self):
-        for gate in (2, 3, 4):
+        for gate in (2, 3):
             self.sign_gate(gate)
+        # agents sign gate 4 only after an auto-merge (B1/M6 of the change 002 review)
+        with open(os.path.join(self.change, "gates.log"), "a", encoding="utf-8") as fh:
+            fh.write("gate=4 role=auto by=auto-merge at=2026-10-10T12:00:00+07:00 blob=- head=%s\n" % ("0" * 40))
+        self.sign_gate(4)
         res = self.check(self.change)
         self.assertEqual(res.returncode, 0, res.stdout)
         res = self.sh("release-check.sh", self.change)
