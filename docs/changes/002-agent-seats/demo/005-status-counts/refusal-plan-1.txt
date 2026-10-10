@@ -1,0 +1,14 @@
+Checking gate 3 as cross (agent:superbiz, claude-sonnet-5-5)...
+REFUSE gate 3 cross (agent:superbiz, claude-sonnet-5-5): Gate 3 cross-check for change 005-status-counts:
+
+- **`## Data shape`, `## Throughput checkpoint`, `## Parallel parts`: yes.** plan.md lines 5-6 fill in Data shape. Lines 9-12 have all 4 throughput lines. Line 15 is `none: one small function`.
+- **Every requirement has files to change and a Proof: no.** spec.md R4 (every STATUS_LABELS status included, with 0 where there are no orders) is missing from plan.md. The Files table (line 20) maps only R1, R2 and R3. The code it gives, `dict(Counter(...))`, returns only statuses that have orders, so it would break R4, E1 and intent item 2. The Proof (line 31) covers R1, R2 and R3 only. It has no check for C001 -> pending 0, paid 0, packing 0, cancelled 0.
+- **The order of work starts with failing tests: yes.** plan.md line 24 says "Failing tests, then lock them". The tests file (line 21) covers "R1, R2, R3 and E1-E3", but E1 relies on R4, which is not planned.
+- **The Rollback is workable and lists its steps: no.** plan.md line 34 is a single line, "git revert the merge commit". It is adequate for a read-only function, but it is not a list of steps, so I'm not counting it as satisfying the requirement.
+- **The "Summary for SuperBiz" still matches the intent: no.** plan.md line 37 says "order counts per status for a customer". It leaves out intent.md item 2, which says the result includes every status with 0 for statuses the customer has no orders in. This is the same defect that was planted in the earlier artifacts.
+
+I'm refusing because plan.md drops spec R4 and intent item 2, so the planned function would not meet the success measure. The plan needs these changes:
+- Add R4 to the Files table.
+- Change the implementation to start from every STATUS_LABELS key with 0.
+- Add an R4 Proof.
+- Update the Summary.

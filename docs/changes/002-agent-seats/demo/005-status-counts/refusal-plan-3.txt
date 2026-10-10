@@ -1,0 +1,18 @@
+Checking gate 3 as cross (agent:superbiz, claude-sonnet-5-5)...
+REFUSE gate 3 cross (agent:superbiz, claude-sonnet-5-5): Gate 3 cross-check of `docs/changes/005-status-counts/plan.md`:
+
+- **Script-checked sections: no.** `## Data shape` is filled in, `## Throughput checkpoint` has all 4 lines, and `## Parallel parts` is `none: one small function` (plan.md:5-15). The sections themselves pass. However, the Data shape is built to return only statuses that appear. It would not satisfy R4.
+- **Every requirement has files and a Proof: no.** R4 (spec.md:7, include every status in STATUS_LABELS, with 0 for the rest) is missing from the plan.
+  - The Files table lists only R1, R2 and R3 (plan.md:20).
+  - Proof lists only R1-R3 (plan.md:31). There is no R4 proof of "C001 -> pending 0, paid 0, packing 0, cancelled 0".
+  - The planned code `dict(Counter(...))` returns only the statuses that have orders. It never adds the zero-count statuses from STATUS_LABELS. That is the missing requirement, and it is also intent.md item 2 (intent.md:14).
+- **Order of work starts with failing tests: yes.** plan.md:24 says "Failing tests, then lock them". There is a small typo in step 2, "make test passes".
+- **Rollback is workable and lists its steps: no.** plan.md:34 is a single line, "git revert the merge commit". It has no steps beyond that. This is a minor gap, and the other findings already require refusal.
+- **Summary for SuperBiz matches the intent: no.** plan.md:37 says "order counts per status for a customer". It omits the intent's "a count for every status, with 0 for statuses with no orders" (intent.md:12-14). It would also approve a plan that cannot meet the intent's success measure.
+
+The plan drops spec R4, which traces back to intent item 2. That alone requires a refusal. Please have the plan's author:
+- Add R4 to the Files table, the code (include every STATUS_LABELS key, defaulting to 0) and the Proof.
+- Add a rollback with explicit steps.
+- Update the Summary.
+
+I changed no files.
