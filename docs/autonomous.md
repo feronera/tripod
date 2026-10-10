@@ -45,7 +45,7 @@ The command does the following:
    - the gate is already signed;
    - `.pod/kill-switch` exists;
    - the branch touches a path in `docs/risk-paths` (its effective risk is high);
-   - the branch edits agent instructions (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`), which could steer its own checker;
+   - the branch, committed or not, edits agent instructions or gate rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`), which could steer its own checker. Auto-merge refuses these files too, in either mode;
    - it is gate 4 and there is no auto-merge record yet.
 2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob --safe-mode --strict-mcp-config`. Only these tools exist in that session, whatever the user's settings allow; the repository's CLAUDE.md, hooks, plugins and MCP servers are not loaded with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
 3. Reads the verdict from the last line, `VERDICT: APPROVE` or `VERDICT: REFUSE`. It approves only when that is the one and only VERDICT line, so text quoted from an artifact cannot decide it. Anything else counts as REFUSE.
@@ -73,7 +73,9 @@ An agent signature counts only when all of these hold:
 7. That session backs no other signature, and its run did not end in REFUSE.
 8. At gate 4, gates.log has an auto-merge record.
 
-Owner and cross must also be on different models. Staleness, signing order, "risk only goes up after gate 1" and risk-paths all apply as for people. A change that touches a path in `docs/risk-paths` is high at merge, so auto-merge refuses it and people take over.
+Owner and cross must also be on different models. Model ids must match exactly: `claude-opus-5-5` in pod.yml does not match a dated or `[1m]` variant.
+
+In either mode, pod.yml may not give a person an email or GitHub login starting with `agent:`, and `mode` must be `pod` or `autonomous`. Staleness, signing order, "risk only goes up after gate 1" and risk-paths all apply as for people. A change that touches a path in `docs/risk-paths` is high at merge, so auto-merge refuses it and people take over.
 
 In `mode: pod`, agent signatures count only for a finished change: one whose `event=mode` record is already on the base branch. A record written on a branch never turns Autonomous mode on by itself. So a pod that switches back stops new agent signatures, and its merged changes keep passing.
 

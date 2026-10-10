@@ -58,6 +58,8 @@ gate=4 role=auto by=auto-merge at=<ISO> blob=<hash of acceptance.md or -> head=<
 An agent may run `auto-merge-check.sh --record` followed by `gh pr merge --auto --squash` only when it prints ALLOW.
 Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
 
+Auto-merge also refuses a change that edits agent instructions or gate rules (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`): people merge it, so a change cannot weaken its own checks.
+
 ## Acceptance after merge
 
 - After an auto record, SuperBiz may sign gate 4 (cross) before SuperDev. SuperDev then signs as owner against the same acceptance.md.

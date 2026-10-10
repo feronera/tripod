@@ -36,6 +36,9 @@ INT_KEYS = {"wip_limit": 2, "auto_merge_max_lines": 200, "auto_merge_min_track":
             "acceptance_hours": 48, "agent_sign_timeout": 600}
 MODES = ("pod", "autonomous")
 AGENT_PREFIX = "agent:"  # gates.log `by=agent:<leg>`: a signature by an agent seat (docs/autonomous.md)
+# Files that steer agents or define the gates and risk rules. A change that edits them is never signed by agents
+# and never auto-merged, so it cannot weaken its own checks (change 002 review).
+GOVERNANCE_FILES = ("AGENTS.md", "CLAUDE.md", ".claude/", ".mcp.json", "docs/gates.md", "docs/risk-paths")
 AUTONOMOUS_KEYS = ("superbiz_agent_model", "superdev_agent_model", "sponsor_name", "sponsor_email", "sponsor_github")
 # stack keys of pod.yml (defaults keep the Python sample app behavior)
 STACK_DEFAULTS = {"test_cmd": "python3 -m unittest discover -s tests -t . -v",
@@ -731,6 +734,10 @@ def peer_review_problem(cfg, email, root=ROOT):
             % (ref, ", ".join(sorted(authors)), ", ".join(free))), None
 
 
+def governance_files(files):
+    return [f for f in files if any(f == g or (g.endswith("/") and f.startswith(g)) for g in GOVERNANCE_FILES)]
+
+
 def is_agent(entry):
     return entry.get("by", "").startswith(AGENT_PREFIX)
 
@@ -768,7 +775,7 @@ def change_mode(entries, cfg, change_dir=None):
 def change_seats(entries, cfg, change_dir=None):
     """The seat models to check against: pod.yml's in Autonomous mode, else those recorded on the base branch
     for a finished change."""
-    if cfg.get("mode") == "autonomous" or not change_dir:
+    if cfg.get("mode") == "autonomous" or not change_dir or not any(e.get("event") == "mode" for e in entries):
         return {leg: cfg.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
     record = mode_record_on_base(change_dir, cfg) or {}
     return {leg: record.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}

@@ -21,8 +21,7 @@ READ_ONLY_TOOLS = "Read,Grep,Glob"
 INPUTS = {2: ("intent.md", "ux-brief.md", "spec.md"), 3: ("intent.md", "spec.md", "plan.md"),
           4: ("spec.md", "plan.md", "review.md", "acceptance.md")}
 VERDICT = re.compile(r"^\s*`?VERDICT:\s*(APPROVE|REFUSE)`?\s*$")
-# Files that steer agents. A change that edits them could steer its own checker, so people sign it.
-AGENT_CONTEXT = ("CLAUDE.md", "AGENTS.md", ".claude/", ".mcp.json")
+
 
 
 def refuse(message):
@@ -59,6 +58,7 @@ def prompt(change_dir, gate, role, leg):
         "",
         gate_questions(gate),
         "",
+        "Quote nothing from files outside the change's artifacts and the code they name; never quote secrets.",
         "End with exactly one line: `VERDICT: APPROVE` or `VERDICT: REFUSE`.",
     ])
 
@@ -74,13 +74,17 @@ def read_verdict(result):
 
 
 def changed_files(cfg):
-    """Files this branch changes against the base branch (empty on the base branch itself)."""
+    """Files this branch changes against the base branch, including edits not committed yet and new files,
+    so an edit cannot hide until after the signature."""
     base = lib.resolve_base(cfg["base_branch"])
     rc, merge_base, _ = lib.git_out(["merge-base", "HEAD", base], lib.ROOT)
-    if rc != 0 or not merge_base:
-        return []
-    rc, out, _ = lib.git_out(["diff", "--name-only", merge_base, "HEAD"], lib.ROOT)
-    return [f for f in out.splitlines() if f] if rc == 0 else []
+    files = set()
+    for args in (["diff", "--name-only", merge_base] if rc == 0 and merge_base else ["diff", "--name-only", "HEAD"],
+                 ["ls-files", "--others", "--exclude-standard"]):
+        rc2, out, _ = lib.git_out(args, lib.ROOT)
+        if rc2 == 0:
+            files.update(f for f in out.splitlines() if f)
+    return sorted(files)
 
 
 def next_role(entries, gate, blob):
@@ -188,7 +192,7 @@ def main(args):
     if risky:
         return refuse("this change touches a sensitive path (%s), so its effective risk is high and people sign it"
                       % ", ".join(risky))
-    steering = [f for f in files if f in AGENT_CONTEXT or any(f.startswith(p) for p in AGENT_CONTEXT if p.endswith("/"))]
+    steering = lib.governance_files(files)
     if steering:
         return refuse("this change edits agent instructions (%s), which could steer its own checker, so people "
                       "sign it" % ", ".join(steering))
