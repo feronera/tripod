@@ -41,7 +41,8 @@ It changes governance and touches `scripts/**`, so it is high.
 ## Decided (PO, 2026-10-10)
 - Over budget (per change or per day): agent-sign refuses before starting, and the activity hook warns the agent, until the sponsor raises the budget. No session is cut off mid-run, and the kill switch is not set automatically.
 - Daily digest: a file in the repository and a command (`scripts/digest.sh`) that prints the last 24 hours. Sending it to Slack, email or an issue is left to the team.
+- Automatic stops: over budget, N refused checks in a row on a gate, and a revert in the last 24 hours. Stops on repeated CI failures are out of scope (they need GitHub data that is not in the repository).
 - Risk ceiling: limits tighter than Risk: low, set by the sponsor: how many changes agents may take to merge per day, and paths agents may not touch even at low risk (in addition to docs/risk-paths, which apply to people too).
 
 ## Open questions
-- Automatic stops on repeated CI failures need GitHub data that is not in the repository. Proposal: out of scope for 003 (the digest can list failed runs later), keep stops on budget, refusals in a row, and a revert in the last 24 hours. PO to confirm.
+- None.
