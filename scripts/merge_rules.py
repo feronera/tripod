@@ -29,7 +29,7 @@ def head_sha():
 
 
 def changed_files(base, *paths):
-    code, out = git("diff", "--relative", "--name-only", "%s...HEAD" % base, "--", *paths)
+    code, out = git("diff", "--relative", "--no-renames", "--name-only", "%s...HEAD" % base, "--", *paths)
     if code != 0:
         return None
     return [line for line in out.splitlines() if line]
@@ -137,7 +137,7 @@ def auto_merge_reasons(change_dir, base, cfg):
                        % ", ".join(banned))
     if limits.merges_per_day is not None:
         at = sponsor.now()
-        done = sponsor.merges_today(sponsor.ledger(ROOT, at)[0], at)
+        done = sponsor.merges_today(sponsor.ledger(ROOT, at)[0], at, exclude=os.path.basename(change_dir))
         if done >= limits.merges_per_day:
             reasons.append("%d changes were auto-merged in the last 24 hours (agent_merges_per_day: %d); "
                            "people merge this one" % (done, limits.merges_per_day))

@@ -80,7 +80,9 @@ def changed_files(cfg):
     base = lib.resolve_base(cfg["base_branch"])
     rc, merge_base, _ = lib.git_out(["merge-base", "HEAD", base], lib.ROOT)
     files = set()
-    for args in (["diff", "--name-only", merge_base] if rc == 0 and merge_base else ["diff", "--name-only", "HEAD"],
+    # --no-renames: a file moved out of a forbidden or risky path shows both its old and its new path
+    for args in (["diff", "--no-renames", "--name-only", merge_base] if rc == 0 and merge_base
+                 else ["diff", "--no-renames", "--name-only", "HEAD"],
                  ["ls-files", "--others", "--exclude-standard"]):
         rc2, out, _ = lib.git_out(args, lib.ROOT)
         if rc2 == 0:
@@ -203,11 +205,6 @@ def main(args):
     if banned:
         return refuse("this change touches %s, which agents may not change (agent_forbidden_paths); people sign it"
                       % ", ".join(banned))
-    at = sponsor.now()
-    events, _ = sponsor.ledger(lib.ROOT, at)
-    stopped = sponsor.stops(events, limits, os.path.basename(change_dir), gate, at)
-    if stopped:
-        return refuse("\n  - ".join(stopped) if len(stopped) > 1 else stopped[0])
     entries = lib.read_log(change_dir)
     if gate == 4 and not lib.auto_entry(entries):
         return refuse("agents sign gate 4 only after an auto-merge (no role=auto record in gates.log)")
@@ -215,6 +212,12 @@ def main(args):
     role = next_role(entries, gate, blob)
     if role is None:
         return refuse("gate %d is already complete for the current %s" % (gate, lib.ARTIFACTS[gate]))
+    at = sponsor.now()
+    events, _ = sponsor.ledger(lib.ROOT, at)
+    stopped = sponsor.stops(events, limits, os.path.basename(change_dir), gate, at)
+    if stopped:
+        return refuse(stopped[0] if len(stopped) == 1 else "the sponsor's limits stop agent checks here:\n  - "
+                      + "\n  - ".join(stopped))
     leg = lib.OWNERS[gate][0 if role == "owner" else 1]
     model = cfg["%s_agent_model" % leg]
     by = lib.AGENT_PREFIX + leg

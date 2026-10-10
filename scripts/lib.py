@@ -38,7 +38,8 @@ MODES = ("pod", "autonomous")
 AGENT_PREFIX = "agent:"  # gates.log `by=agent:<leg>`: a signature by an agent seat (docs/autonomous.md)
 # Files that steer agents or define the gates and risk rules. A change that edits them is never signed by agents
 # and never auto-merged, so it cannot weaken its own checks (change 002 review).
-GOVERNANCE_FILES = ("AGENTS.md", "CLAUDE.md", ".claude/", ".mcp.json", "docs/gates.md", "docs/risk-paths")
+GOVERNANCE_FILES = ("AGENTS.md", "CLAUDE.md", ".claude/", ".mcp.json", "docs/gates.md", "docs/risk-paths",
+                    "docs/model-prices")
 AUTONOMOUS_KEYS = ("superbiz_agent_model", "superdev_agent_model", "sponsor_name", "sponsor_email", "sponsor_github")
 # stack keys of pod.yml (defaults keep the Python sample app behavior)
 STACK_DEFAULTS = {"test_cmd": "python3 -m unittest discover -s tests -t . -v",

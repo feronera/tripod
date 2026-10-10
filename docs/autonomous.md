@@ -45,7 +45,7 @@ The command does the following:
    - the gate is already signed;
    - `.pod/kill-switch` exists;
    - the branch touches a path in `docs/risk-paths` (its effective risk is high);
-   - the branch, committed or not, edits agent instructions or gate rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`), which could steer its own checker. Auto-merge refuses these files too, in either mode;
+   - the branch, committed or not, edits agent instructions or gate rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`, `docs/model-prices`), which could steer its own checker or its own budget. Auto-merge refuses these files too, in either mode;
    - it is gate 4 and there is no auto-merge record yet.
 2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob --safe-mode --strict-mcp-config`. Only these tools exist in that session, whatever the user's settings allow; the repository's CLAUDE.md, hooks, plugins and MCP servers are not loaded with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
 3. Reads the verdict from the last line, `VERDICT: APPROVE` or `VERDICT: REFUSE`. It approves only when that is the one and only VERDICT line, so text quoted from an artifact cannot decide it. Anything else counts as REFUSE.
@@ -100,7 +100,7 @@ The sponsor sets limits in pod.yml. Each is optional; a missing key means no lim
 
 Agents also pause for 24 hours after any revert.
 
-Spend comes from activity.log. The next run is estimated from the most expensive agent-sign run of the last 7 days. A running session is never cut off, so a day can end slightly over budget; the digest shows it. When a budget is reached, the activity hook tells the agent in its session, once per session per limit.
+Spend comes from activity.log, read from the working tree and from the base branch, so a revert or an auto-merge already on main counts on every branch (other unmerged branches are not seen). A cost that is not a finite amount of 0 or more counts as unknown. A record with no readable time still counts toward its change, but not toward any time window. Resumes and people's signatures count only from the sponsor or a member. `TRIPOD_NOW`, used by tests, can only move the clock back, which makes limits stricter. The next run is estimated from the most expensive agent-sign run of the last 7 days. A running session is never cut off, so a day can end slightly over budget; the digest shows it. When a budget is reached, the activity hook tells the agent in its session, once per session per limit.
 
 `scripts/resume.sh` is for people: it records `event=resume` in gates.log with the git email, which must be the sponsor's or a member's. Agents never run it.
 

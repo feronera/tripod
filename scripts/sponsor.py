@@ -11,6 +11,7 @@ refusal and the digest can never disagree. The limits apply only to agent work (
 import collections
 import datetime
 import json
+import math
 import os
 import sys
 
@@ -40,6 +41,10 @@ def read_limits(cfg):
         try:
             value = float(raw) if key in FLOAT_KEYS else int(raw)
         except ValueError:
+            problems.append("pod.yml: %s: %s is not a number" % (key, raw))
+            values[key] = None
+            continue
+        if not math.isfinite(value):
             problems.append("pod.yml: %s: %s is not a number" % (key, raw))
             values[key] = None
             continue
@@ -73,11 +78,13 @@ def forbidden_files(files, limits):
 # ---------- the ledger ----------
 
 def now():
-    """The current time in UTC; TRIPOD_NOW (ISO 8601) fixes it for tests and demos."""
+    """The current time in UTC. TRIPOD_NOW (ISO 8601) can only move the clock back, for tests and demos: an
+    earlier "now" keeps every later event in every window, so it can make the limits stricter, never looser."""
+    real = datetime.datetime.now(datetime.timezone.utc)
     fixed = os.environ.get("TRIPOD_NOW")
     if fixed:
-        return lib.parse_iso(fixed).astimezone(datetime.timezone.utc)
-    return datetime.datetime.now(datetime.timezone.utc)
+        return min(real, lib.parse_iso(fixed).astimezone(datetime.timezone.utc))
+    return real
 
 
 def parse_at(value):
@@ -90,47 +97,118 @@ def parse_at(value):
     return at.astimezone(datetime.timezone.utc)
 
 
-def ledger(root=lib.ROOT, until=None):
-    """(events, skipped) from every change's activity.log and gates.log, oldest first. Events after `until`
-    (the current time) are left out, so the ledger is read as of now."""
-    until = until or now()
-    events, skipped = [], 0
+def parse_line(line):
+    """A `key=value` log line as a dict, or None."""
+    import shlex
+    line = line.strip()
+    if not line or line.startswith("#"):
+        return None
+    try:
+        parts = shlex.split(line)
+    except ValueError:
+        return None
+    if not parts or not all("=" in p for p in parts):
+        return None
+    rec = dict(p.split("=", 1) for p in parts)
+    try:
+        rec["gate"] = int(rec.get("gate", "0"))
+    except ValueError:
+        rec["gate"] = 0
+    rec["by"] = rec.get("by", "").lower()
+    return rec
+
+
+def change_logs(root, cfg, include_base=True):
+    """{change: (activity lines, gates lines)} from the working tree, plus the base branch's copies, so a revert
+    or an auto-merge already on main counts on every branch. A line in both is read once."""
+    logs = {}
     for change_dir in lib.change_dirs(root):
         change = os.path.basename(change_dir)
-        records, _ = activity.read_records(os.path.join(change_dir, activity.LOG))
-        rows = [(r, {"usage": "usage", "verdict": "verdict"}.get(r.get("event"))) for r in records]
-        for e in lib.read_log(change_dir):
-            if e.get("event") in ("revert", "resume"):
-                rows.append((e, e["event"]))
-            elif e.get("role") == "auto" and e["gate"] == 4:
+        pair = []
+        for name in (activity.LOG, "gates.log"):
+            path = os.path.join(change_dir, name)
+            pair.append(open(path, encoding="utf-8").read().splitlines() if os.path.exists(path) else [])
+        logs[change] = pair
+    if include_base:
+        base = lib.resolve_base(cfg["base_branch"], root)
+        rc, out, _ = lib.git_out(["ls-tree", "--name-only", "%s:docs/changes" % base], root)
+        for change in (out.splitlines() if rc == 0 else []):
+            if not change[:3].isdigit():
+                continue
+            pair = logs.setdefault(change, [[], []])
+            for i, name in enumerate((activity.LOG, "gates.log")):
+                rc, text, _ = lib.git_out(["show", "%s:docs/changes/%s/%s" % (base, change, name)], root)
+                if rc == 0:
+                    seen = set(pair[i])
+                    pair[i] = pair[i] + [l for l in text.splitlines() if l not in seen]
+    return logs
+
+
+def people_of(cfg):
+    emails = {e for r in ("superbiz", "superdev", "escalation") for e in lib.role_emails(cfg, r)}
+    emails.update(e.lower() for e in lib.split_list(cfg.get("sponsor_email", "")))
+    return emails
+
+
+def ledger(root=lib.ROOT, until=None, cfg=None, include_base=True):
+    """(events, skipped). Every change's activity.log and gates.log, from the working tree and the base branch.
+    A record without a readable time is kept for per-change totals but left out of every time window, and
+    counted as skipped. Resumes and people's signatures count only from the sponsor or a member."""
+    cfg = cfg or lib.read_pod_yml(root)
+    people = people_of(cfg)
+    events, skipped = [], 0
+    for change, (activity_lines, gates_lines) in sorted(change_logs(root, cfg, include_base).items()):
+        rows = []
+        for line in activity_lines:
+            rec = parse_line(line)
+            if rec and rec.get("event") in ("usage", "verdict"):
+                rows.append((rec, rec["event"]))
+        for line in gates_lines:
+            e = parse_line(line)
+            if not e:
+                continue
+            if e.get("event") == "revert":
+                rows.append((e, "revert"))
+            elif e.get("event") == "resume" and e["by"] in people:
+                rows.append((e, "resume"))
+            elif e.get("role") == "auto" and e["gate"] == 4 and e["by"] == lib.AUTO_BY:
                 rows.append((e, "auto"))
-            elif 1 <= e["gate"] <= 4 and e.get("role") in ("owner", "cross", "escalation"):
+            elif 1 <= e["gate"] <= 4 and e.get("role") in ("owner", "cross", "escalation") and (
+                    lib.is_agent(e) or e["by"] in people):
                 rows.append((e, "signature"))
         for data, kind in rows:
-            if not kind:
-                continue
             at = parse_at(data.get("at"))
             if at is None:
                 skipped += 1
-                continue
-            if at <= until:
-                events.append(Event(at, change, kind, data))
-    events.sort(key=lambda e: e.at)
+            events.append(Event(at, change, kind, data))
+    events.sort(key=lambda e: e.at or EPOCH)
     return events, skipped
 
 
+EPOCH = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+
+
+def after(event, since):
+    """True when the event has a time and it is after `since` (records without a time are in no window)."""
+    return event.at is not None and event.at > since
+
+
 def usd_of(event):
+    """(usd, known): only a finite amount of 0 or more is known; anything else counts as 0 and unknown."""
     try:
-        return float(event.data.get("usd", "")), True
+        usd = float(event.data.get("usd", ""))
     except ValueError:
         return 0.0, False
+    if not math.isfinite(usd) or usd < 0:
+        return 0.0, False
+    return usd, True
 
 
 def spend(events, change=None, since=None):
     """(usd, unknown records) of usage events, for one change or all, since a time or ever."""
     total, unknown = 0.0, 0
     for e in events:
-        if e.kind != "usage" or (change and e.change != change) or (since and e.at <= since):
+        if e.kind != "usage" or (change and e.change != change) or (since and not after(e, since)):
             continue
         usd, known = usd_of(e)
         total += usd
@@ -142,14 +220,14 @@ def estimate(events, at):
     """The most expensive agent-sign run (usage summed per session) in the last 7 days."""
     runs = collections.Counter()
     for e in events:
-        if e.kind == "usage" and e.data.get("source") == "agent-sign" and e.at > at - ESTIMATE_WINDOW:
+        if e.kind == "usage" and e.data.get("source") == "agent-sign" and after(e, at - ESTIMATE_WINDOW):
             runs[(e.change, e.data.get("session"))] += usd_of(e)[0]
     return max(runs.values(), default=0.0)
 
 
 def person_acted(events, change):
     """The last time a person signed a gate of the change or ran resume.sh, or None."""
-    times = [e.at for e in events if e.change == change and (
+    times = [e.at for e in events if e.change == change and e.at is not None and (
         e.kind == "resume" or (e.kind == "signature" and not lib.is_agent(e.data)))]
     return max(times, default=None)
 
@@ -157,11 +235,11 @@ def person_acted(events, change):
 def refusals(events, change, gate):
     since = person_acted(events, change)
     return sum(1 for e in events if e.change == change and e.kind == "verdict" and str(e.data.get("gate")) == str(gate)
-               and e.data.get("verdict") != "approve" and (since is None or e.at > since))
+               and e.data.get("verdict") == "refuse" and e.at is not None and (since is None or e.at > since))
 
 
 def recent_revert(events, at):
-    reverts = [e for e in events if e.kind == "revert" and e.at > at - DAY]
+    reverts = [e for e in events if e.kind == "revert" and after(e, at - DAY)]
     return reverts[-1] if reverts else None
 
 
@@ -169,28 +247,40 @@ def fmt_time(at):
     return at.strftime("%Y-%m-%d %H:%M")
 
 
-def stops(events, limits, change, gate, at):
-    """Reasons agent-sign must not start an agent for this change and gate (empty = go)."""
-    reasons = []
-    guess = estimate(events, at)
-    if limits.per_change is not None:
-        spent, _ = spend(events, change)
-        if spent + guess > limits.per_change + 1e-9:
-            reasons.append("budget for %s reached: spent US$%.2f of US$%.2f (budget_per_change_usd), and the next "
-                           "check may cost about US$%.2f. The sponsor can raise the limit in pod.yml"
-                           % (change, spent, limits.per_change, guess))
-    if limits.per_day is not None:
-        spent, _ = spend(events, since=at - DAY)
-        if spent + guess > limits.per_day + 1e-9:
-            reasons.append("today's budget reached: spent US$%.2f in the last 24 hours of US$%.2f "
-                           "(budget_per_day_usd), next check about US$%.2f. The sponsor can raise the limit in pod.yml"
-                           % (spent, limits.per_day, guess))
-    if limits.max_refusals is not None:
-        count = refusals(events, change, gate)
-        if count >= limits.max_refusals:
-            reasons.append("gate %s has %d refused agent checks since a person last acted (max_refusals_per_gate: %d). "
-                           "A person reviews it, then runs scripts/resume.sh docs/changes/%s \"<reason>\""
-                           % (gate, count, limits.max_refusals, change))
+def change_budget_stop(events, limits, change, guess):
+    if limits.per_change is None:
+        return None
+    spent, _ = spend(events, change)
+    if spent + guess > limits.per_change + 1e-9:
+        return ("budget for %s reached: spent US$%.2f of US$%.2f (budget_per_change_usd), and the next check may "
+                "cost about US$%.2f. The sponsor can raise the limit in pod.yml" % (change, spent, limits.per_change, guess))
+    return None
+
+
+def refusal_stop(events, limits, change, gate):
+    if limits.max_refusals is None:
+        return None
+    count = refusals(events, change, gate)
+    if count >= limits.max_refusals:
+        return ("gate %s has %d refused agent checks since a person last acted (max_refusals_per_gate: %d). "
+                "A person reviews it, then runs scripts/resume.sh docs/changes/%s \"<reason>\""
+                % (gate, count, limits.max_refusals, change))
+    return None
+
+
+def day_budget_stop(events, limits, at, guess):
+    if limits.per_day is None:
+        return None
+    spent, _ = spend(events, since=at - DAY)
+    if spent + guess > limits.per_day + 1e-9:
+        return ("today's budget reached: spent US$%.2f in the last 24 hours of US$%.2f (budget_per_day_usd), next "
+                "check about US$%.2f. The sponsor can raise the limit in pod.yml" % (spent, limits.per_day, guess))
+    return None
+
+
+def pod_stops(events, limits, at, guess):
+    """Stops for every change: the day's budget and the pause after a revert."""
+    reasons = [r for r in (day_budget_stop(events, limits, at, guess),) if r]
     revert = recent_revert(events, at)
     if revert:
         reasons.append("%s was reverted at %s UTC; agents pause for 24 hours after a revert (until %s UTC)"
@@ -198,22 +288,57 @@ def stops(events, limits, change, gate, at):
     return reasons
 
 
-def merges_today(events, at):
-    return sum(1 for e in events if e.kind == "auto" and e.at > at - DAY)
+def stops(events, limits, change, gate, at):
+    """Reasons agent-sign must not start an agent for this change and gate (empty = go). The digest lists the
+    same stops, from the same functions."""
+    guess = estimate(events, at)
+    reasons = [r for r in (change_budget_stop(events, limits, change, guess),) if r]
+    reasons += [r for r in (refusal_stop(events, limits, change, gate),) if r]
+    return reasons + pod_stops(events, limits, at, guess)
 
 
-def budget_warnings(events, limits, change, at):
-    """[(which, spent, limit)] for budgets already reached (no estimate): the hook's warning."""
-    out = []
-    if limits.per_change is not None:
-        spent, _ = spend(events, change)
-        if spent >= limits.per_change:
-            out.append(("change", spent, limits.per_change))
-    if limits.per_day is not None:
-        spent, _ = spend(events, since=at - DAY)
-        if spent >= limits.per_day:
-            out.append(("day", spent, limits.per_day))
-    return out
+def merges_today(events, at, exclude=None):
+    """Changes auto-merged in the last 24 hours (each change once), not counting `exclude` (the change being
+    checked, whose own record CI re-checks)."""
+    return len({e.change for e in events if e.kind == "auto" and after(e, at - DAY) and e.change != exclude})
+
+
+def usage_spend(path, since=None):
+    """Spend in one activity.log: all of it, or (since) only records after that time. With `since`, the file is
+    read from the end and reading stops at the first older record, so a long log costs little (the hook)."""
+    if not os.path.exists(path):
+        return 0.0
+    if since is None:
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+    else:
+        lines, size = [], os.path.getsize(path)
+        with open(path, "rb") as fh:
+            pos, tail, done = size, b"", False
+            while pos > 0 and not done:
+                step = min(65536, pos)
+                pos -= step
+                fh.seek(pos)
+                chunk = fh.read(step) + tail
+                parts = chunk.split(b"\n")
+                tail = parts[0] if pos > 0 else b""
+                for raw in reversed(parts[1:] if pos > 0 else parts):
+                    rec = parse_line(raw.decode("utf-8", "replace"))
+                    if not rec or rec.get("event") != "usage":
+                        continue
+                    at = parse_at(rec.get("at"))
+                    if at is not None and at <= since:
+                        done = True
+                        break
+                    lines.append(raw.decode("utf-8", "replace"))
+    total = 0.0
+    for line in lines:
+        rec = parse_line(line)
+        if rec and rec.get("event") == "usage":
+            ev = Event(parse_at(rec.get("at")), "", "usage", rec)
+            if since is None or after(ev, since):
+                total += usd_of(ev)[0]
+    return total
 
 
 def hook_warning(root, change_dir, session):
@@ -223,8 +348,15 @@ def hook_warning(root, change_dir, session):
     if problems or (limits.per_change is None and limits.per_day is None):
         return None
     at = now()
-    events, _ = ledger(root, at)
-    warnings = budget_warnings(events, limits, os.path.basename(change_dir), at)
+    warnings = []
+    if limits.per_change is not None:
+        spent = usage_spend(os.path.join(change_dir, activity.LOG))
+        if spent >= limits.per_change:
+            warnings.append(("change", spent, limits.per_change))
+    if limits.per_day is not None:
+        spent = sum(usage_spend(os.path.join(d, activity.LOG), at - DAY) for d in lib.change_dirs(root))
+        if spent >= limits.per_day:
+            warnings.append(("day", spent, limits.per_day))
     folder = os.path.join(root, ".pod", "activity")
     os.makedirs(folder, exist_ok=True)
     texts = []
@@ -245,7 +377,7 @@ def hook_warning(root, change_dir, session):
 
 def digest(events, skipped, limits, at, hours):
     since = at - datetime.timedelta(hours=hours)
-    window = [e for e in events if e.at > since]
+    window = [e for e in events if after(e, since)]
     nothing = "nothing in the last %d hours" % hours
     lines = ["Tripod digest, last %d hours (%s → %s UTC)" % (hours, fmt_time(since), fmt_time(at))]
     total, unknown = spend(window)
@@ -281,33 +413,29 @@ def digest(events, skipped, limits, at, hours):
                         for e in window if e.kind == "revert"])
     section("resumes", ["%s at %s by %s: %s" % (e.change, fmt_time(e.at), e.data.get("by", "-"), e.data.get("reason", "-"))
                         for e in window if e.kind == "resume"])
+    guess = estimate(events, at)
     in_force = []
     revert = recent_revert(events, at)
     if revert:
         in_force.append("%s reverted at %s UTC; agents pause until %s UTC"
                         % (revert.change, fmt_time(revert.at), fmt_time(revert.at + DAY)))
-    if limits.max_refusals is not None:
-        for change, gates in refused.items():
-            for gate in sorted(gates):
-                count = refusals(events, change, gate)
-                if count >= limits.max_refusals:
-                    in_force.append("%s gate %s: %d refusals in a row (max_refusals_per_gate: %d); resume with "
-                                    "scripts/resume.sh" % (change, gate, count, limits.max_refusals))
-    if limits.per_change is not None:
-        for change in sorted({e.change for e in events if e.kind == "usage"}):
-            total, _ = spend(events, change)
-            if total >= limits.per_change:
-                in_force.append("%s budget reached (US$%.2f of US$%.2f, budget_per_change_usd)"
-                                % (change, total, limits.per_change))
-    if limits.per_day is not None:
-        day, _ = spend(events, since=at - DAY)
-        if day >= limits.per_day:
-            in_force.append("today's budget reached (US$%.2f of US$%.2f)" % (day, limits.per_day))
+    stop = day_budget_stop(events, limits, at, guess)
+    if stop:
+        in_force.append(stop)
+    for change in sorted({e.change for e in events}):
+        stop = change_budget_stop(events, limits, change, guess)
+        if stop:
+            in_force.append(stop)
+        for gate in sorted({str(e.data.get("gate")) for e in events if e.change == change and e.kind == "verdict"}):
+            stop = refusal_stop(events, limits, change, gate)
+            if stop:
+                in_force.append("%s: %s" % (change, stop))
     section("stops in force", in_force)
     lines.append("limits: " + limits_text(limits))
     if skipped:
         lines.append("skipped records: %d (no readable time)" % skipped)
-    return "\n".join(lines) + "\n"
+    # log values reach the sponsor's terminal: no control characters (escape sequences) from the logs
+    return "\n".join(activity.clean(l) for l in lines) + "\n"
 
 
 # ---------- commands ----------
@@ -334,8 +462,13 @@ def cmd_digest(args):
     print(text, end="")
     if write:
         folder = os.path.join(lib.ROOT, "docs", "digest")
-        os.makedirs(folder, exist_ok=True)
         path = os.path.join(folder, at.strftime("%Y-%m-%d") + ".md")
+        root = os.path.realpath(lib.ROOT)
+        if os.path.islink(folder) or os.path.islink(path) or not os.path.realpath(folder).startswith(root + os.sep):
+            print("Refused: docs/digest or its file is a symlink or lies outside the repository; not writing",
+                  file=sys.stderr)
+            return 1
+        os.makedirs(folder, exist_ok=True)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write("```\n" + text + "```\n")
         print("Wrote %s" % os.path.relpath(path, lib.ROOT))
@@ -347,8 +480,8 @@ def cmd_resume(args):
         print('usage: scripts/resume.sh <change-dir> "<reason>"', file=sys.stderr)
         return 2
     change_dir = os.path.abspath(args[0])
-    if not os.path.isdir(change_dir):
-        print("change folder not found: %s" % args[0], file=sys.stderr)
+    if not os.path.isdir(change_dir) or os.path.dirname(os.path.realpath(change_dir)) != os.path.realpath(lib.CHANGES_DIR):
+        print("change folder not found in docs/changes: %s" % args[0], file=sys.stderr)
         return 1
     cfg = lib.read_pod_yml()
     email = lib.git_email()
