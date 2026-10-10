@@ -1,0 +1,9 @@
+event=usage at=2026-10-10T13:43:16Z session=7bb90cd3-22d5-404f-aca1-e4e9316b96c9 agent=main model=claude-haiku-4-5-20251001 input=1203 output=22 cache_write=0 cache_write_1h=0 cache_read=0 usd=0.001313 seconds=17 source=agent-sign
+event=usage at=2026-10-10T13:43:16Z session=7bb90cd3-22d5-404f-aca1-e4e9316b96c9 agent=main model=claude-opus-5-5 input=4 output=1552 cache_write=3673 cache_write_1h=0 cache_read=8695 usd=0.062179 seconds=0 source=agent-sign
+event=verdict at=2026-10-10T13:43:16Z run=7bb90cd3-22d5-404f-aca1-e4e9316b96c9 gate=2 role=cross by=agent:superdev model=claude-opus-5-5 verdict=refuse
+event=usage at=2026-10-10T13:43:38Z session=7823345e-c969-48db-9328-d0dbed479d0a agent=main model=claude-haiku-4-5-20251001 input=1203 output=20 cache_write=0 cache_write_1h=0 cache_read=0 usd=0.001303 seconds=19 source=agent-sign
+event=usage at=2026-10-10T13:43:38Z session=7823345e-c969-48db-9328-d0dbed479d0a agent=main model=claude-opus-5-5 input=4 output=1903 cache_write=2756 cache_write_1h=0 cache_read=9642 usd=0.062052 seconds=0 source=agent-sign
+event=verdict at=2026-10-10T13:43:38Z run=7823345e-c969-48db-9328-d0dbed479d0a gate=2 role=cross by=agent:superdev model=claude-opus-5-5 verdict=refuse
+event=tool at=2026-10-10T13:44:10Z session=47a75b6f-6b6f-4e72-a58c-1ba86ed0753a id=toolu_015QktRvphG4nHxo1FYmgHG1 tool=Bash cmd=rtk
+event=usage at=2026-10-10T13:44:13Z session=47a75b6f-6b6f-4e72-a58c-1ba86ed0753a agent=main model=claude-opus-5-5 input=2 output=99 cache_write=22398 cache_write_1h=22398 cache_read=23106 usd=0.185793 seconds=5
+event=usage at=2026-10-10T13:44:14Z session=47a75b6f-6b6f-4e72-a58c-1ba86ed0753a agent=main model=claude-opus-5-5 input=2 output=248 cache_write=2152 cache_write_1h=2152 cache_read=45504 usd=0.031285 seconds=0

@@ -1,0 +1,11 @@
+Tripod digest, last 24 hours (2026-10-09 13:45 → 2026-10-10 13:45 UTC)
+spend: US$2.39 · unknown: 0 records
+  004-order-count US$2.04 (claude-haiku-4-5-20251001 US$0.01, claude-opus-5-5 US$0.90, claude-sonnet-5-5 US$1.13)
+  005-open-orders US$0.34 (claude-haiku-4-5-20251001 US$0.00, claude-opus-5-5 US$0.34)
+agent signatures: 004-order-count gate 2 owner claude-sonnet-5-5, gate 2 owner claude-sonnet-5-5, gate 2 owner claude-sonnet-5-5, gate 2 cross claude-opus-5-5, gate 3 owner claude-opus-5-5, gate 3 cross claude-sonnet-5-5
+refused agent checks: 005-open-orders 2 (gate 2: 2)
+auto-merges: 004-order-count at 2026-10-10 01:35
+reverts: nothing in the last 24 hours
+resumes: 005-open-orders at 2026-10-10 13:43 by sponsor@pod.example: planted defect seen; checking the budget stop next
+stops in force: 004-order-count budget reached (US$2.04 of US$0.10, budget_per_change_usd); 005-open-orders budget reached (US$0.34 of US$0.10, budget_per_change_usd)
+limits: budget_per_change_usd 0.10, max_refusals_per_gate 2, agent_forbidden_paths app/billing*

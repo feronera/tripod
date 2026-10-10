@@ -45,7 +45,7 @@ The command does the following:
    - the gate is already signed;
    - `.pod/kill-switch` exists;
    - the branch touches a path in `docs/risk-paths` (its effective risk is high);
-   - the branch, committed or not, edits agent instructions or gate rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`), which could steer its own checker. Auto-merge refuses these files too, in either mode;
+   - the branch, committed or not, edits agent instructions or gate rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`, `docs/model-prices`), which could steer its own checker or its own budget. Auto-merge refuses these files too, in either mode;
    - it is gate 4 and there is no auto-merge record yet.
 2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob --safe-mode --strict-mcp-config`. Only these tools exist in that session, whatever the user's settings allow; the repository's CLAUDE.md, hooks, plugins and MCP servers are not loaded with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
 3. Reads the verdict from the last line, `VERDICT: APPROVE` or `VERDICT: REFUSE`. It approves only when that is the one and only VERDICT line, so text quoted from an artifact cannot decide it. Anything else counts as REFUSE.
@@ -86,7 +86,33 @@ The sponsor signs nothing. The sponsor is on the loop, not in it:
 - creates `.pod/kill-switch` to stop every agent at once;
 - reverts a change and records it with `scripts/mark-revert.sh`, which also stops auto-merge until there is a new track record.
 
-Budgets, a risk ceiling, automatic stops and a daily digest are planned (roadmap step 3).
+### Limits and automatic stops
+
+The sponsor sets limits in pod.yml. Each is optional; a missing key means no limit. They apply only to agent work (`agent-sign.sh` and auto-merge), never to people's commands.
+
+| Key | What happens |
+|---|---|
+| `budget_per_change_usd` | agent-sign refuses when the change's spend plus the next run would pass it |
+| `budget_per_day_usd` | the same, over the last 24 hours, for the whole pod |
+| `max_refusals_per_gate` | after this many refused agent checks on a gate, agent-sign refuses until a person signs a gate of the change or runs `scripts/resume.sh <dir> "<reason>"` |
+| `agent_merges_per_day` | auto-merge refuses once this many changes were auto-merged in the last 24 hours |
+| `agent_forbidden_paths` | agent-sign and auto-merge refuse a change that touches these globs; people can still change them at Risk: low |
+
+Agents also pause for 24 hours after any revert.
+
+Spend comes from activity.log, read from the working tree and from the base branch, so a revert or an auto-merge already on main counts on every branch (other unmerged branches are not seen). A cost that is not a finite amount of 0 or more counts as unknown. A record with no readable time still counts toward its change, but not toward any time window. Resumes and people's signatures count only from the sponsor or a member. `TRIPOD_NOW`, used by tests, can only move the clock back, which makes limits stricter. The next run is estimated from the most expensive agent-sign run of the last 7 days. A running session is never cut off, so a day can end slightly over budget; the digest shows it. When a budget is reached, the activity hook tells the agent in its session, once per session per limit.
+
+`scripts/resume.sh` is for people: it records `event=resume` in gates.log with the git email, which must be the sponsor's or a member's. Agents never run it.
+
+### The daily digest
+
+```bash
+scripts/digest.sh              # the last 24 hours
+scripts/digest.sh --hours 72   # a longer window
+scripts/digest.sh --write      # also save docs/digest/YYYY-MM-DD.md (UTC date)
+```
+
+It lists spend (total, per change, per model, unknown), agent signatures, refused checks, auto-merges, reverts, resumes, stops in force and the limits, from the same records the stops use. Sending it to Slack, email or an issue is left to the team, for example with a scheduled CI job.
 
 ## Limits you accept
 
@@ -99,3 +125,9 @@ Budgets, a risk ceiling, automatic stops and a daily digest are planned (roadmap
   There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
 - **Cost.** Every agent signature is one `claude -p` run. Its cost lands in activity.log.
+- **Limits are checked before a run, not during it.**
+  - Several agent-sign runs started at the same moment all pass the same check, so spend can overshoot by one estimate per run.
+  - Branches that are not merged do not see each other's spend or merges.
+  - A run that fails before it returns a verdict is not counted as a refusal.
+  - The budget warning also reaches a person's own Claude Code session in the repository, because the hook cannot tell people from agents.
+  - The digest shows all of this the next day.

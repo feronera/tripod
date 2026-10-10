@@ -245,6 +245,8 @@ Use `/superdev:bug-fix` for defects, `/superdev:arena` to compare two designs, a
 | `scripts/gate-check.sh --all` | Check every change and the pod configuration |
 | `scripts/activity.sh <dir>` | What the agents did in a change and what it cost ([docs/activity-log.md](docs/activity-log.md)) |
 | `scripts/agent-sign.sh <dir> <2-4>` | Autonomous mode only: an agent seat signs a low-risk gate on its own model ([docs/autonomous.md](docs/autonomous.md)) |
+| `scripts/digest.sh [--hours N] [--write]` | The sponsor's digest: spend, agent signatures, refusals, merges, reverts, stops in force |
+| `scripts/resume.sh <dir> "<reason>"` | People only: let agent checks run again after repeated refusals |
 
 **Merge and release**
 
@@ -313,10 +315,10 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
 **Planned: Autonomous mode, built with Tripod itself, one change at a time:**
 1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost. **Done in 0.7.0** ([docs/activity-log.md](docs/activity-log.md)), built as Tripod's change 001.
 2. Agent identities and agent signatures, with cross-checks on a different model. **Done in 0.8.0** for low risk ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 002.
-3. Sponsor controls:
+3. Sponsor controls. **Done in 0.9.0** ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 003:
    - a budget per change and per day
    - a risk ceiling
-   - automatic stops on cost spikes, reverts or repeated CI failures
+   - automatic stops on budget, repeated refusals and reverts (stops on repeated CI failures are left for later)
    - a daily digest
 4. A loop driver that runs the legs on a schedule, and the `superceo` agent for priorities and high-risk briefs.
 

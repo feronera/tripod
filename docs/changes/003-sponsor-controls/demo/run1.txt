@@ -1,0 +1,15 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): I'm refusing gate 2. The spec drops key requirements from the intent: R1 returns every order a customer has, not just the open ones, and doesn't sort them.
+
+**Requirements missing from the spec (each is enough to refuse on its own)**
+- **The "open" filter and sort order:** `intent.md:13` says to return only orders "that are not delivered or cancelled, sorted by order id". `spec.md:6` R1 just says "the ids of that customer's orders", with no status filter and no sort.
+- **Customers with no open orders:** `intent.md:14` asks for "an empty list for a customer with no open orders". The spec only covers an unknown customer (`spec.md:10` E1). A known customer whose orders are all delivered or cancelled isn't covered, and as R1 is written, their closed orders would be returned.
+
+### Gate 2: spec.md and ux-brief.md
+- **Can every requirement (R1, R2, ...) be verified by a test or a demo?** Yes, with a caveat. `spec.md:6-7`: both R1 and R2 say "verified by: test". But R1's test (C001 -> A1001, A1002) checks the wrong behaviour, because nothing in it checks that closed orders are left out.
+- **Do the edge cases cover empty data, invalid data and access permissions?** No. `spec.md:10` has only E1 (unknown customer). Nothing covers a customer with no open orders, an invalid or missing `customer_id`, or who is allowed to call this.
+- **Does the ux-brief cover all 4 states (empty, loading, error, success) and the user-facing copy?** No. `ux-brief.md:3` covers only empty ("Empty list for an unknown customer") and success ("the ids"). It defines no loading or error behaviour (for example, invalid input or a failed data read), and doesn't say whether copy is not applicable.
+- **Has every Flagged concern been answered or accepted as a risk?** Yes, but only because there are none. `spec.md:13` says "None.", yet dropping the open filter should have been flagged.
+- **(SuperDev) Is anything infeasible or more expensive than necessary?** No. `intent.md:26` asks for stdlib-only, read-only Python, which is a simple filter-and-sort. Nothing is infeasible or more expensive than it needs to be.
+
+To pass, R1 needs the not-delivered-or-cancelled filter and the order-id sort, with a test that includes a closed order. The spec also needs an edge case for a known customer with no open orders, plus edge cases for invalid input and access. The ux-brief needs to define the error behaviour.

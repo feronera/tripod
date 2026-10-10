@@ -1,0 +1,1 @@
+Refused: gate 2 has 2 refused agent checks since a person last acted (max_refusals_per_gate: 2). A person reviews it, then runs scripts/resume.sh docs/changes/005-open-orders "<reason>"

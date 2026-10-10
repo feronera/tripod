@@ -1,0 +1,5 @@
+In `app/orders.py`, "open orders" would most naturally mean a customer's orders that are still in progress (status `pending`, `paid`, `packing` or `shipped`), leaving out the finished `delivered` and `cancelled` ones. The module has no such filter yet: `orders_for_customer` returns every order.
+
+QUOTE: Tripod: the change budget is reached (US$0.13 of US$0.10). scripts/agent-sign.sh will refuse until the sponsor raises it. Finish the current step and hand over
+
+That message came from the post-command hook after I read the file. Following it, I've stopped here and made no changes.
