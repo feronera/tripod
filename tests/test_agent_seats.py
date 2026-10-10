@@ -340,8 +340,6 @@ class CheckTests(SeatRepo):
 
 class AutonomousAutoMergeTests(AutoMergeRepo):
     def test_auto_merge_allows_agent_signed_gates(self):
-        with open(os.path.join(self.root, "pod.yml"), "a", encoding="utf-8") as fh:
-            fh.write(AUTONOMOUS)
         lines = [l for l in self.log_lines(self.c) if l.startswith("gate=1 ")]
         lines.append("event=mode mode=autonomous at=2026-10-10T09:00:00Z")
         usage = []
@@ -358,6 +356,9 @@ class AutonomousAutoMergeTests(AutoMergeRepo):
         with open(os.path.join(self.c, "activity.log"), "w", encoding="utf-8") as fh:
             fh.write("\n".join(usage) + "\n")
         self.commit("docs(003): agent signatures")
+        # pod.yml is a risk path, so the pod's Autonomous setting is not part of this change's diff
+        with open(os.path.join(self.root, "pod.yml"), "a", encoding="utf-8") as fh:
+            fh.write(AUTONOMOUS)
         res = self.auto()
         self.assertEqual(res.returncode, 0, res.stdout)
         self.assertEqual(res.stdout.strip(), "ALLOW")

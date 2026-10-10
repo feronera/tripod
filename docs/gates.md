@@ -45,7 +45,7 @@ scripts/gate-check.sh docs/changes/001-slug  # check every gate recorded in gate
   Exception: at gate 4, after a `role=auto` record, SuperBiz may sign cross first (acceptance after merge).
 - Gate N can be signed only once gate N-1 is complete.
 - Each line in `gates.log` stores the artifact's blob hash. If the artifact is edited after approval, the approval becomes stale and must be signed again.
-- Agents never sign gates on behalf of people.
+- Agents never sign gates on behalf of people. In `mode: autonomous`, agents sign gates 2 to 4 of a Risk: low change in their own seats with `scripts/agent-sign.sh` (`by=agent:<leg>`, a different model for the cross-check). Gate 1 is always signed by people. See `docs/autonomous.md`.
 
 ## Review questions for each gate
 

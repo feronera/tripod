@@ -1,7 +1,7 @@
 {
   "name": "superbiz",
   "license": "MIT",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "SuperBiz seat of the agentic pod (PO, PM, BA, Designer): drafts intent, ux-brief, spec, acceptance and release notes. A hook limits edits to docs/.",
   "author": { "name": "HarmonyX" }
 }

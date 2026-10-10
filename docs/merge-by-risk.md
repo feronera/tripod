@@ -64,6 +64,10 @@ Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
 - If `acceptance_hours` passes and SuperBiz has not signed, release-check reports that the change must not be released to production until SuperBiz accepts it.
 - The post-merge acceptance (acceptance.md and the gate 4 signatures) goes to `main` in its own pull request. That pull request changes only `docs/`, so the auto record does not apply to it: it needs an approval from a pod member who did not open it.
 
+## Autonomous mode
+
+In `mode: autonomous`, gates 2 and 3 of a low-risk change may be signed by agents (`docs/autonomous.md`). Auto-merge checks them like people's signatures, so a low-risk change can merge with no person after gate 1. Gate 4 is then signed by the agents after the merge (post-merge acceptance). Medium and high risk need people in either mode.
+
 ## Revert
 
 1. Revert the code: `git revert <commit>`, then open a PR as usual.

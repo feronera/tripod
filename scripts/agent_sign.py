@@ -1,0 +1,194 @@
+#!/usr/bin/env python3
+"""Sign one seat of a gate as an agent, in Autonomous mode (docs/autonomous.md).
+
+    scripts/agent-sign.sh <change-dir> <gate>
+
+Starts `claude -p` on the model of the seat the gate needs next (owner first, then cross), with read-only tools,
+and records its APPROVE in gates.log as `by=agent:<leg> model=<model> session=<id>`. People sign with
+scripts/gate.sh instead; gate 1 and any change that is not Risk: low always need people.
+"""
+import json
+import os
+import re
+import subprocess
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import activity  # noqa: E402
+import lib  # noqa: E402
+
+READ_ONLY_TOOLS = "Read,Grep,Glob"
+INPUTS = {2: ("intent.md", "ux-brief.md", "spec.md"), 3: ("intent.md", "spec.md", "plan.md"),
+          4: ("spec.md", "plan.md", "review.md", "acceptance.md")}
+VERDICT = re.compile(r"^\s*VERDICT:\s*(APPROVE|REFUSE)\s*$", re.M)
+
+
+def refuse(message):
+    print("Refused: " + message)
+    return 1
+
+
+def gate_questions(gate):
+    """The `### Gate N` section of docs/gates.md, or a short fallback."""
+    path = os.path.join(lib.ROOT, "docs", "gates.md")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:
+            text = fh.read()
+        m = re.search(r"^### Gate %d:.*?(?=^### |^## |\Z)" % gate, text, re.M | re.S)
+        if m:
+            return m.group(0).strip()
+    return "### Gate %d\n- Is %s complete, consistent with the earlier artifacts, and testable?" % (
+        gate, lib.ARTIFACTS[gate])
+
+
+def prompt(change_dir, gate, role, leg):
+    rel = os.path.relpath(change_dir, lib.ROOT)
+    files = [os.path.join(rel, f) for f in INPUTS[gate] if os.path.exists(os.path.join(change_dir, f))]
+    duty = ("You are the %s agent and you own gate %d: you are accountable for %s."
+            % (lib.LABEL[leg], gate, lib.ARTIFACTS[gate]) if role == "owner" else
+            "You are the %s agent and you cross-check gate %d. The other leg wrote %s; your job is to find what "
+            "it missed. Do not trust it." % (lib.LABEL[leg], gate, lib.ARTIFACTS[gate]))
+    return "\n".join([
+        duty,
+        "Read these files (read-only; do not change anything): " + ", ".join(files),
+        "Answer every question below with yes or no and one line of evidence that cites a file and a requirement "
+        "or line. Refuse if any answer is no, if a requirement of an earlier artifact is missing from a later one, "
+        "or if you are unsure.",
+        "",
+        gate_questions(gate),
+        "",
+        "End with exactly one line: `VERDICT: APPROVE` or `VERDICT: REFUSE`.",
+    ])
+
+
+def next_role(entries, gate, blob):
+    """The seat that signs next: owner until a fresh owner signature exists, then cross; None when both are done."""
+    fresh = {e.get("role") for e in entries if e["gate"] == gate and e.get("blob") == blob}
+    for role in ("owner", "cross"):
+        if role not in fresh:
+            return role
+    return None
+
+
+def run_claude(text, model, timeout):
+    cmd = [os.environ.get("TRIPOD_CLAUDE", "claude"), "-p", text, "--model", model,
+           "--output-format", "json", "--allowedTools", READ_ONLY_TOOLS]
+    try:
+        out = subprocess.run(cmd, cwd=lib.ROOT, capture_output=True, text=True, timeout=timeout, check=False,
+                             stdin=subprocess.DEVNULL)
+    except FileNotFoundError:
+        return None, "claude is not installed (set TRIPOD_CLAUDE or install Claude Code)"
+    except subprocess.TimeoutExpired:
+        return None, "no answer within %d s (agent_sign_timeout)" % timeout
+    if out.returncode != 0:
+        return None, "claude exited %d: %s" % (out.returncode, (out.stderr or out.stdout).strip()[:200])
+    try:
+        return json.loads(out.stdout), None
+    except ValueError:
+        return None, "the output was not JSON"
+
+
+def write_evidence(change_dir, data, model):
+    """Usage for the checking session, unless the plugin hooks already wrote it (no double counting)."""
+    path = os.path.join(change_dir, activity.LOG)
+    session = data.get("session_id", "")
+    records, _ = activity.read_records(path)
+    if any(r.get("event") == "usage" and r.get("session") == session for r in records):
+        return
+    u = (data.get("modelUsage") or {}).get(model, {})
+    rec = {"event": "usage", "at": activity.now_iso(), "session": session, "agent": "main", "model": model,
+           "input": u.get("inputTokens", 0), "output": u.get("outputTokens", 0),
+           "cache_write": u.get("cacheCreationInputTokens", 0), "cache_write_1h": 0,
+           "cache_read": u.get("cacheReadInputTokens", 0), "usd": "%.6f" % float(u.get("costUSD", 0) or 0),
+           "seconds": int((data.get("duration_ms") or 0) / 1000), "source": "agent-sign"}
+    with open(path, "a", encoding="utf-8") as fh:
+        fh.write(activity.format_record(rec))
+
+
+def main(args):
+    if len(args) != 2 or args[1] not in ("1", "2", "3", "4"):
+        print("usage: scripts/agent-sign.sh <change-dir> <2|3|4>", file=sys.stderr)
+        return 2
+    change_dir, gate = os.path.abspath(args[0]), int(args[1])
+    if not os.path.isdir(change_dir):
+        print("change folder not found: %s" % args[0], file=sys.stderr)
+        return 1
+    cfg = lib.read_pod_yml()
+    if os.path.exists(os.path.join(lib.ROOT, ".pod", "kill-switch")):
+        return refuse("kill switch is on (.pod/kill-switch). No agent was started")
+    if cfg["mode"] != "autonomous":
+        return refuse("pod.yml sets mode: %s. Agents may sign only in mode: autonomous" % cfg["mode"])
+    errors, _ = lib.pod_config_problems(cfg)
+    if errors:
+        return refuse("pod.yml has problems, so no agent was started:\n  - " + "\n  - ".join(errors))
+    if gate == 1:
+        return refuse("gate 1 is always signed by people, who decide the risk")
+    risk = lib.risk_of(change_dir)
+    if risk != "low":
+        return refuse("Risk is %s. Agents may sign only Risk: low changes; medium and high need people" % risk)
+    artifact = os.path.join(change_dir, lib.ARTIFACTS[gate])
+    if not os.path.exists(artifact):
+        return refuse("%s not found in %s. The artifact must exist before gate %d is signed"
+                      % (lib.ARTIFACTS[gate], args[0], gate))
+    before = lib.check_change(change_dir, cfg, gate - 1)
+    if before:
+        return refuse("gate %d must be complete first\n  - %s" % (gate - 1, "\n  - ".join(before)))
+    if gate == 3:
+        plan_problems = lib.check_plan(artifact, cfg)
+        if plan_problems:
+            return refuse("plan.md does not follow the required structure\n  - " + "\n  - ".join(plan_problems))
+    if lib.log_ignored(change_dir):
+        return refuse(lib.IGNORED_HINT)
+    entries = lib.read_log(change_dir)
+    blob = lib.blob_hash(artifact)
+    role = next_role(entries, gate, blob)
+    if role is None:
+        return refuse("gate %d is already complete for the current %s" % (gate, lib.ARTIFACTS[gate]))
+    leg = lib.OWNERS[gate][0 if role == "owner" else 1]
+    model = cfg["%s_agent_model" % leg]
+    by = lib.AGENT_PREFIX + leg
+    print("Checking gate %d as %s (%s, %s)..." % (gate, role, by, model), flush=True)
+
+    data, error = run_claude(prompt(change_dir, gate, role, leg), model, cfg["agent_sign_timeout"])
+    if data is None:
+        print("agent-sign: claude did not return a verdict (%s). Nothing was recorded" % error)
+        return 1
+    used = set((data.get("modelUsage") or {}).keys())
+    if model not in used:
+        print("agent-sign: the agent ran on %s, not on %s as pod.yml sets for %s. Nothing was recorded"
+              % (", ".join(sorted(used)) or "an unknown model", model, by))
+        return 1
+    result = data.get("result") or ""
+    found = VERDICT.findall(result)
+    verdict = found[-1] if found else "REFUSE"
+    reasons = VERDICT.sub("", result).strip() or "(no reasons given)"
+    if verdict != "APPROVE":
+        print("REFUSE gate %d %s (%s, %s): %s" % (gate, role, by, model,
+                                                   reasons if found else "no VERDICT line, so it counts as REFUSE. "
+                                                   + reasons))
+        return 1
+
+    session = data.get("session_id", "")
+    lines = []
+    if not any(e.get("event") == "mode" for e in entries):
+        lines.append("event=mode mode=autonomous superbiz_agent_model=%s superdev_agent_model=%s at=%s\n"
+                     % (cfg["superbiz_agent_model"], cfg["superdev_agent_model"], lib.now_iso()))
+    lines.append("gate=%d role=%s by=%s model=%s session=%s at=%s blob=%s\n"
+                 % (gate, role, by, model, session, lib.now_iso(), blob))
+    write_evidence(change_dir, data, model)
+    with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
+        fh.writelines(lines)
+    print("APPROVE gate %d %s (%s, %s)" % (gate, role, by, model))
+    print("Recorded: " + lines[-1].strip())
+    missing = lib.check_gate(change_dir, gate, cfg, release=True)
+    if missing:
+        print("gate %d is not complete%s:" % (gate, " for release" if gate == 4 else ""))
+        for p in missing:
+            print("  - " + p)
+    else:
+        print("gate %d is complete" % gate)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

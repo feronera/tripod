@@ -25,6 +25,15 @@ escalation_github: lead-example
 # Fewer people than roles? bootstrap: on lets escalation share a person with SuperBiz or SuperDev
 # (never SuperBiz with SuperDev). Turn it off when a third person joins: see docs/scaling.md
 bootstrap: off
+# Autonomous mode for Risk: low (docs/autonomous.md): agents sign gates 2-4 after people sign gate 1.
+# Needs two different seat models and a sponsor, for example:
+#   mode: autonomous
+#   superbiz_agent_model: claude-sonnet-5-5
+#   superdev_agent_model: claude-opus-5-5
+#   sponsor_name: Sam
+#   sponsor_email: sam@example.com
+#   sponsor_github: sam-gh
+mode: pod
 # Agent activity and cost per change, committed as docs/changes/*/activity.log: see docs/activity-log.md
 activity_log: on
 # Merge by risk: see docs/merge-by-risk.md

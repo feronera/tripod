@@ -413,6 +413,29 @@ def short_time(stamp):
     return stamp[:16].replace("T", " ") if stamp else "-"
 
 
+def signature_counts(change_dir):
+    """(people, {model: agent signatures}) over the gate signatures in gates.log (auto-merge records excluded)."""
+    people, agents = 0, collections.Counter()
+    for e in lib.read_log(change_dir):
+        if not 1 <= e["gate"] <= 4 or e.get("role") not in ("owner", "cross", "escalation"):
+            continue
+        if lib.is_agent(e):
+            agents[e.get("model") or "?"] += 1
+        else:
+            people += 1
+    return people, agents
+
+
+def signatures_line(change_dir, by_model=True):
+    people, agents = signature_counts(change_dir)
+    if not people and not agents:
+        return "signatures: none yet"
+    line = "signatures: people %d, agents %d" % (people, sum(agents.values()))
+    if by_model and agents:
+        line += " (%s)" % ", ".join("%s %d" % (m, n) for m, n in sorted(agents.items()))
+    return line
+
+
 def change_totals(change_dir):
     """(time line, cost line) for metrics.sh, or None when there is no activity.log."""
     path = os.path.join(change_dir, LOG)
@@ -442,6 +465,7 @@ def cmd_summary(args):
     if not os.path.exists(path):
         print("No agent activity recorded for %s yet (no activity.log). Agents record activity on branch "
               "change/%s in a project with pod.yml." % (name, name))
+        print(signatures_line(change_dir))
         return 0
     s = summarize(*read_records(path))
     _, as_of, problem = read_prices(root)
@@ -461,6 +485,7 @@ def cmd_summary(args):
     else:
         print("cost: %s" % fmt_cost(s, as_of))
     print("agent time: %s" % lib.fmt_duration(s.seconds))
+    print(signatures_line(change_dir))
     if s.skipped:
         print("skipped lines: %d (not in key=value form)" % s.skipped)
     if as_of and (datetime.date.today() - as_of).days > STALE_DAYS:
