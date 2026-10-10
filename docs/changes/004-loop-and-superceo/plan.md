@@ -25,22 +25,10 @@ References: intent.md, spec.md, ux-brief.md
 4. **A run** is a loop over changes in priority order: today's `docs/superceo/YYYY-MM-DD.md` when it exists, else by number. Pace and `loop_max_steps` bound it. Every step and stop appends `event=loop` to the change's activity.log through one `record()` function.
 
 ## Throughput checkpoint
-- Blocking first steps:
-  - failing tests for the step table (one per row), the refusals to start, pace, the cap and the records, using fake `claude`, `gh` and `git push`;
-  - `State`, `Rule` and `next_step` in `scripts/loop.py`.
-- Independent workstreams:
-  - the superceo plugin (skills, agent, manifest) and `scripts/superceo.py` once `read_state` exists;
-  - the CI template and the docs.
-- Shared mutable state: `scripts/loop.py` and the digest section in `scripts/sponsor.py`. The marketplace manifest is shared with the superceo plugin.
-- Smallest safe decomposition (C4 of the spec); each part ends with `make check`:
-  1. state, the table and `--dry-run`;
-  2. drafting steps;
-  3. signing steps;
-  4. tests, build and review steps;
-  5. the merge step;
-  6. records and the digest section;
-  7. SuperCEO;
-  8. CI template and docs.
+- Blocking first steps: failing tests for the step table (one per row), the refusals to start, pace, the cap and the records, using fake `claude`, `gh` and `git push`; then `State`, `Rule` and `next_step` in `scripts/loop.py`
+- Independent workstreams: the superceo plugin (skills, agent, manifest) and `scripts/superceo.py` once `read_state` exists; the CI template and the docs
+- Shared mutable state: `scripts/loop.py` and the digest section in `scripts/sponsor.py`; the marketplace manifest, shared with the superceo plugin
+- Smallest safe decomposition: (1) state, the table and `--dry-run`, (2) drafting steps, (3) signing steps, (4) tests, build and review steps, (5) the merge step, (6) records and the digest section, (7) SuperCEO, (8) CI template and docs; each part ends with `make check` (C4 of the spec)
 
 ## Parallel parts
 none: one SuperDev, and every part builds on `read_state` and `next_step` in scripts/loop.py
