@@ -1,0 +1,30 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): # Gate 2 cross-check: change 005, open orders
+
+**Can every requirement be verified by a test or a demo?** Yes.
+spec.md:6–7: R1 has a test with fixture data (C001 -> A1001, A1002), and R2 is marked "verified by: test". However, R1 tests the wrong behaviour (see the missing requirements below).
+
+**Do the edge cases cover empty data, invalid data and access permissions?** No.
+spec.md:10 has only E1, "Unknown customer: an empty list". Nothing covers a known customer with no open orders (intent.md:14), invalid input such as a malformed or missing `customer_id`, or who may call the function (intent.md:9 limits it to support staff).
+
+**Does the ux-brief cover all 4 states and the user-facing copy?** No.
+ux-brief.md:3 covers only empty ("Empty list for an unknown customer") and success ("the ids on success"). It doesn't cover loading or error, and doesn't mark them as not applicable. There is no copy and no error behaviour.
+
+**Has every Flagged concern been answered or accepted as a risk?** Yes.
+spec.md:13 says "None", so there is nothing open. But the spec drops intent requirements without flagging them, which it should have done.
+
+**(SuperDev) Is anything infeasible or more expensive than necessary?** No, nothing is.
+intent.md:26 asks for a read-only Python stdlib function, and spec.md adds no extra cost.
+
+## Intent requirements missing from spec.md
+
+1. **The open filter is gone.** intent.md:13 says to return orders "that are not delivered or cancelled". spec.md:6 (R1) returns all of "that customer's orders". The spec doesn't say whether the R1 test data (A1001, A1002) are open orders, so the test could pass while the function returns delivered or cancelled orders.
+2. **Sorting is gone.** intent.md:13 says "sorted by order id". No requirement or test in spec.md covers it.
+3. **The empty case is narrowed.** intent.md:14 says "an empty list for a customer with no open orders". spec.md:10 (E1) only covers an unknown customer.
+4. **The stdlib-only constraint is not carried over.** intent.md:26 isn't reflected in spec.md. This is minor, but the requirement isn't traced.
+
+## What the spec needs to pass
+
+- R1 must say "open orders (status not delivered or cancelled), sorted by order id". Its test needs a fixture that includes delivered and cancelled orders, which must be excluded.
+- Add an edge case for a known customer with no open orders, plus edge cases for invalid input and caller access.
+- The ux-brief must cover the error state, at minimum by saying what happens on invalid input. It should also mark loading as not applicable.

@@ -293,6 +293,12 @@ def digest(events, skipped, limits, at, hours):
                 if count >= limits.max_refusals:
                     in_force.append("%s gate %s: %d refusals in a row (max_refusals_per_gate: %d); resume with "
                                     "scripts/resume.sh" % (change, gate, count, limits.max_refusals))
+    if limits.per_change is not None:
+        for change in sorted({e.change for e in events if e.kind == "usage"}):
+            total, _ = spend(events, change)
+            if total >= limits.per_change:
+                in_force.append("%s budget reached (US$%.2f of US$%.2f, budget_per_change_usd)"
+                                % (change, total, limits.per_change))
     if limits.per_day is not None:
         day, _ = spend(events, since=at - DAY)
         if day >= limits.per_day:

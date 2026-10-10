@@ -1,0 +1,4 @@
+gate=1 role=owner by=bee@pod.example at=2026-10-10T20:42:42+07:00 blob=4b7ad72118d1124cc3d551172f459c581ece090b
+gate=1 role=cross by=dan@pod.example at=2026-10-10T20:42:42+07:00 blob=4b7ad72118d1124cc3d551172f459c581ece090b
+gate=2 role=owner by=bee@pod.example at=2026-10-10T20:42:42+07:00 blob=19e568bf33951a97a7c9f6523e26f75ba8145d13
+event=resume by=sponsor@pod.example at=2026-10-10T13:43:50+00:00 reason="planted defect seen; checking the budget stop next"

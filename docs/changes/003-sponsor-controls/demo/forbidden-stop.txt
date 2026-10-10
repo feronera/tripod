@@ -1,0 +1,1 @@
+Refused: this change touches a sensitive path (scripts/sponsor.py), so its effective risk is high and people sign it
