@@ -3,10 +3,10 @@
 Status: draft
 
 ## Problem
-Autonomous mode (0.8.0, 0.9.0) has agent seats, limits and a digest, but nothing moves the work. A person still has to start an agent for every step: draft the spec, run agent-sign, build, review, run auto-merge-check. On the 0.8.0 demo change, getting from gate 1 to merge took 14 commands typed by hand. Nothing decides which change to work on next, and nothing prepares the decisions people must make on high-risk work.
+Autonomous mode (0.8.0, 0.9.0) has agent seats, limits and a digest, but nothing moves the work. A person still has to start an agent for every step: draft the spec, run agent-sign, build, review, run auto-merge-check. On the 0.8.0 demo, a low-risk change needs about 14 steps started by hand between gate 1 and the end of gate 4, even without retries: spec, agent-sign twice, plan, agent-sign twice, tests, lock, build, review, auto-merge-check, merge, acceptance, agent-sign twice. Nothing decides which change to work on next, and nothing prepares the decisions people must make on high-risk work.
 
 Evidence:
-- The demo for change 004 in tripod-example needed 14 commands by hand between gate 1 and the auto-merge. Each was obvious from the change's state: which artifact is missing, which gate is next.
+- In the change 004 demo in tripod-example, every one of those steps was started by hand, plus retries after refusals. Each next step was obvious from the change's state: which artifact is missing, which gate is next.
 - The README roadmap step 4, and the "Two modes" table, promise a loop that runs on a schedule and a `superceo` agent for priorities and high-risk briefs. Neither exists, so Autonomous mode is not autonomous yet.
 - Sponsors read the digest, but nobody ranks what should happen next or summarises a high-risk change for the escalation person.
 
@@ -17,7 +17,7 @@ Evidence:
 
 ## Success measure
 In a demo in a copy of tripod-example:
-- Commands typed by a person between gate 1 and merge for a low-risk change: from 14 to 0. People only sign gate 1. The loop runs on a schedule or by hand, and every limit from 0.9.0 still stops it.
+- Steps started by a person between gate 1 and the end of gate 4 for a low-risk change: from about 14 to 0. People only sign gate 1. The loop runs on a schedule or by hand, and every limit from 0.9.0 still stops it.
 - Every loop run leaves a record of what it did and why it stopped, in activity.log and in the digest. Target: 100% of runs.
 - For a high-risk change, SuperCEO writes a brief before the escalation signature is needed. The brief must state the decision, the options, the risks and the evidence links. Target: 1 brief in the demo, accepted as useful by the PO.
 
