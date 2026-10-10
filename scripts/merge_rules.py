@@ -125,6 +125,9 @@ def auto_merge_reasons(change_dir, base, cfg):
     risky = lib.risky_files(files, ROOT)
     if risky:
         reasons.append("touches a sensitive path: %s. The effective risk tier is high" % ", ".join(risky))
+    governance = lib.governance_files(files)
+    if governance:
+        reasons.append("edits agent instructions or gate rules (%s), so people merge it" % ", ".join(governance))
     # 4. gates 1-3 complete and fresh
     for p in lib.check_change(change_dir, cfg, 3):
         reasons.append("gates 1-3 not complete: %s" % p)

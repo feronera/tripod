@@ -1,0 +1,16 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): I checked the three artifacts against each other and I'm refusing gate 2. The spec leaves out intent item 2, and one of its edge cases contradicts that item.
+
+### Gate 2: spec.md and ux-brief.md
+
+- **Can every requirement be verified by a test or a demo?** Yes. Each of R1, R2 and R3 names a test (spec.md:6–8). But no requirement covers intent item 2, so that part of the success measure has no test at all.
+- **Do the edge cases cover empty data, invalid data and access permissions?** No. They are present (E1 empty, E2 invalid, E3 access, spec.md:11–13), but E1 returns an empty dict for an unknown customer. Intent.md:14 requires every status in STATUS_LABELS with a count of 0, so E1 should return that instead.
+- **Does the ux-brief cover all 4 states and the user-facing copy?** No. ux-brief.md:3 lists empty, error and success. It never mentions loading, even to say it doesn't apply, and it never says whether there is user-facing copy. Its "empty dict for an unknown customer" repeats the conflict with intent.md:14.
+- **Has every Flagged concern been answered or accepted as a risk?** No. spec.md:16 says "None", but the gap between E1 and intent item 2 should have been flagged and wasn't.
+- **(SuperDev) Is anything infeasible or more expensive than necessary?** No. It is a read-only count using the standard library only (intent.md:26), which is cheap and feasible.
+
+### What has to change before I can approve
+
+1. Intent item 2 (intent.md:14) has no matching requirement. R1 only gives counts for statuses the customer has orders in (spec.md:6). Its example, "C001 -> shipped 1, delivered 1", leaves out the zero-count statuses that item 2 requires.
+2. E1 must return every status in STATUS_LABELS at 0, not an empty dict. ux-brief.md:3 needs the same fix.
+3. The ux-brief must state the loading state and the user-facing copy explicitly, even if both are "not applicable" for an internal function.

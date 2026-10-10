@@ -52,9 +52,9 @@ The loop and the four gates are the same in both modes. What changes is who sign
 
 | | Pod mode | Autonomous mode |
 |---|---|---|
-| Status | **Available** | **Planned** (see [roadmap](#status-and-roadmap)) |
+| Status | **Available** | **Low risk available in 0.8.0** ([docs/autonomous.md](docs/autonomous.md)); medium and high stay with people, sponsor controls are planned |
 | The legs | Agents, each paired with a person | Agents only, each on a different model |
-| Who signs a gate | The person in the leg (HITL at every gate) | The owner leg's agent; another leg's agent cross-checks |
+| Who signs a gate | The person in the leg (HITL at every gate) | A person signs gate 1 and sets the risk; then the owner leg's agent signs and another leg's agent, on a different model, cross-checks (`scripts/agent-sign.sh`) |
 | Where the person is | In every leg | One **sponsor**, on the loop (HOTL) |
 | What the person controls | Every gate | Goals, budget, risk ceiling, kill switch, daily digest, revert |
 | High risk | Escalation signs | Always goes to a person |
@@ -244,6 +244,7 @@ Use `/superdev:bug-fix` for defects, `/superdev:arena` to compare two designs, a
 | `scripts/gate-check.sh <dir> [gate]` | Check one change. Gate 4 means merge-ready for the change's risk |
 | `scripts/gate-check.sh --all` | Check every change and the pod configuration |
 | `scripts/activity.sh <dir>` | What the agents did in a change and what it cost ([docs/activity-log.md](docs/activity-log.md)) |
+| `scripts/agent-sign.sh <dir> <2-4>` | Autonomous mode only: an agent seat signs a low-risk gate on its own model ([docs/autonomous.md](docs/autonomous.md)) |
 
 **Merge and release**
 
@@ -288,7 +289,7 @@ app/, tests/, logs/      Sample order-status service, the kit's tests and a synt
 
 ## Safety model
 
-- **In Pod mode, only people sign.** Only the person in each leg runs `scripts/gate.sh` and `scripts/mark-revert.sh`. Autonomous mode will record agent signatures as `role=agent`, together with the model that signed. The cross-check must come from a different model, and high risk stays with a person.
+- **In Pod mode, only people sign.** Only the person in each leg runs `scripts/gate.sh` and `scripts/mark-revert.sh`. In Autonomous mode, agents sign gates 2 to 4 of a low-risk change with `scripts/agent-sign.sh`, recorded as `by=agent:<leg>` with the model and session. The cross-check must come from a different model, the signature must match usage in activity.log, gate 1 stays with people, and medium and high risk stay with people ([docs/autonomous.md](docs/autonomous.md)).
 - **Agents merge only low-risk work.** They can merge only after `scripts/auto-merge-check.sh` returns `ALLOW`. Auto-merge starts off and is earned by a track record (`docs/pod-charter.md`).
 - **The author never approves their own pull request.** If the agent opens pull requests with a SuperDev's account, another SuperDev or SuperBiz approves (`docs/merge-by-risk.md`).
 - **Local state stays local.** `.pod/` holds per-machine state (test lock, kill switch) and is never committed.
@@ -311,7 +312,7 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
 
 **Planned: Autonomous mode, built with Tripod itself, one change at a time:**
 1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost. **Done in 0.7.0** ([docs/activity-log.md](docs/activity-log.md)), built as Tripod's change 001.
-2. Agent identities and agent signatures (`role=agent`, with the model), with cross-checks on a different model.
+2. Agent identities and agent signatures, with cross-checks on a different model. **Done in 0.8.0** for low risk ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 002.
 3. Sponsor controls:
    - a budget per change and per day
    - a risk ceiling

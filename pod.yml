@@ -29,6 +29,8 @@ superdev_github: hx-natthawat
 escalation_github: feronera
 # Escalation shares a seat with SuperBiz while the pod is one maintainer: see docs/scaling.md
 bootstrap: on
+# Tripod's own repository stays in Pod mode (PO decision, change 002): docs/autonomous.md
+mode: pod
 # Agent activity and cost per change, committed as docs/changes/*/activity.log: see docs/activity-log.md
 activity_log: on
 # Merge by risk: see docs/merge-by-risk.md

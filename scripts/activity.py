@@ -66,7 +66,7 @@ def read_records(path):
                 skipped += 1
                 continue
             rec = dict(p.split("=", 1) for p in parts)
-            if rec.get("event") not in ("tool", "usage"):
+            if rec.get("event") not in ("tool", "usage", "verdict"):
                 skipped += 1
                 continue
             records.append(rec)
@@ -111,6 +111,8 @@ def summarize(records, skipped=0):
     tokens = collections.defaultdict(lambda: collections.Counter())
     usd, unknown, seconds, stamps = 0.0, set(), 0, []
     for r in records:
+        if r["event"] == "verdict":
+            continue
         sessions.add(r.get("session", ""))
         if r.get("at"):
             stamps.append(r["at"])
@@ -413,6 +415,48 @@ def short_time(stamp):
     return stamp[:16].replace("T", " ") if stamp else "-"
 
 
+def current_signatures(change_dir):
+    """The latest signature per (gate, role), as gate-check reads them; superseded ones are not counted."""
+    latest = {}
+    for e in lib.read_log(change_dir):
+        if 1 <= e["gate"] <= 4 and e.get("role") in ("owner", "cross", "escalation"):
+            latest[(e["gate"], e["role"])] = e
+    order = {"owner": 0, "cross": 1, "escalation": 2}
+    return [latest[k] for k in sorted(latest, key=lambda k: (k[0], order[k[1]]))]
+
+
+def signature_counts(change_dir):
+    """(people, {model: agent signatures}) over the current gate signatures (auto-merge records excluded)."""
+    people, agents = 0, collections.Counter()
+    for e in current_signatures(change_dir):
+        if lib.is_agent(e):
+            agents[e.get("model") or "?"] += 1
+        else:
+            people += 1
+    return people, agents
+
+
+def signatures_line(change_dir, by_model=True):
+    people, agents = signature_counts(change_dir)
+    if not people and not agents:
+        return "signatures: none yet"
+    line = "signatures: people %d, agents %d" % (people, sum(agents.values()))
+    if by_model and agents:
+        line += " (%s)" % ", ".join("%s %d" % (m, n) for m, n in sorted(agents.items()))
+    return line
+
+
+def agent_gates_line(change_dir):
+    """Which gates agents signed, with the model (R13 of change 002), and how many agent checks refused."""
+    signed = ["gate %d %s %s" % (e["gate"], e["role"], e.get("model") or "?")
+              for e in current_signatures(change_dir) if lib.is_agent(e)]
+    records, _ = read_records(os.path.join(change_dir, LOG))
+    refused = sum(1 for r in records if r.get("event") == "verdict" and r.get("verdict") != "approve")
+    if not signed and not refused:
+        return None
+    return "agent gates: %s; refused checks: %d" % (", ".join(signed) or "none", refused)
+
+
 def change_totals(change_dir):
     """(time line, cost line) for metrics.sh, or None when there is no activity.log."""
     path = os.path.join(change_dir, LOG)
@@ -442,6 +486,9 @@ def cmd_summary(args):
     if not os.path.exists(path):
         print("No agent activity recorded for %s yet (no activity.log). Agents record activity on branch "
               "change/%s in a project with pod.yml." % (name, name))
+        print(signatures_line(change_dir))
+        if agent_gates_line(change_dir):
+            print(agent_gates_line(change_dir))
         return 0
     s = summarize(*read_records(path))
     _, as_of, problem = read_prices(root)
@@ -461,6 +508,9 @@ def cmd_summary(args):
     else:
         print("cost: %s" % fmt_cost(s, as_of))
     print("agent time: %s" % lib.fmt_duration(s.seconds))
+    print(signatures_line(change_dir))
+    if agent_gates_line(change_dir):
+        print(agent_gates_line(change_dir))
     if s.skipped:
         print("skipped lines: %d (not in key=value form)" % s.skipped)
     if as_of and (datetime.date.today() - as_of).days > STALE_DAYS:

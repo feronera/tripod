@@ -1,0 +1,25 @@
+Checking gate 3 as cross (agent:superbiz, claude-sonnet-5-5)...
+REFUSE gate 3 cross (agent:superbiz, claude-sonnet-5-5): **Gate 3 cross-check for change 005-status-counts**
+
+Requirements traced from intent.md, through spec.md, to plan.md:
+- Intent 1 (count per status) is spec R1. Plan covers it.
+- Intent 2 (every STATUS_LABELS status, with 0 for statuses without orders) is spec R4. **Plan does not cover it.**
+- Intent 3 (never change any order) is spec R2. Plan covers it.
+- Spec R3 (TypeError for a non-string id) is covered by the plan.
+
+**Script-checked sections**
+- `## Data shape` filled in: **Yes.** plan.md lines 5-6 describe counting `_ORDERS` entries with Counter.
+- `## Throughput checkpoint` has all 4 lines: **Yes.** plan.md lines 9-12.
+- `## Parallel parts` is `none: <reason>`: **Yes.** plan.md line 15 reads "none: one small function".
+
+**Gate 3 questions**
+- Does every requirement have files to change and a Proof? **No.** spec.md R4 (line 7) is missing from the plan.md "Files to change" table (line 20, "R1, R2, R3"), from the tests row (line 21 lists R1-R3 and E1-E3, not R4), and from "Proof" (line 31, R1-R3 only). The planned implementation, `dict(Counter(...))`, only returns statuses that have orders. It would not return the zero-count statuses that R4 and intent item 2 require, and E1 (unknown customer returns all statuses at 0) would fail.
+- Does the order of work start with failing tests? **Yes.** plan.md line 24 puts failing tests first. Those tests would not cover R4, though.
+- Is the Rollback workable and does it list its steps? **Partly.** plan.md line 34 has one step, "git revert the merge commit". That is workable for a read-only change, but it is thin.
+- Does the "Summary for SuperBiz" still match the intent? **No.** plan.md lines 36-39 say "order counts per status". They leave out the intent's central promise (intent.md line 14, spec R4) that every status appears, with 0 where the customer has none.
+
+**Other findings**
+- plan.md line 25 has a typo ("make test passes"). It is minor.
+- plan.md line 21 cites E1-E3, but the planned code cannot satisfy E1.
+
+The plan drops spec R4 and intent success-measure item 2. The change is to add R4 to the Files table (zero-fill from STATUS_LABELS), the tests row, the Proof (C001 -> pending 0, paid 0, packing 0, cancelled 0) and the Summary.

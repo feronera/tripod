@@ -58,11 +58,17 @@ gate=4 role=auto by=auto-merge at=<ISO> blob=<hash of acceptance.md or -> head=<
 An agent may run `auto-merge-check.sh --record` followed by `gh pr merge --auto --squash` only when it prints ALLOW.
 Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
 
+Auto-merge also refuses a change that edits agent instructions or gate rules (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`): people merge it, so a change cannot weaken its own checks.
+
 ## Acceptance after merge
 
 - After an auto record, SuperBiz may sign gate 4 (cross) before SuperDev. SuperDev then signs as owner against the same acceptance.md.
 - If `acceptance_hours` passes and SuperBiz has not signed, release-check reports that the change must not be released to production until SuperBiz accepts it.
 - The post-merge acceptance (acceptance.md and the gate 4 signatures) goes to `main` in its own pull request. That pull request changes only `docs/`, so the auto record does not apply to it: it needs an approval from a pod member who did not open it.
+
+## Autonomous mode
+
+In `mode: autonomous`, gates 2 and 3 of a low-risk change may be signed by agents (`docs/autonomous.md`). Auto-merge checks them like people's signatures, so a low-risk change can merge with no person after gate 1. Gate 4 is then signed by the agents after the merge (post-merge acceptance). Medium and high risk need people in either mode.
 
 ## Revert
 

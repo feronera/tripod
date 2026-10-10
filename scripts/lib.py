@@ -11,6 +11,7 @@ Used as a library and as a CLI:
     python3 scripts/lib.py mark-revert <change-dir> "<reason>"
     python3 scripts/lib.py test
 """
+import collections
 import hashlib
 import os
 import re
@@ -32,7 +33,13 @@ LABEL = {"superbiz": "SuperBiz", "superdev": "SuperDev", "escalation": "escalati
 ESCALATION_GATES = (2, 4)
 AUTO_BY = "auto-merge"
 INT_KEYS = {"wip_limit": 2, "auto_merge_max_lines": 200, "auto_merge_min_track": 10,
-            "acceptance_hours": 48}
+            "acceptance_hours": 48, "agent_sign_timeout": 600}
+MODES = ("pod", "autonomous")
+AGENT_PREFIX = "agent:"  # gates.log `by=agent:<leg>`: a signature by an agent seat (docs/autonomous.md)
+# Files that steer agents or define the gates and risk rules. A change that edits them is never signed by agents
+# and never auto-merged, so it cannot weaken its own checks (change 002 review).
+GOVERNANCE_FILES = ("AGENTS.md", "CLAUDE.md", ".claude/", ".mcp.json", "docs/gates.md", "docs/risk-paths")
+AUTONOMOUS_KEYS = ("superbiz_agent_model", "superdev_agent_model", "sponsor_name", "sponsor_email", "sponsor_github")
 # stack keys of pod.yml (defaults keep the Python sample app behavior)
 STACK_DEFAULTS = {"test_cmd": "python3 -m unittest discover -s tests -t . -v",
                   "code_dirs": "app", "tests_dir": "tests", "strength": "python",
@@ -74,6 +81,7 @@ def read_pod_yml(root=ROOT, missing_ok=False):
             cfg[key] = default
     cfg["auto_merge"] = cfg.get("auto_merge", "off").lower() or "off"
     cfg["bootstrap"] = cfg.get("bootstrap", "off").lower() or "off"
+    cfg["mode"] = cfg.get("mode", "pod").lower() or "pod"
     for key, default in STACK_DEFAULTS.items():
         cfg[key] = cfg.get(key, "") or default
     cfg["tests_dir"] = cfg["tests_dir"].strip("/") or STACK_DEFAULTS["tests_dir"]
@@ -159,6 +167,21 @@ def pod_config_problems(cfg):
                                   "%s_%s: %d" % (role, f, n) for f, n in counts.items())))
     if bootstrap_on(cfg) and not shared:
         warnings.append(BOOTSTRAP_UNUSED)
+    if cfg.get("mode", "pod") not in MODES:
+        errors.append("pod.yml: mode: %s is not known (use pod or autonomous)" % cfg["mode"])
+    for role in ("superbiz", "superdev", "escalation"):
+        for m in members(cfg, role):
+            if m["email"].startswith(AGENT_PREFIX) or m["github"].startswith(AGENT_PREFIX):
+                errors.append("pod.yml: %s %s starts with `agent:`, which is reserved for agent seats"
+                              % (LABEL[role], m["email"] or m["github"]))
+    if cfg.get("mode") == "autonomous":
+        for key in AUTONOMOUS_KEYS:
+            if not cfg.get(key):
+                errors.append("pod.yml: mode: autonomous needs %s" % key)
+        biz_model, dev_model = cfg.get("superbiz_agent_model"), cfg.get("superdev_agent_model")
+        if biz_model and biz_model == dev_model:
+            errors.append("pod.yml: superbiz_agent_model and superdev_agent_model are both %s; "
+                          "the cross-check must run on a different model" % biz_model)
     bizs, devs = len(role_emails(cfg, "superbiz")), len(role_emails(cfg, "superdev"))
     if bizs and devs > 3 * bizs:
         warnings.append(SCALING_WARNING)
@@ -711,6 +734,94 @@ def peer_review_problem(cfg, email, root=ROOT):
             % (ref, ", ".join(sorted(authors)), ", ".join(free))), None
 
 
+def governance_files(files):
+    return [f for f in files if any(f == g or (g.endswith("/") and f.startswith(g)) for g in GOVERNANCE_FILES)]
+
+
+def is_agent(entry):
+    return entry.get("by", "").startswith(AGENT_PREFIX)
+
+
+def mode_record_on_base(change_dir, cfg, root=ROOT):
+    """The `event=mode` record of this change as it is on the base branch, or None.
+    Only a record that is already on the base branch (a finished, merged change) can outlive a switch back to
+    `mode: pod`; a record written on a branch cannot turn Autonomous mode on by itself."""
+    rel = os.path.relpath(os.path.join(change_dir, "gates.log"), root)
+    rc, text, _ = git_out(["show", "%s:%s" % (resolve_base(cfg["base_branch"], root), rel)], root)
+    if rc != 0:
+        return None
+    for line in text.splitlines():
+        if line.startswith("event=mode "):
+            try:
+                return dict(p.split("=", 1) for p in shlex.split(line) if "=" in p)
+            except ValueError:
+                return None
+    return None
+
+
+def change_mode(entries, cfg, change_dir=None):
+    """Autonomous when pod.yml says so. In `mode: pod`, a change keeps Autonomous mode only when its
+    `event=mode` record is already on the base branch (C2 of change 002), so a line forged on a branch
+    never counts."""
+    if cfg.get("mode") == "autonomous":
+        return "autonomous"
+    if change_dir and any(e.get("event") == "mode" for e in entries):
+        record = mode_record_on_base(change_dir, cfg)
+        if record and record.get("mode") == "autonomous":
+            return "autonomous"
+    return cfg.get("mode", "pod")
+
+
+def change_seats(entries, cfg, change_dir=None):
+    """The seat models to check against: pod.yml's in Autonomous mode, else those recorded on the base branch
+    for a finished change."""
+    if cfg.get("mode") == "autonomous" or not change_dir or not any(e.get("event") == "mode" for e in entries):
+        return {leg: cfg.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
+    record = mode_record_on_base(change_dir, cfg) or {}
+    return {leg: record.get("%s_agent_model" % leg, "") for leg in ("superbiz", "superdev")}
+
+
+def agent_usage(change_dir):
+    """{(session, model)} with usage in the change's activity.log: the evidence an agent signature needs."""
+    import activity  # activity imports lib
+    records, _ = activity.read_records(os.path.join(change_dir, "activity.log"))
+    return {(r.get("session"), r.get("model")) for r in records if r.get("event") == "usage" and r.get("session")}
+
+
+def refused_runs(change_dir):
+    """Sessions whose check ended in REFUSE (`event=verdict ... verdict=refuse` in activity.log)."""
+    import activity
+    records, _ = activity.read_records(os.path.join(change_dir, "activity.log"))
+    return {r.get("run") for r in records if r.get("event") == "verdict" and r.get("verdict") != "approve"}
+
+
+def agent_signature_problem(seats, gate, role, entry, risk, mode, usage):
+    """None when an agent signature is acceptable, else the problem (rules in a fixed order)."""
+    by = entry.get("by", "")
+    leg = by[len(AGENT_PREFIX):]
+    if mode != "autonomous":
+        return "gate %d: agent signature not allowed here (mode: %s)" % (gate, mode)
+    if risk != "low":
+        return "gate %d: agent signature not allowed here (Risk: %s)" % (gate, risk)
+    if gate == 1:
+        return "gate %d: agent signature not allowed here (gate 1 is signed by people)" % gate
+    if not entry.get("session") or not entry.get("model"):
+        return "gate %d: agent signature by %s has no %s, so it cannot be traced" % (
+            gate, by, "session" if not entry.get("session") else "model")
+    owner, cross = OWNERS[gate]
+    need = {"owner": owner, "cross": cross}.get(role)
+    if leg != need:
+        return "gate %d: %s must be signed by agent:%s, not %s" % (gate, role, need or "-", by)
+    expected = seats.get(leg, "")
+    if entry.get("model") != expected:
+        return ("gate %d: agent signature by %s used %s, but pod.yml sets %s_agent_model: %s"
+                % (gate, by, entry.get("model") or "-", leg, expected or "-"))
+    if (entry.get("session"), entry.get("model")) not in usage:
+        return ("gate %d: agent signature by %s has no usage for session %s with %s in activity.log"
+                % (gate, by, (entry.get("session") or "-")[:8], entry.get("model")))
+    return None
+
+
 def role_label(gate, role):
     owner, cross = OWNERS[gate]
     return {"owner": "owner (%s)" % LABEL[owner], "cross": "cross (%s)" % LABEL[cross],
@@ -737,6 +848,9 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     elif gate == 3:
         problems.extend(check_plan(artifact, cfg))
     indexed = [(i, e) for i, e in enumerate(entries) if e["gate"] == gate]
+    mode, usage = change_mode(entries, cfg, change_dir), None
+    seats = change_seats(entries, cfg, change_dir)
+    agent_sessions = collections.Counter(e.get("session") for e in entries if is_agent(e) and e.get("session"))
     latest = {}
     for i, e in indexed:
         latest[e.get("role", "")] = (i, e)
@@ -748,10 +862,24 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
                             % (gate, role_label(gate, role), extra, role))
             continue
         idx, e = latest[role]
-        want = expected_emails(cfg, gate, role)
-        if e["by"] not in want:
-            problems.append("gate %d: %s signed by %s, which does not match pod.yml (%s) (role mismatch)"
-                            % (gate, role, e["by"], ", ".join(want) or "-"))
+        if is_agent(e):
+            usage = agent_usage(change_dir) if usage is None else usage
+            problem = agent_signature_problem(seats, gate, role, e, risk, mode, usage)
+            if not problem and agent_sessions[e["session"]] > 1:
+                problem = ("gate %d: session %s backs more than one agent signature; each check is one run"
+                           % (gate, e["session"][:8]))
+            if not problem and e["session"] in refused_runs(change_dir):
+                problem = "gate %d: session %s ended in REFUSE, so it cannot back a signature" % (gate, e["session"][:8])
+            if not problem and gate == 4 and not auto_entry(entries):
+                problem = ("gate 4: agent signature not allowed here (no auto-merge record: agents sign gate 4 "
+                           "only after an auto-merge)")
+            if problem:
+                problems.append(problem)
+        else:
+            want = expected_emails(cfg, gate, role)
+            if e["by"] not in want:
+                problems.append("gate %d: %s signed by %s, which does not match pod.yml (%s) (role mismatch)"
+                                % (gate, role, e["by"], ", ".join(want) or "-"))
         if current is not None and e.get("blob") != current:
             problems.append("gate %d: %s approval is stale because %s changed after approval"
                             % (gate, role, ARTIFACTS[gate]))
@@ -764,6 +892,10 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
                 problems.append("gate %d: %s must sign after owner (wrong role order)"
                                 % (gate, role))
     if "owner" in latest and "cross" in latest:
+        o, c = latest["owner"][1], latest["cross"][1]
+        if is_agent(o) and is_agent(c) and o.get("model") and o.get("model") == c.get("model"):
+            problems.append("gate %d: owner and cross were both signed by %s; the cross-check must run on a "
+                            "different model" % (gate, o["model"]))
         if latest["owner"][1]["by"] == latest["cross"][1]["by"]:
             problems.append("gate %d: owner and cross are the same person (%s): writer and approver must differ"
                             % (gate, latest["owner"][1]["by"]))
@@ -1068,6 +1200,7 @@ def cmd_metrics(args):
     totals = activity.change_totals(change_dir)
     print("agent time: %s" % (totals[0] if totals else "no activity.log"))
     print("agent cost: %s" % (totals[1] if totals else "no activity.log"))
+    print(activity.signatures_line(change_dir, by_model=False))
     return 0
 
 

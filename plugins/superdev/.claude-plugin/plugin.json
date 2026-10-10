@@ -1,7 +1,7 @@
 {
   "name": "superdev",
   "license": "MIT",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "SuperDev seat of the agentic pod (SA, Dev, QA, Deploy, maintenance): plan, build, test-first, review with a second opinion, bug-fix, arena, merge by risk, release and incident skills, with test-lock, kill-switch and gate-guard hooks.",
   "author": { "name": "HarmonyX" }
 }

@@ -61,6 +61,7 @@ Write a gate 4 summary in the PR description:
 2. The `make check` result
 3. Remaining Majors and Minors, with reasons
 4. Demo steps for SuperBiz to use in `/superbiz:acceptance`
-5. Code authors: the author emails of commits that touch files outside `docs/` (`git log main..HEAD --no-merges --format=%ae -- . ':!docs'`).
+5. In `mode: autonomous`: the `signatures:` and `agent gates:` lines from `scripts/activity.sh docs/changes/NNN-slug` (which gates agents signed, on which model, and how many agent checks refused).
+6. Code authors: the author emails of commits that touch files outside `docs/` (`git log main..HEAD --no-merges --format=%ae -- . ':!docs'`).
    With 2 or more SuperDevs in pod.yml, a SuperDev who is not on this list signs gate 4 and approves the PR (peer review, `docs/scaling.md`).
 Tell the human the next step is `/superdev:merge`, which merges according to the change's Risk.

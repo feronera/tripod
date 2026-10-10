@@ -1,0 +1,10 @@
+gate=1 role=owner by=bee@pod.example at=2026-10-10T08:26:37+07:00 blob=c118073e0ababbeae3cd7179a20b34d8b47745fc
+gate=1 role=cross by=dan@pod.example at=2026-10-10T08:26:37+07:00 blob=c118073e0ababbeae3cd7179a20b34d8b47745fc
+event=mode mode=autonomous superbiz_agent_model=claude-sonnet-5-5 superdev_agent_model=claude-opus-5-5 at=2026-10-10T08:27:19+07:00
+gate=2 role=owner by=agent:superbiz model=claude-sonnet-5-5 session=67239f7b-9711-4b82-9868-5dc4b3ce2759 at=2026-10-10T08:27:19+07:00 blob=3793b9adc92264670b37a8a5a9a585a9808a069d
+gate=2 role=owner by=agent:superbiz model=claude-sonnet-5-5 session=b5c57339-c8f8-4373-8ccb-9bde71df3050 at=2026-10-10T08:30:47+07:00 blob=dc1cad430e0952f2bd2d33facb8678b89d408245
+gate=2 role=owner by=agent:superbiz model=claude-sonnet-5-5 session=4b76649e-af35-429c-b040-9a4213a9ae3b at=2026-10-10T08:32:05+07:00 blob=f8e9dcdbd9a32cd47cf18bec75f1a603b582ad13
+gate=2 role=cross by=agent:superdev model=claude-opus-5-5 session=ba576ce9-579c-41b5-aabe-09a2295e3fba at=2026-10-10T08:32:49+07:00 blob=f8e9dcdbd9a32cd47cf18bec75f1a603b582ad13
+gate=3 role=owner by=agent:superdev model=claude-opus-5-5 session=476a0d03-efc8-4dfa-8cbc-8eb0a00588bf at=2026-10-10T08:33:29+07:00 blob=de1b22670ff426992e87ee8fe0c4facacacd1aa2
+gate=3 role=cross by=agent:superbiz model=claude-sonnet-5-5 session=4aa0b939-d425-44e0-9778-804f2cd93431 at=2026-10-10T08:33:52+07:00 blob=de1b22670ff426992e87ee8fe0c4facacacd1aa2
+gate=4 role=auto by=auto-merge at=2026-10-10T08:35:22+07:00 blob=- head=7ae72d2bc38f22a39d717c70801d8546b4e4f5cd

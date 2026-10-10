@@ -1,0 +1,18 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): Missing from the spec: intent.md:14 says the result must include every status in STATUS_LABELS, with 0 for statuses the customer has no orders in. No requirement in spec.md covers this, and two places contradict it.
+
+### Gate 2: spec.md and ux-brief.md
+
+- **Can every requirement be verified by a test or a demo?** Yes. spec.md:6–8 gives R1, R2 and R3 each a test: R1 the C001 example, R2 a before-and-after comparison, R3 a TypeError test.
+- **Do the edge cases cover empty data, invalid data and access permissions?** No. They are all listed (E1 empty, E2 malformed, E3 access, spec.md:11–13), but E1 is wrong. An unknown customer returns `an empty dict`, when intent.md:14 needs every STATUS_LABELS key with value 0. The R1 example (spec.md:6, `shipped 1, delivered 1`) also leaves out the zero-count statuses.
+- **Does the ux-brief cover all 4 states and the user-facing copy?** No. ux-brief.md:3 names three states (empty, error, success). It doesn't mention loading, even to say it doesn't apply, and it has no copy. Its empty state (`empty dict`) repeats the same contradiction of intent.md:14.
+- **Has every Flagged concern been answered or accepted as a risk?** No. spec.md:16 says `None`, but the spec quietly drops intent item 2 and doesn't flag it, accept it as a risk, or list it under Out of scope (spec.md:18–19).
+- **(SuperDev) Is anything infeasible or more expensive than necessary?** Yes, it is feasible and not costly. A read-only count over the orders, filled out from STATUS_LABELS, needs only the stdlib (intent.md:26). The spec doesn't need more than that.
+
+### Changes needed before I can approve
+- Add an R4 to spec.md: every status in STATUS_LABELS appears in the result, with 0 when the customer has no orders in it. Verify it with a test.
+- Rewrite E1 in spec.md and the empty state in ux-brief.md so an unknown customer gets every status with 0, not `{}`.
+- Fix the R1 example so it includes the zero entries.
+- State the loading state in ux-brief.md, even as "N/A, synchronous call".
+
+I read the three files only and changed nothing.

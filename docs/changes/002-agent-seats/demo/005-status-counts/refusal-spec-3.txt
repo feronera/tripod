@@ -1,0 +1,19 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): I'm refusing gate 2. The spec drops intent item 2: every status must appear, with 0 for statuses the customer has no orders in.
+
+### Gate 2: spec.md and ux-brief.md
+
+- **Can every requirement (R1, R2, ...) be verified by a test or a demo?** — **yes.** spec.md:6-8: R1, R2 and R3 each name a test. But none of them covers intent item 2 (see below).
+- **Do the edge cases cover empty data, invalid data and access permissions?** — **no.** spec.md:11 (E1) says an unknown customer gets "an empty dict", which breaks intent.md:14 (every status in STATUS_LABELS, with 0). E3 at spec.md:13 also says "support only" but no requirement or test enforces it.
+- **Does the ux-brief cover all 4 states (empty, loading, error, success) and the user-facing copy?** — **no.** ux-brief.md:3 names empty, error and success but leaves out loading. It does not say loading doesn't apply to a synchronous function. Its empty state ("empty dict") repeats the same conflict with intent.md:14.
+- **Has every Flagged concern been answered or accepted as a risk?** — **no.** spec.md:16 says "None", but the clash between intent.md:14 (all statuses, 0 when absent) and spec.md:6/11 (only statuses present, empty dict when unknown) should have been flagged and wasn't.
+- **(SuperDev) Is anything infeasible or more expensive than necessary?** — **no.** intent.md:22,26 makes this read-only and stdlib-only, and R1–R3 are a cheap count over existing orders.
+
+### Requirement missing from a later artifact
+- intent.md:14 (item 2: include every status in STATUS_LABELS, with 0 for statuses with no orders) is in no requirement in spec.md. R1 (spec.md:6) only counts statuses that have orders, and its own example "C001 -> shipped 1, delivered 1" shows no zero entries.
+
+### To fix
+1. Add a requirement to the spec, for example "R4: the result has a key for every status in STATUS_LABELS, with 0 when the customer has no orders in it." Give it a test that checks the keys equal STATUS_LABELS and that the missing statuses are 0.
+2. Change E1 and ux-brief.md:3 so an unknown customer gets every status at 0, not an empty dict. If you'd rather keep the empty dict, put it under Flagged concerns for SuperBiz to decide.
+3. In ux-brief.md, state the loading state or say it doesn't apply (synchronous call).
+4. Either make E3 testable or say that access is enforced by the caller and is out of scope.

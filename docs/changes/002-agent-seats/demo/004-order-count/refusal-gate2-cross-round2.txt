@@ -1,0 +1,27 @@
+Checking gate 2 as cross (agent:superdev, claude-opus-5-5)...
+REFUSE gate 2 cross (agent:superdev, claude-opus-5-5): I'm refusing gate 2. Every requirement can be tested, but R5 justifies itself with a claim about the code that is false.
+
+**What's wrong with R5:** R5 (`spec.md:10`) says `order_count` must raise `TypeError` for a non-string id, "like the other lookups in app/orders.py that refuse malformed ids." No lookup in `app/orders.py` raises `TypeError`:
+- `status_history` raises `OrderNotFound` for malformed ids (`app/orders.py:118-119`).
+- `orders_for_customer(None)` doesn't refuse at all; it returns `[]` (`app/orders.py:135-141`).
+
+So `TypeError` would be a new convention, and the spec cites a precedent that doesn't exist (AGENTS.md rule 5). The ux-brief copies the same choice into its error state (`ux-brief.md:13`), and the edge case for malformed input (E2) depends on it. Raising instead of returning 0 is a reasonable choice, but the spec needs to make it on its own merits.
+
+**Fix (SuperBiz, small):** either
+- keep `TypeError` and change R5's rationale to say this is a new choice, so a bad id isn't mistaken for zero orders, or
+- use `OrderNotFound` to match `status_history`.
+
+Then update `ux-brief.md:13` to match and re-sign. The gate-2 owner signature is already in `gates.log`, so this edit makes that approval stale and needs to be said openly (rule 7).
+
+### Gate 2: spec.md and ux-brief.md
+- **Can every requirement be verified by a test or a demo?** Yes. R1–R6 each name a test, and R1's fixture is real: C001 owns A1001 and A1002 (`app/orders.py:19-20`).
+- **Do the edge cases cover empty data, invalid data and access permissions?** No. All three are listed: empty is E1 (`spec.md:14`) and access is E3 (`spec.md:16`). But the invalid-data case, E2 (`spec.md:15`), rests on R5's false precedent.
+- **Does the ux-brief cover all 4 states and the copy?** Yes. Empty, loading (not applicable, with a reason), error and success are at `ux-brief.md:13`. Copy is explicitly "No user-facing text" (`ux-brief.md:18`). The error state repeats the R5 choice and needs to change with it.
+- **Has every Flagged concern been answered or accepted as a risk?** Yes. C1 is an accepted risk (`spec.md:20`). C2 is answered with a decision to count cancelled orders, open to sponsor review (`spec.md:21`).
+- **(SuperDev) Is anything infeasible or more expensive than necessary?** No. It's a read-only count over `_ORDERS` in the standard library. R6's guard holds today: `app/server.py` and `app/order_page.py` import only `status_history` and related names (`server.py:18`, `order_page.py:12`).
+- **Is every intent requirement carried forward?** Yes:
+  - read-only: R3
+  - 0 for a customer with no orders, not an error: R2 and E1
+  - number only, no order contents: R4
+  - internal users only: R6 and E3
+  - one call to answer: R1
