@@ -72,7 +72,9 @@ def next_role(entries, gate, blob):
 
 def run_claude(text, model, timeout):
     cmd = [os.environ.get("TRIPOD_CLAUDE", "claude"), "-p", text, "--model", model,
-           "--output-format", "json", "--allowedTools", READ_ONLY_TOOLS]
+           "--output-format", "json",
+           # --tools limits which tools exist; --allowedTools alone only adds permissions to the user's settings
+           "--tools", READ_ONLY_TOOLS, "--allowedTools", READ_ONLY_TOOLS]
     try:
         out = subprocess.run(cmd, cwd=lib.ROOT, capture_output=True, text=True, timeout=timeout, check=False,
                              stdin=subprocess.DEVNULL)
@@ -88,21 +90,25 @@ def run_claude(text, model, timeout):
         return None, "the output was not JSON"
 
 
-def write_evidence(change_dir, data, model):
-    """Usage for the checking session, unless the plugin hooks already wrote it (no double counting)."""
+def write_evidence(change_dir, data):
+    """Usage for the checking session, one record per model, from Claude Code's own numbers. Written for every
+    run (approved or refused) so the sponsor sees the cost, unless the plugin hooks already wrote it."""
     path = os.path.join(change_dir, activity.LOG)
     session = data.get("session_id", "")
     records, _ = activity.read_records(path)
     if any(r.get("event") == "usage" and r.get("session") == session for r in records):
         return
-    u = (data.get("modelUsage") or {}).get(model, {})
-    rec = {"event": "usage", "at": activity.now_iso(), "session": session, "agent": "main", "model": model,
-           "input": u.get("inputTokens", 0), "output": u.get("outputTokens", 0),
-           "cache_write": u.get("cacheCreationInputTokens", 0), "cache_write_1h": 0,
-           "cache_read": u.get("cacheReadInputTokens", 0), "usd": "%.6f" % float(u.get("costUSD", 0) or 0),
-           "seconds": int((data.get("duration_ms") or 0) / 1000), "source": "agent-sign"}
+    lines, seconds = [], int((data.get("duration_ms") or 0) / 1000)
+    for model, u in sorted((data.get("modelUsage") or {}).items()):
+        lines.append(activity.format_record({
+            "event": "usage", "at": activity.now_iso(), "session": session, "agent": "main", "model": model,
+            "input": u.get("inputTokens", 0), "output": u.get("outputTokens", 0),
+            "cache_write": u.get("cacheCreationInputTokens", 0), "cache_write_1h": 0,
+            "cache_read": u.get("cacheReadInputTokens", 0), "usd": "%.6f" % float(u.get("costUSD", 0) or 0),
+            "seconds": seconds, "source": "agent-sign"}))
+        seconds = 0
     with open(path, "a", encoding="utf-8") as fh:
-        fh.write(activity.format_record(rec))
+        fh.writelines(lines)
 
 
 def main(args):
@@ -153,6 +159,7 @@ def main(args):
     if data is None:
         print("agent-sign: claude did not return a verdict (%s). Nothing was recorded" % error)
         return 1
+    write_evidence(change_dir, data)
     used = set((data.get("modelUsage") or {}).keys())
     if model not in used:
         print("agent-sign: the agent ran on %s, not on %s as pod.yml sets for %s. Nothing was recorded"
@@ -175,7 +182,6 @@ def main(args):
                      % (cfg["superbiz_agent_model"], cfg["superdev_agent_model"], lib.now_iso()))
     lines.append("gate=%d role=%s by=%s model=%s session=%s at=%s blob=%s\n"
                  % (gate, role, by, model, session, lib.now_iso(), blob))
-    write_evidence(change_dir, data, model)
     with open(os.path.join(change_dir, "gates.log"), "a", encoding="utf-8") as fh:
         fh.writelines(lines)
     print("APPROVE gate %d %s (%s, %s)" % (gate, role, by, model))

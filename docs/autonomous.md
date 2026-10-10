@@ -44,7 +44,7 @@ The command does the following:
    - the artifact is missing;
    - the gate is already signed;
    - `.pod/kill-switch` exists.
-2. Starts `claude -p --model <seat model> --output-format json --allowedTools Read,Grep,Glob` with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
+2. Starts `claude -p --model <seat model> --output-format json --tools Read,Grep,Glob` (only these tools exist in that session, whatever the user's settings allow) with the gate's questions from `docs/gates.md` and the change's artifacts. The owner seat is told it is accountable for the artifact. The cross seat is told to find what the other leg missed.
 3. Reads the verdict from a last line `VERDICT: APPROVE` or `VERDICT: REFUSE`. Anything else counts as REFUSE.
 4. Checks that Claude Code's `modelUsage` shows the seat's model actually ran.
 5. On APPROVE, appends to gates.log. On the first agent signature it also records the mode and the seat models:
