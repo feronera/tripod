@@ -1,1 +1,1 @@
-Refused: spec.md not found in docs/changes/005-open-orders. The artifact must exist before gate 2 is signed
+Refused: this change touches app/billing.py, which agents may not change (agent_forbidden_paths); people sign it
