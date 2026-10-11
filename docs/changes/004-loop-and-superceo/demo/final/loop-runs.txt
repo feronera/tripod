@@ -1,0 +1,44 @@
+=== 007 run 1
+Loop run 2026-10-11 08:25 UTC
+007-order-note-count: draft spec (superbiz)...
+007-order-note-count: draft spec
+Loop run: 1 steps, 0 stops
+=== 007 run 2
+Loop run 2026-10-11 08:26 UTC
+007-order-note-count: sign gate 2 (agent)...
+007-order-note-count: sign gate 2 owner → APPROVE
+Loop run: 1 steps, 0 stops
+=== 007 run 3
+Loop run 2026-10-11 08:26 UTC
+007-order-note-count: sign gate 2 (agent)...
+007-order-note-count: sign gate 2 cross → APPROVE
+Loop run: 1 steps, 0 stops
+=== 007 run 4
+Loop run 2026-10-11 08:27 UTC
+007-order-note-count: draft plan (superdev)...
+007-order-note-count: draft plan
+Loop run: 1 steps, 0 stops
+=== 007 run 5
+Loop run 2026-10-11 08:27 UTC
+007-order-note-count: sign gate 3 (agent)...
+007-order-note-count: sign gate 3 owner → APPROVE
+Loop run: 1 steps, 0 stops
+=== 007 run 6
+Loop run 2026-10-11 08:28 UTC
+007-order-note-count: sign gate 3 (agent)...
+007-order-note-count: sign gate 3 cross → APPROVE
+Loop run: 1 steps, 0 stops
+=== 007 run 7
+Loop run 2026-10-11 08:28 UTC
+007-order-note-count: stopped: people build (gate 3 is complete)
+Loop run: 0 steps, 1 stops
+=== 008 run 1
+Loop run 2026-10-11 08:28 UTC
+008-delete-account: draft spec (superbiz)...
+008-delete-account: draft spec
+Loop run: 1 steps, 0 stops
+=== 008 run 2
+Loop run 2026-10-11 08:29 UTC
+008-delete-account: stopped: people sign gate 2 (Risk: high)
+Loop run: 0 steps, 1 stops
+FINISHED

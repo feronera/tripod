@@ -1,0 +1,3 @@
+cost: US$0.75 (prices as of 2026-10-09)
+agent time: 0h 02m
+agent gates: gate 2 owner claude-sonnet-5-5, gate 2 cross claude-opus-5-5, gate 3 owner claude-opus-5-5, gate 3 cross claude-sonnet-5-5; refused checks: 0
