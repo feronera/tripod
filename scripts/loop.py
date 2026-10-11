@@ -221,7 +221,7 @@ def run_agent(step_name, change_dir, cfg, timeout):
            "--model", cfg["%s_agent_model" % leg], "--plugin-dir", folder, "--output-format", "json",
            "--tools", tools, "--allowedTools", ",".join(allowed)]
     try:
-        out = subprocess.run(cmd, cwd=lib.ROOT, capture_output=True, text=True, timeout=timeout,
+        out = subprocess.run(cmd, cwd=lib.ROOT, env=loop_env(), capture_output=True, text=True, timeout=timeout,
                              stdin=subprocess.DEVNULL, check=False)
     except FileNotFoundError:
         return False, "claude is not installed"
@@ -250,6 +250,12 @@ def discard(paths):
             os.remove(os.path.join(lib.ROOT, p))
 
 
+def loop_env():
+    """The loop's git identity, also for commits an agent makes itself (skills may commit their work)."""
+    return dict(os.environ, GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
+                GIT_COMMITTER_NAME=LOOP_AUTHOR[0], GIT_COMMITTER_EMAIL=LOOP_AUTHOR[1])
+
+
 def commit(message, paths):
     """Commit only `paths` (the step's own files), as the loop's author."""
     env = dict(os.environ, GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
@@ -266,37 +272,40 @@ def run_tests(cfg):
 
 
 def draft_or_build(step, change_dir, cfg, timeout):
-    """(ok, reason, paths): the step's own changed files, to commit with its record (only when make test passes,
-    for the build step). Nothing is committed here."""
+    """(ok, reason, paths). The agent may leave its work uncommitted or commit it itself (some skills do); both
+    count. Every file it touched, committed or not, must be inside the step's paths. On any failure the branch
+    goes back to where the step started, so a failed step leaves nothing behind."""
     rel = os.path.relpath(change_dir, lib.ROOT)
-    if step.name in ("build",):
+    _, start = git("rev-parse", "HEAD")
+    if step.name == "build":
         os.makedirs(os.path.join(lib.ROOT, ".pod"), exist_ok=True)
         open(os.path.join(lib.ROOT, ".pod", "lock-tests"), "a").close()
     ok, reason = run_agent(step.name, change_dir, cfg, timeout)
-    changed = changed_paths()
+    _, now_head = git("rev-parse", "HEAD")
+    rc, committed = git("diff", "--name-only", "--no-renames", start, "HEAD")
+    touched = sorted(set((committed.splitlines() if rc == 0 else []) + changed_paths()))
     allowed = [p.rstrip("*").rstrip("/") for p in allowed_paths(step.name, change_dir, cfg)]
-    outside = [p for p in changed if not any(p == a or p.startswith(a + "/") for a in allowed)]
-    own = [p for p in changed if p not in outside]
+    outside = [p for p in touched if not any(p == a or p.startswith(a + "/") for a in allowed)]
+
+    def undo(why):
+        git("reset", "-q", "--hard", start)
+        discard(changed_paths())
+        return False, why, []
+
     if not ok:
-        discard(changed)
-        return False, reason, []
+        return undo(reason)
     if outside:
-        discard(changed)
-        return False, "the agent changed files outside this step (%s)" % ", ".join(outside[:3]), []
-    work = [p for p in own if not p.endswith(activity.LOG)]
-    if not work:
-        discard(changed)
-        return False, "the agent wrote nothing", []
+        return undo("the agent changed files outside this step (%s)" % ", ".join(outside[:3]))
+    if not [p for p in touched if not p.endswith(activity.LOG)]:
+        return undo("the agent wrote nothing")
     if step.name == "draft spec" and not os.path.exists(os.path.join(change_dir, "spec.md")):
-        discard(changed)
-        return False, "spec.md was not written", []
-    if step.name in ("build",) and not run_tests(cfg):
-        discard(changed)
-        return False, "make test fails after the build", []
+        return undo("spec.md was not written")
+    if step.name == "build" and not run_tests(cfg):
+        return undo("make test fails after the build")
     if step.name == "write tests":
         os.makedirs(os.path.join(lib.ROOT, ".pod"), exist_ok=True)
         open(os.path.join(lib.ROOT, ".pod", "lock-tests"), "a").close()
-    return True, rel, own
+    return True, rel, [p for p in changed_paths() if p not in outside]
 
 
 def sign(change_dir, gate):
