@@ -209,8 +209,8 @@ def run_agent(step_name, change_dir, cfg, timeout):
     if folder is None:
         return False, "the %s plugin was not found (plugins/%s or TRIPOD_PLUGIN_DIR)" % (leg, leg)
     edits = allowed_paths(step_name, change_dir, cfg)
-    allowed = ["Read", "Grep", "Glob"] + ["Edit(%s)" % p for p in edits] + ["Write(%s)" % p for p in edits]
-    tools = "Read,Grep,Glob,Edit,Write"
+    allowed = ["Read", "Grep", "Glob", "Skill"] + ["Edit(%s)" % p for p in edits] + ["Write(%s)" % p for p in edits]
+    tools = "Read,Grep,Glob,Skill,Edit,Write"  # Skill loads the plugin's skills
     if SKILLS[step_name][0] == "superdev" and step_name in ("write tests", "build", "review"):
         allowed += ["Bash(make test)", "Bash(make check)", "Bash(git diff:*)", "Bash(git status)",
                     "Bash(git log:*)", "Bash(scripts/test-strength.sh)"]

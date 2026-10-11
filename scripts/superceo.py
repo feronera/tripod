@@ -18,6 +18,16 @@ import sponsor  # noqa: E402
 READ_ONLY = "Read,Grep,Glob"
 
 
+def skill_text(name):
+    """The superceo plugin's skill, given in the prompt itself (a read-only session has no Skill tool)."""
+    for base in (os.environ.get("TRIPOD_PLUGIN_DIR"), os.path.join(lib.ROOT, "plugins")):
+        path = os.path.join(base or "", "superceo", "skills", name, "SKILL.md")
+        if base and os.path.exists(path):
+            text = open(path, encoding="utf-8").read()
+            return text.split("---", 2)[-1].strip() if text.startswith("---") else text
+    return ""
+
+
 def run_ceo(prompt, cfg):
     model = cfg.get("superceo_model") or cfg.get("superbiz_agent_model") or ""
     cmd = [os.environ.get("TRIPOD_CLAUDE", "claude"), "-p", prompt, "--output-format", "json",
@@ -48,13 +58,21 @@ def run_ceo(prompt, cfg):
     return data, None
 
 
+def branch_file(branch, path):
+    out = subprocess.run(["git", "show", "%s:%s" % (branch, path)], cwd=lib.ROOT, capture_output=True, text=True,
+                         check=False)
+    return out.stdout if out.returncode == 0 else None
+
+
 def change_summary(cfg):
-    """One line per change folder in the working tree: Risk, gates passed, spend."""
+    """One line per change: those in the working tree, and those on `change/NNN-slug` branches (read from the
+    branch without switching to it). Risk, gates with a signature, spend."""
     at = sponsor.now()
     events, _ = sponsor.ledger(lib.ROOT, at, cfg)
-    lines = []
+    lines, seen = [], set()
     for change_dir in lib.change_dirs():
         name = os.path.basename(change_dir)
+        seen.add(name)
         risk = lib.risk_of(change_dir)
         passed = 0
         for n in (1, 2, 3, 4):
@@ -62,7 +80,25 @@ def change_summary(cfg):
                 break
             passed = n
         spent, _ = sponsor.spend(events, name)
-        lines.append("- %s: Risk %s, passed gate %d, spend US$%.2f" % (name, risk, passed, spent))
+        lines.append("- %s (on this branch): Risk %s, passed gate %d, spend US$%.2f" % (name, risk, passed, spent))
+    out = subprocess.run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/change/"], cwd=lib.ROOT,
+                         capture_output=True, text=True, check=False)
+    for branch in sorted(out.stdout.split()):
+        name = branch[len("change/"):]
+        if name in seen:
+            continue
+        intent = branch_file(branch, "docs/changes/%s/intent.md" % name) or ""
+        risk = next((l.split(":", 1)[1].strip() for l in intent.splitlines() if l.startswith("Risk:")), "?")
+        log = branch_file(branch, "docs/changes/%s/gates.log" % name) or ""
+        gates = sorted({int(p.split("=")[1]) for l in log.splitlines() for p in l.split()
+                        if p.startswith("gate=") and p.split("=")[1].isdigit()})
+        cost = 0.0
+        for l in (branch_file(branch, "docs/changes/%s/activity.log" % name) or "").splitlines():
+            rec = sponsor.parse_line(l)
+            if rec and rec.get("event") == "usage":
+                cost += sponsor.usd_of(sponsor.Event(None, name, "usage", rec))[0]
+        lines.append("- %s (branch %s): Risk %s, gates with signatures %s, spend US$%.2f; files: git show %s:docs/"
+                     "changes/%s/" % (name, branch, risk, ",".join(map(str, gates)) or "none", cost, branch, name))
     return lines
 
 
@@ -73,7 +109,9 @@ def cmd_priorities(cfg):
         print("No open changes and no docs/backlog.md: nothing to rank")
         return 0
     prompt = "\n".join([
-        "Use the priorities skill (/superceo:priorities). Rank the open changes and the backlog for the sponsor.",
+        skill_text("priorities"),
+        "",
+        "Rank the open changes and the backlog for the sponsor.",
         "Changes (from gates.log and activity.log):", *lines,
         "Backlog: docs/backlog.md" if os.path.exists(backlog) else "Backlog: none",
         "Read docs/changes/*/intent.md and the latest digest (scripts/digest.sh output is not available; read the "
@@ -110,7 +148,9 @@ def cmd_brief(change_dir, cfg):
     blob = lib.blob_hash(artifact) if os.path.exists(artifact) else "-"
     rel = os.path.relpath(change_dir, lib.ROOT)
     prompt = "\n".join([
-        "Use the brief skill (/superceo:brief). %s (Risk: %s) is waiting for people at gate %d (%s)." % (
+        skill_text("brief"),
+        "",
+        "%s (Risk: %s) is waiting for people at gate %d (%s)." % (
             rel, risk, gate, lib.ARTIFACTS[gate]),
         "Read the change's artifacts, gates.log and activity.log. Write the brief in Markdown with these sections: "
         "## Decision, ## Options, ## Risks, ## Evidence (links to files), ## Recommendation. Do not sign anything.",
