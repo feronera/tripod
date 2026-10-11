@@ -137,7 +137,7 @@ Each run gives every open change one step. Open changes are branches named `chan
 
 - **Isolated agent sessions.** An agent step runs with `--setting-sources "" --strict-mcp-config`, so no user or project settings, hooks or MCP servers apply. It has no shell, and no access tokens in its environment.
 - **Artifacts only.** It may edit only the step's artifact files. Any other change rolls the branch back.
-- **Checks before every step:** the kill switch, the sponsor's limits, and that the branch touches no risk path from the base branch, no governance file and no forbidden path.
+- **Checks before every step:** the kill switch, the sponsor's limits, and that the branch changes nothing outside its own `docs/changes/NNN-slug/` folder. So the scripts, plugins and pod.yml the loop runs are always the base branch's. Run the loop from the base branch (`base_branch`, default main), never from a change branch.
 - **Records.** Each step is one commit by `Tripod loop`, recorded as `event=loop` in activity.log.
 - **Limits.** With `loop: on`, `max_refusals_per_gate` defaults to 3.
 - **What it never does:** build, test, merge or run people's commands.

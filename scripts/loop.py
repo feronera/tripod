@@ -76,17 +76,20 @@ def next_step(state):
 # ---------- git and state ----------
 
 def git(*args):
-    out = subprocess.run(["git"] + list(args), cwd=lib.ROOT, capture_output=True, text=True, check=False)
+    out = subprocess.run(["git", "-c", "core.quotePath=false"] + list(args), cwd=lib.ROOT, capture_output=True,
+                         text=True, check=False)
     return out.returncode, out.stdout.strip()
 
 
-def changed_paths():
-    """Uncommitted and new files (git status read unstripped: its first column matters). .pod/ is local state;
-    docs/superceo/ and docs/digest/ are written by the sponsor's tools before a run."""
-    out = subprocess.run(["git", "status", "--porcelain", "--untracked-files=all"], cwd=lib.ROOT,
-                         capture_output=True, text=True, check=False)
+def changed_paths(sponsor_outputs=False):
+    """Uncommitted and new files (git status read unstripped: its first column matters). .pod/ is local state.
+    docs/superceo/ and docs/digest/ are written by the sponsor's tools before a run, so they do not make the tree
+    dirty; inside a step they count like any other file (sponsor_outputs=True)."""
+    out = subprocess.run(["git", "-c", "core.quotePath=false", "status", "--porcelain", "--untracked-files=all"],
+                         cwd=lib.ROOT, capture_output=True, text=True, check=False)
     paths = [l[3:] for l in out.stdout.splitlines() if l.strip()] if out.returncode == 0 else []
-    return [p for p in paths if not p.startswith((".pod/", "docs/superceo/", "docs/digest/"))]
+    skip = (".pod/",) if sponsor_outputs else (".pod/", "docs/superceo/", "docs/digest/")
+    return [p for p in paths if not p.startswith(skip)]
 
 
 def read_state(change_dir, cfg):
@@ -107,20 +110,23 @@ def read_state(change_dir, cfg):
                  complete[3], refused)
 
 
-def branch_files(cfg):
-    """Files the branch changes against the base branch, committed or not."""
+def base_rules(cfg):
+    """(base ref, risk globs) read once from the home checkout and the base branch, before any change branch is
+    checked out, so no branch can change them for itself."""
     base = lib.resolve_base(cfg["base_branch"])
-    rc, merge_base = git("merge-base", "HEAD", base)
-    _, committed = git("diff", "--no-renames", "--name-only", merge_base) if rc == 0 and merge_base else (0, "")
-    return sorted(set(committed.splitlines()) | set(changed_paths())), base
-
-
-def branch_stop(cfg, limits):
-    """A reason the loop must not work on this branch, or None. Risk paths come from the base branch, so a branch
-    never relaxes its own rules, and the scripts the loop runs are the base branch's (spec R6)."""
-    files, base = branch_files(cfg)
     rc, text = git("show", "%s:docs/risk-paths" % base)
     globs = [l.split("#", 1)[0].strip() for l in (text.splitlines() if rc == 0 else []) if l.split("#", 1)[0].strip()]
+    return base, globs
+
+
+def branch_stop(name, base, globs, limits):
+    """A reason the loop must not work on this branch, or None (spec R6). A branch may change only its own change
+    folder; then the scripts, plugins and pod.yml the loop runs are exactly the base branch's."""
+    rc, merge_base = git("merge-base", "HEAD", base)
+    if rc != 0 or not merge_base:
+        return "the branch has no common history with %s; people take this change" % base
+    _, committed = git("diff", "--no-renames", "--name-only", merge_base)
+    files = sorted(set(committed.splitlines()) | set(changed_paths()))
     risky = [f for f in files if any(lib.path_matches(f, g) for g in globs)]
     if risky:
         return "the branch touches a sensitive path (%s); people take this change" % ", ".join(risky[:3])
@@ -131,6 +137,10 @@ def branch_stop(cfg, limits):
     banned = sponsor.forbidden_files(files, limits)
     if banned:
         return "the branch touches %s, which agents may not change (agent_forbidden_paths)" % ", ".join(banned[:3])
+    own = "docs/changes/%s/" % name
+    outside = [f for f in files if not f.startswith(own)]
+    if outside:
+        return "the branch changes files outside %s (%s); people take this change" % (own, ", ".join(outside[:3]))
     return None
 
 
@@ -144,12 +154,9 @@ def plugin_dir(leg):
 
 
 def agent_env():
-    """The agent's environment: no access tokens, and the loop's git identity."""
-    env = {k: v for k, v in os.environ.items()
-           if not (k.endswith("_TOKEN") or k in ("GH_TOKEN", "GITHUB_TOKEN", "GH_ENTERPRISE_TOKEN"))}
-    env.update(GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
-               GIT_COMMITTER_NAME=LOOP_AUTHOR[0], GIT_COMMITTER_EMAIL=LOOP_AUTHOR[1])
-    return env
+    """The agent's environment: no access tokens or secrets (lib.agent_env), and the loop's git identity."""
+    return lib.agent_env(dict(GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
+                              GIT_COMMITTER_NAME=LOOP_AUTHOR[0], GIT_COMMITTER_EMAIL=LOOP_AUTHOR[1]))
 
 
 def run_agent(step, change_dir, cfg):
@@ -188,18 +195,25 @@ def draft(step, change_dir, cfg):
     be one of the step's artifacts (or activity.log, which the plugin's hook appends to). Otherwise the branch
     goes back to where the step started."""
     rel = os.path.relpath(change_dir, lib.ROOT)
-    allowed = {os.path.join(rel, f) for f in ARTIFACTS[step.name][2]} | {os.path.join(rel, activity.LOG)}
+    log_rel = os.path.join(rel, activity.LOG)
+    allowed = {os.path.join(rel, f) for f in ARTIFACTS[step.name][2]} | {log_rel}
     _, start = git("rev-parse", "HEAD")
+    before = set(changed_paths(sponsor_outputs=True))  # untracked files that are not the agent's: never removed
+    log_path = os.path.join(lib.ROOT, log_rel)
+    log_before = open(log_path, encoding="utf-8").read() if os.path.exists(log_path) else ""
     ok, reason = run_agent(step, change_dir, cfg)
     _, committed = git("diff", "--no-renames", "--name-only", start)
-    touched = sorted(set(committed.splitlines()) | set(changed_paths()))
+    touched = sorted(set(committed.splitlines()) | (set(changed_paths(sponsor_outputs=True)) - before))
     outside = [p for p in touched if p not in allowed]
+    log_now = open(log_path, encoding="utf-8").read() if os.path.exists(log_path) else ""
+    if not log_now.startswith(log_before):
+        outside.append(log_rel + " (rewritten, not appended)")
 
     def undo(why):
         git("reset", "-q", "--hard", start)
-        for p in changed_paths():
+        for p in set(changed_paths(sponsor_outputs=True)) - before:
             full = os.path.join(lib.ROOT, p)
-            if os.path.isfile(full):
+            if os.path.isfile(full) and not os.path.islink(full):
                 os.remove(full)
         return False, why, []
 
@@ -235,8 +249,9 @@ def commit(message, paths):
     env = dict(os.environ, GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
                GIT_COMMITTER_NAME=LOOP_AUTHOR[0], GIT_COMMITTER_EMAIL=LOOP_AUTHOR[1])
     subprocess.run(["git", "add", "-A", "--"] + list(paths), cwd=lib.ROOT, capture_output=True, check=False)
-    subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "commit", "-q", "-m", message], cwd=lib.ROOT, env=env,
-                   capture_output=True, check=False)
+    out = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "commit", "-q", "-m", message], cwd=lib.ROOT,
+                         env=env, capture_output=True, text=True, check=False)
+    return out.returncode == 0 or "nothing to commit" in out.stdout + out.stderr
 
 
 def record(change_dir, run_id, step, result, reason=""):
@@ -320,6 +335,14 @@ def main(args):
         return refuse("another loop run holds .pod/loop.lock (started %s ago; a person removes it if it is stale)"
                       % age)
     _, home = git("rev-parse", "--abbrev-ref", "HEAD")
+    if home == "HEAD":
+        _, home = git("rev-parse", "HEAD")  # detached: come back to the same commit
+    base, globs = base_rules(cfg)  # read once, before any change branch is checked out
+    plain = base[len("origin/"):] if base.startswith("origin/") else base
+    if plain.startswith("change/"):
+        os.remove(lock)
+        return refuse("base_branch: %s is a change branch; the base must be the shared branch changes merge into "
+                      "(pod.yml base_branch, default main)" % plain)
     run_id = sponsor.now().strftime("%Y%m%dT%H%M%S")
     steps = stops = 0
     try:
@@ -332,13 +355,20 @@ def main(args):
             if steps >= loop_cfg.max_steps:
                 print("Loop: stopped at loop_max_steps (%d)" % loop_cfg.max_steps)
                 break
-            git("checkout", "-q", "change/%s" % name)
+            rc, _ = git("checkout", "-q", "change/%s" % name)
+            if rc != 0:
+                print("%s: skipped: branch change/%s could not be checked out" % (name, name))
+                git("checkout", "-q", home)
+                continue
             change_dir = os.path.join(lib.CHANGES_DIR, name)
             if not os.path.exists(os.path.join(change_dir, "intent.md")):
                 print("%s: skipped: no docs/changes/%s/intent.md on its branch" % (name, name))
                 continue
-            cfg = lib.read_pod_yml()
-            state = read_state(change_dir, cfg)
+            if changed_paths():
+                print("%s: skipped: files left over after checking out the branch (%s); a person cleans up"
+                      % (name, ", ".join(changed_paths()[:3])))
+                continue
+            state = read_state(change_dir, cfg)  # cfg is the home pod.yml, read before any checkout
             step = next_step(state)
             if dry:
                 actor = "agent:%s" % step.actor if step.actor in ("superbiz", "superdev") else step.actor
@@ -349,11 +379,10 @@ def main(args):
                     actor = "agent:%s" % lib.OWNERS[n][0 if role == "owner" else 1]
                 print("%s (%s): next: %s (%s)" % (name, state.risk, step.name, actor))
                 continue
-            stop = step.name if step.kind == "stop" else None
-            if stop is None and os.path.exists(kill):
-                stop = "kill switch is on (.pod/kill-switch)"
-            if stop is None:
-                stop = branch_stop(cfg, limits)
+            # every check runs before anything of the branch's is used, including the brief at a stop
+            stop = "kill switch is on (.pod/kill-switch)" if os.path.exists(kill) else None
+            guarded = stop or branch_stop(name, base, globs, limits)
+            stop = guarded or (step.name if step.kind == "stop" else None)
             if stop is None:
                 at = sponsor.now()
                 gate = int(step.name.split()[-1]) if step.kind == "sign" else (3 if "plan" in step.name else 2)
@@ -361,7 +390,8 @@ def main(args):
                 stop = found[0] if found else None
             if stop is not None:
                 needs_escalation = state.risk not in ("low", "medium")  # escalation signs gate 2: brief people
-                if needs_escalation and stop.startswith("people sign gate 2") and maybe_brief(change_dir):
+                if not guarded and needs_escalation and stop.startswith("people sign gate 2") and \
+                        maybe_brief(change_dir):
                     commit("loop(%s): SuperCEO brief" % name[:3], [change_dir])
                 last = last_loop_record(change_dir)
                 if not (last and last.get("result") == "stop" and last.get("reason") == stop):

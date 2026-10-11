@@ -735,6 +735,27 @@ def peer_review_problem(cfg, email, root=ROOT):
             % (ref, ", ".join(sorted(authors)), ", ".join(free))), None
 
 
+SECRET_MARKERS = ("TOKEN", "SECRET", "PASSWORD", "PASSWD", "PRIVATE_KEY", "CREDENTIAL")
+
+
+def agent_env(extra=None):
+    """The environment for an agent session: no access tokens, secrets or cloud keys. ANTHROPIC_* stays, so
+    claude can sign in."""
+    env = {}
+    for k, v in os.environ.items():
+        key = k.upper()
+        if key.startswith("ANTHROPIC_"):
+            env[k] = v
+        elif any(m in key for m in SECRET_MARKERS) or key.endswith("_API_KEY") or key.startswith(("AWS_", "GH_",
+                                                                                                    "GITHUB_")) \
+                or key in ("SSH_AUTH_SOCK", "NPM_TOKEN"):
+            continue
+        else:
+            env[k] = v
+    env.update(extra or {})
+    return env
+
+
 def governance_files(files):
     return [f for f in files if any(f == g or (g.endswith("/") and f.startswith(g)) for g in GOVERNANCE_FILES)]
 

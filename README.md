@@ -6,7 +6,7 @@
 
 **An agentic delivery practice.** Three agent legs (SuperBiz, SuperDev and SuperCEO) run every change through four gates. In **Pod mode** each leg is paired with a person who signs the gates. In **Autonomous mode** (for low-risk work) the agents sign and cross-check each other, and a human sponsor stays on the loop. The rules that matter are enforced by scripts, hooks and CI, not left to memory.
 
-Tripod ships as two Claude Code plugins, gate scripts, document templates and a CI workflow, and installs into new or existing repositories on any stack.
+Tripod ships as three Claude Code plugins, gate scripts, document templates and a CI workflow, and installs into new or existing repositories on any stack.
 
 ![One change through the loop: eight steps from intent to release, four gates signed by people, and incidents that start the next change](docs/images/adlc-loop.svg)
 
@@ -38,7 +38,7 @@ The three legs are **agents**. Each one covers a set of roles and owns part of t
 |---|---|---|---|---|
 | **SuperBiz** | PO, PM, BA, Designer | `superbiz` plugin: intent, UX brief, spec, acceptance, release notes | Gates 1 and 2: what to build and why | Available |
 | **SuperDev** | SA, Dev, QA, Deploy, Maintenance | `superdev` plugin: plan, tests, build, review, merge, release, incidents | Gates 3 and 4: how, and whether it is safe | Available |
-| **SuperCEO** | Direction, priorities, high-risk approvals across a tribe | `superceo` agent: priorities, metrics, escalation briefs | High-risk escalation | Planned. The `escalation` role in `pod.yml` (a person) stands in today |
+| **SuperCEO** | Direction and priorities across a tribe | `superceo` agent: ranks the work, briefs people on high-risk decisions (read-only) | Advises; people decide | Available in 1.0.0. The `escalation` person in `pod.yml` still signs high-risk gates |
 
 - A **pod** is one small team built from the legs: one or more SuperBiz and one or more SuperDev.
 - A **tribe** is a group of pods that share the kit and an escalation.
@@ -280,7 +280,7 @@ Use `/superdev:bug-fix` for defects, `/superdev:arena` to compare two designs, a
 AGENTS.md, CLAUDE.md     Rules for every agent working in the repository
 pod.yml                  This repository's own pod (Tripod is built with Tripod)
 pod.mk, Makefile         Make targets (the Makefile includes pod.mk)
-plugins/                 The superbiz and superdev Claude Code plugins
+plugins/                 The superbiz, superdev and superceo Claude Code plugins
 scripts/                 Gate, merge, metrics, parallel-check and installer scripts
 docs/                    Gates, risk tiers, risk paths, merge by risk, test strength,
                          parallel agents, scaling, pod charter, adoption guide, credits
@@ -322,7 +322,7 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
    - a risk ceiling
    - automatic stops on budget, repeated refusals and reverts (stops on repeated CI failures are left for later)
    - a daily digest
-4. A loop driver that runs the legs on a schedule, and the `superceo` agent for priorities and high-risk briefs. **Done in 1.0.0** ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 004.
+4. A loop that drafts spec and plan and signs gates 2 and 3 of low-risk changes (people build), and the `superceo` agent for priorities and high-risk briefs. **Done in 1.0.0** ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 004.
 
 ## Contributing
 

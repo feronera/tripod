@@ -30,8 +30,9 @@ def skill_text(name):
 
 def run_ceo(prompt, cfg):
     model = cfg.get("superceo_model") or cfg.get("superbiz_agent_model") or ""
+    # isolated like the loop's agents: no user or project settings, hooks or MCP servers, and no secrets
     cmd = [os.environ.get("TRIPOD_CLAUDE", "claude"), "-p", prompt, "--output-format", "json",
-           "--tools", READ_ONLY, "--allowedTools", READ_ONLY]
+           "--setting-sources", "", "--strict-mcp-config", "--tools", READ_ONLY, "--allowedTools", READ_ONLY]
     if model:
         cmd += ["--model", model]
     folder = None
@@ -42,7 +43,8 @@ def run_ceo(prompt, cfg):
     if folder:
         cmd += ["--plugin-dir", folder]
     try:
-        out = subprocess.run(cmd, cwd=lib.ROOT, capture_output=True, text=True, timeout=cfg["agent_sign_timeout"],
+        out = subprocess.run(cmd, cwd=lib.ROOT, env=lib.agent_env(), capture_output=True, text=True,
+                             timeout=cfg["agent_sign_timeout"],
                              stdin=subprocess.DEVNULL, check=False)
     except FileNotFoundError:
         return None, "claude is not installed"
