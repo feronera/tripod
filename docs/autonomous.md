@@ -94,7 +94,7 @@ The sponsor sets limits in pod.yml. Each is optional; a missing key means no lim
 |---|---|
 | `budget_per_change_usd` | agent-sign refuses when the change's spend plus the next run would pass it |
 | `budget_per_day_usd` | the same, over the last 24 hours, for the whole pod |
-| `max_refusals_per_gate` | after this many refused agent checks on a gate, agent-sign refuses until a person signs a gate of the change or runs `scripts/resume.sh <dir> "<reason>"` |
+| `max_refusals_per_gate` | after this many refused agent checks on a gate, agent-sign refuses until a person signs a gate of the change or runs `scripts/resume.sh <dir> "<reason>"`. With `loop: on` it defaults to 3 |
 | `agent_merges_per_day` | auto-merge refuses once this many changes were auto-merged in the last 24 hours |
 | `agent_forbidden_paths` | agent-sign and auto-merge refuse a change that touches these globs; people can still change them at Risk: low |
 

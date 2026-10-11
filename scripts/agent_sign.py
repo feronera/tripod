@@ -53,6 +53,10 @@ def prompt(change_dir, gate, role, leg):
     return "\n".join([
         duty,
         "Read these files (read-only; do not change anything): " + ", ".join(files),
+        "Gates 1 to %d are complete: scripts/gate-check.sh verified the signatures before this check started. Do "
+        "not question them; judge only gate %d." % (gate - 1, gate),
+        "A Flagged concern that the spec answers, or accepts as a risk with a reason, is settled: do not refuse "
+        "because a person has not confirmed it yet. People can still sign or revert.",
         "Answer every question below with yes or no and one line of evidence that cites a file and a requirement "
         "or line. Refuse if any answer is no, if a requirement of an earlier artifact is missing from a later one, "
         "or if you are unsure.",

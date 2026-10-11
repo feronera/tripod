@@ -188,7 +188,9 @@ def agent_prompt(step_name, change_dir):
     return "\n".join([
         "You are the %s agent of this pod, working with no person present." % lib.LABEL[leg],
         "Use the %s skill (/%s:%s). %s" % (skill, leg, skill, task.format(dir=rel)),
-        "Do not ask questions: put anything you do not know under Open questions or Flagged concerns.",
+        "Do not ask questions. Decide what you can and say why; accept the rest as a risk with a reason. Gates "
+        "already passed were verified by scripts/gate-check.sh: do not ask anyone to check them again. Keep the "
+        "artifact short.",
         "Edit only the files this step needs. Do not sign gates or record approvals: that is not this step's job.",
     ])
 

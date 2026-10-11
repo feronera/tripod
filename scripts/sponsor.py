@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import activity  # noqa: E402
 import lib  # noqa: E402
 
+DEFAULT_LOOP_REFUSALS = 3
 FLOAT_KEYS = ("budget_per_change_usd", "budget_per_day_usd")
 INT_KEYS = ("max_refusals_per_gate", "agent_merges_per_day")
 DAY = datetime.timedelta(hours=24)
@@ -53,6 +54,8 @@ def read_limits(cfg):
             values[key] = None
             continue
         values[key] = value
+    if values["max_refusals_per_gate"] is None and str(cfg.get("loop", "")).lower() == "on":
+        values["max_refusals_per_gate"] = DEFAULT_LOOP_REFUSALS  # an unattended loop never retries forever
     forbidden = tuple(lib.split_list(cfg.get("agent_forbidden_paths", "")))
     return Limits(values["budget_per_change_usd"], values["budget_per_day_usd"], values["max_refusals_per_gate"],
                   values["agent_merges_per_day"], forbidden), problems
