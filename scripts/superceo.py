@@ -70,7 +70,12 @@ def change_summary(cfg):
     at = sponsor.now()
     events, _ = sponsor.ledger(lib.ROOT, at, cfg)
     lines, seen = [], set()
+    out = subprocess.run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/change/"], cwd=lib.ROOT,
+                         capture_output=True, text=True, check=False)
+    branched = {b[len("change/"):] for b in out.stdout.split()}
     for change_dir in lib.change_dirs():
+        if os.path.basename(change_dir) in branched:
+            continue  # its own branch is the current version: listed below
         name = os.path.basename(change_dir)
         seen.add(name)
         risk = lib.risk_of(change_dir)
@@ -81,8 +86,6 @@ def change_summary(cfg):
             passed = n
         spent, _ = sponsor.spend(events, name)
         lines.append("- %s (on this branch): Risk %s, passed gate %d, spend US$%.2f" % (name, risk, passed, spent))
-    out = subprocess.run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/change/"], cwd=lib.ROOT,
-                         capture_output=True, text=True, check=False)
     for branch in sorted(out.stdout.split()):
         name = branch[len("change/"):]
         if name in seen:
