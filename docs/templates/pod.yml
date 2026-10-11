@@ -40,6 +40,10 @@ mode: pod
 #   max_refusals_per_gate: 3           # refused agent checks on a gate before a person must run scripts/resume.sh
 #   agent_merges_per_day: 3            # auto-merges in the last 24 hours before people merge
 #   agent_forbidden_paths: app/billing*   # paths agents may not change, even at Risk: low
+# The loop and SuperCEO (docs/autonomous.md), Autonomous mode only:
+#   loop: on                   # default off; scripts/loop.sh does one run: spec, gate 2, plan, gate 3
+#   loop_max_steps: 10         # steps in one run, over all changes
+#   superceo_model: claude-opus-5-5
 # Agent activity and cost per change, committed as docs/changes/*/activity.log: see docs/activity-log.md
 activity_log: on
 # Merge by risk: see docs/merge-by-risk.md

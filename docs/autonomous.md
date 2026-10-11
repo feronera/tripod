@@ -1,6 +1,6 @@
 # Autonomous mode (low risk)
 
-In Pod mode, every gate is signed by people. In Autonomous mode, a low-risk change needs one person, at gate 1. After that, two agent seats on different models sign gates 2 to 4, and the change merges through the normal auto-merge checks. A **sponsor** watches from outside the loop and can stop or revert any change.
+In Pod mode, every gate is signed by people. In Autonomous mode, a low-risk change needs one person, at gate 1. After that, two agent seats on different models may sign gates 2 to 4 with `scripts/agent-sign.sh`, and the change merges through the normal auto-merge checks. The loop (below) does the document part on its own: spec, gate 2, plan and gate 3; people build. A **sponsor** watches from outside the loop and can stop or revert any change.
 
 Autonomous mode is off by default. Medium and high risk always need people, in either mode.
 
@@ -94,7 +94,7 @@ The sponsor sets limits in pod.yml. Each is optional; a missing key means no lim
 |---|---|
 | `budget_per_change_usd` | agent-sign refuses when the change's spend plus the next run would pass it |
 | `budget_per_day_usd` | the same, over the last 24 hours, for the whole pod |
-| `max_refusals_per_gate` | after this many refused agent checks on a gate, agent-sign refuses until a person signs a gate of the change or runs `scripts/resume.sh <dir> "<reason>"` |
+| `max_refusals_per_gate` | after this many refused agent checks on a gate, agent-sign refuses until a person signs a gate of the change or runs `scripts/resume.sh <dir> "<reason>"`. With `loop: on` it defaults to 3 |
 | `agent_merges_per_day` | auto-merge refuses once this many changes were auto-merged in the last 24 hours |
 | `agent_forbidden_paths` | agent-sign and auto-merge refuse a change that touches these globs; people can still change them at Risk: low |
 
@@ -114,6 +114,41 @@ scripts/digest.sh --write      # also save docs/digest/YYYY-MM-DD.md (UTC date)
 
 It lists spend (total, per change, per model, unknown), agent signatures, refused checks, auto-merges, reverts, resumes, stops in force and the limits, from the same records the stops use. Sending it to Slack, email or an issue is left to the team, for example with a scheduled CI job.
 
+## The loop
+
+`scripts/loop.sh` does one run of the document stages. Start it by hand or from cron; the kit ships no CI workflow.
+
+```yaml
+loop: on                    # default off; Autonomous mode only
+loop_max_steps: 10          # steps in one run, over all changes
+superceo_model: claude-opus-5-5
+```
+
+Each run gives every open change one step. Open changes are branches named `change/NNN-slug`, taken in today's SuperCEO order:
+
+| State | Next step |
+|---|---|
+| gate 1 not complete | stop: people sign gate 1 |
+| no spec.md | SuperBiz agent drafts spec.md and ux-brief.md |
+| gate 2 not complete | low risk: agents sign it, after revising the spec if the last check refused it; medium or high: stop for people (SuperCEO writes a brief for high risk) |
+| no plan.md | SuperDev agent drafts plan.md |
+| gate 3 not complete | low risk: agents sign it, or revise the plan first; medium or high: stop for people |
+| otherwise | stop: people build |
+
+- **Isolated agent sessions.** An agent step runs with `--setting-sources "" --strict-mcp-config`, so no user or project settings, hooks or MCP servers apply. It has no shell, and no access tokens in its environment.
+- **Artifacts only.** It may edit only the step's artifact files. Any other change rolls the branch back.
+- **Checks before every step:** the kill switch, the sponsor's limits, and that the branch changes nothing outside its own `docs/changes/NNN-slug/` folder. So the scripts, plugins and pod.yml the loop runs are always the base branch's. Run the loop from the base branch (`base_branch`, default main), never from a change branch.
+- **Records.** Each step is one commit by `Tripod loop`, recorded as `event=loop` in activity.log.
+- **Limits.** With `loop: on`, `max_refusals_per_gate` defaults to 3.
+- **What it never does:** build, test, merge or run people's commands.
+- **Dry run.** `--dry-run` shows the next step of every change.
+
+## SuperCEO
+
+The third leg is a read-only agent in the `superceo` plugin. It advises and signs nothing.
+- `scripts/superceo.sh priorities` writes `docs/superceo/YYYY-MM-DD.md`, which ranks the open changes and `docs/backlog.md`. Each line gives the state, the next step, the blocker, the spend and a reason.
+- `scripts/superceo.sh brief <change-dir>` writes `brief.md` for a medium or high change waiting at a gate. The sections are Decision, Options, Risks, Evidence and Recommendation. It refuses for low risk.
+
 ## Limits you accept
 
 - **Forgery.** An agent that can edit files could write a signature line and a matching usage line by hand. Defenses:
@@ -124,7 +159,9 @@ It lists spend (total, per change, per model, unknown), agent signatures, refuse
 
   There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
-- **Cost.** Every agent signature is one `claude -p` run. Its cost lands in activity.log.
+- **Cost.** Every agent signature and every loop step is one `claude -p` run. Its cost lands in activity.log.
+- **Agents can read what the person running them can read.** Loop and SuperCEO sessions have no shell, no settings and no secrets in their environment, but their Read tool is not limited to the repository. Run the loop as a user that holds no other secrets on disk, for example a dedicated account or container.
+- **The loop writes documents with no person starting the step.** A spec or plan could still mislead later steps. The defenses are the gate checks on two models, and people starting every build.
 - **Limits are checked before a run, not during it.**
   - Several agent-sign runs started at the same moment all pass the same check, so spend can overshoot by one estimate per run.
   - Branches that are not merged do not see each other's spend or merges.

@@ -1,0 +1,9 @@
+gate=1 role=owner by=bee@pod.example at=2026-10-11T10:24:41+07:00 blob=5c86f1bc761f931788b911f5800d7243c04380af
+gate=1 role=cross by=dan@pod.example at=2026-10-11T10:24:41+07:00 blob=5c86f1bc761f931788b911f5800d7243c04380af
+event=resume by=sponsor@pod.example at=2026-10-11T03:41:23+00:00 reason="reviewed: gate 1 is verified by gate-check; agents may continue"
+event=mode mode=autonomous superbiz_agent_model=claude-sonnet-5-5 superdev_agent_model=claude-opus-5-5 at=2026-10-11T10:42:05+07:00
+gate=2 role=owner by=agent:superbiz model=claude-sonnet-5-5 session=f54d1841-fffe-4c4e-871a-be545a52be7a at=2026-10-11T10:42:05+07:00 blob=7705293dbf51d884b89fab12a5faa17caf084663
+gate=2 role=cross by=agent:superdev model=claude-opus-5-5 session=960f185c-f3e4-4626-9e1d-cc3ad249d19a at=2026-10-11T10:42:38+07:00 blob=7705293dbf51d884b89fab12a5faa17caf084663
+gate=3 role=owner by=agent:superdev model=claude-opus-5-5 session=6aab5e4d-0d48-4bcd-8b56-228c79ab208b at=2026-10-11T10:44:10+07:00 blob=ee66f1978f06d43a8eed2fed340f2d241d17c9a9
+gate=3 role=cross by=agent:superbiz model=claude-sonnet-5-5 session=1a6ec694-c6c0-4630-bf1e-a1d3b867e9fe at=2026-10-11T10:44:34+07:00 blob=ee66f1978f06d43a8eed2fed340f2d241d17c9a9
+gate=4 role=auto by=auto-merge at=2026-10-11T10:50:56+07:00 blob=- head=acc75f77302a41662d93dec74a6bfa391784eab1

@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import activity  # noqa: E402
 import lib  # noqa: E402
 
+DEFAULT_LOOP_REFUSALS = 3
 FLOAT_KEYS = ("budget_per_change_usd", "budget_per_day_usd")
 INT_KEYS = ("max_refusals_per_gate", "agent_merges_per_day")
 DAY = datetime.timedelta(hours=24)
@@ -53,6 +54,8 @@ def read_limits(cfg):
             values[key] = None
             continue
         values[key] = value
+    if values["max_refusals_per_gate"] is None and str(cfg.get("loop", "")).lower() == "on":
+        values["max_refusals_per_gate"] = DEFAULT_LOOP_REFUSALS  # an unattended loop never retries forever
     forbidden = tuple(lib.split_list(cfg.get("agent_forbidden_paths", "")))
     return Limits(values["budget_per_change_usd"], values["budget_per_day_usd"], values["max_refusals_per_gate"],
                   values["agent_merges_per_day"], forbidden), problems
@@ -161,7 +164,7 @@ def ledger(root=lib.ROOT, until=None, cfg=None, include_base=True):
         rows = []
         for line in activity_lines:
             rec = parse_line(line)
-            if rec and rec.get("event") in ("usage", "verdict"):
+            if rec and rec.get("event") in ("usage", "verdict", "loop"):
                 rows.append((rec, rec["event"]))
         for line in gates_lines:
             e = parse_line(line)
@@ -408,6 +411,15 @@ def digest(events, skipped, limits, at, hours):
             refused.setdefault(e.change, collections.Counter())[e.data.get("gate", "?")] += 1
     section("refused agent checks", ["%s %d (%s)" % (c, sum(g.values()), ", ".join(
         "gate %s: %d" % (k, v) for k, v in sorted(g.items()))) for c, g in refused.items()])
+    loop_events = [e for e in window if e.kind == "loop"]
+    if loop_events:
+        ok = sum(1 for e in loop_events if e.data.get("result") == "ok")
+        reasons = collections.Counter((e.data.get("reason") or e.data.get("step") or "-").split(":")[0]
+                                      for e in loop_events if e.data.get("result") != "ok")
+        lines.append("loop runs: %d steps, %d stops%s" % (ok, sum(reasons.values()), " (%s)" % "; ".join(
+            "%s: %d" % (k, v) for k, v in sorted(reasons.items())) if reasons else ""))
+    else:
+        lines.append("loop runs: %s" % nothing)
     section("auto-merges", ["%s at %s" % (e.change, fmt_time(e.at)) for e in window if e.kind == "auto"])
     section("reverts", ["%s at %s by %s: %s" % (e.change, fmt_time(e.at), e.data.get("by", "-"), e.data.get("reason", "-"))
                         for e in window if e.kind == "revert"])

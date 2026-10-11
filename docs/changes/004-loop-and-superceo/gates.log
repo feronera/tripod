@@ -1,0 +1,15 @@
+gate=1 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-10T22:54:18+07:00 blob=8cf501f04faeaca4c12e7668056c40d83b13ea08
+gate=1 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-10T22:54:19+07:00 blob=8cf501f04faeaca4c12e7668056c40d83b13ea08
+gate=2 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-10T23:03:51+07:00 blob=09e6048dfb190cb3625bb8130a7aebefe81bdb27
+gate=2 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-10T23:03:51+07:00 blob=09e6048dfb190cb3625bb8130a7aebefe81bdb27 note=bootstrap
+gate=2 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-10T23:03:51+07:00 blob=09e6048dfb190cb3625bb8130a7aebefe81bdb27
+gate=3 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-10T23:05:29+07:00 blob=ab903b3b1bc0c0d3404595b7ed02ea9aaf397342
+gate=3 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-10T23:05:29+07:00 blob=ab903b3b1bc0c0d3404595b7ed02ea9aaf397342
+gate=2 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-11T15:06:55+07:00 blob=90ad3f5e01f9f3aa8d40ed345db82948d413cab6
+gate=2 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-11T15:06:55+07:00 blob=90ad3f5e01f9f3aa8d40ed345db82948d413cab6 note=bootstrap
+gate=2 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-11T15:06:55+07:00 blob=90ad3f5e01f9f3aa8d40ed345db82948d413cab6
+gate=3 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-11T15:06:55+07:00 blob=c27d1d34cabd2828f0a4f752a01e9a4d7f45e258
+gate=3 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-11T15:06:56+07:00 blob=c27d1d34cabd2828f0a4f752a01e9a4d7f45e258
+gate=4 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-11T20:33:40+07:00 blob=8d74653f0d99c4cc39fceb063f40a34b138522a0
+gate=4 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-11T20:33:40+07:00 blob=8d74653f0d99c4cc39fceb063f40a34b138522a0
+gate=4 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-11T20:33:40+07:00 blob=8d74653f0d99c4cc39fceb063f40a34b138522a0 note=bootstrap

@@ -1,0 +1,10 @@
+Tripod digest, last 24 hours (2026-10-10 04:04 → 2026-10-11 04:04 UTC)
+spend: US$0.00 · unknown: 0 records
+agent signatures: nothing in the last 24 hours
+refused agent checks: nothing in the last 24 hours
+loop runs: nothing in the last 24 hours
+auto-merges: nothing in the last 24 hours
+reverts: nothing in the last 24 hours
+resumes: nothing in the last 24 hours
+stops in force: nothing in the last 24 hours
+limits: budget_per_change_usd 8.00, max_refusals_per_gate 3

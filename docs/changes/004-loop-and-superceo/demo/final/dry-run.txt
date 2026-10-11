@@ -1,0 +1,6 @@
+Loop run 2026-10-11 11:51 UTC (dry run)
+006-order-status-label: skipped: branch change/006-order-status-label could not be checked out
+004-order-total (low): next: people build (gate 3 is complete) (people)
+005-refund-note (high): next: people sign gate 2 (Risk: high) (people)
+007-order-note-count (low): next: people build (gate 3 is complete) (people)
+008-delete-account (high): next: people sign gate 2 (Risk: high) (people)
