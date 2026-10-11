@@ -1,0 +1,2 @@
+gate=1 role=owner by=bee@pod.example at=2026-10-11T10:25:01+07:00 blob=737b1f62b1919ff468c32fc8bd3d9ac1d1a5f82e
+gate=1 role=cross by=dan@pod.example at=2026-10-11T10:25:01+07:00 blob=737b1f62b1919ff468c32fc8bd3d9ac1d1a5f82e
