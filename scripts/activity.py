@@ -66,7 +66,7 @@ def read_records(path):
                 skipped += 1
                 continue
             rec = dict(p.split("=", 1) for p in parts)
-            if rec.get("event") not in ("tool", "usage", "verdict"):
+            if rec.get("event") not in ("tool", "usage", "verdict", "loop"):
                 skipped += 1
                 continue
             records.append(rec)
@@ -111,7 +111,7 @@ def summarize(records, skipped=0):
     tokens = collections.defaultdict(lambda: collections.Counter())
     usd, unknown, seconds, stamps = 0.0, set(), 0, []
     for r in records:
-        if r["event"] == "verdict":
+        if r["event"] in ("verdict", "loop"):
             continue
         sessions.add(r.get("session", ""))
         if r.get("at"):

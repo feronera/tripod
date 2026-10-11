@@ -101,7 +101,7 @@ class LoopRepo(SeatRepo):
     def setUp(self):
         super().setUp()
         with open(os.path.join(self.root, ".gitignore"), "a", encoding="utf-8") as fh:
-            fh.write("__pycache__/\n.fakebin/\n")
+            fh.write("__pycache__/\n.fakebin/\n!docs/changes/*/activity.log\n")
         self.set_mode(LOOP_ON)
         for name in ("superbiz", "superdev", "superceo"):
             src = os.path.join(POD, "plugins", name)
@@ -273,7 +273,8 @@ class SafetyTests(LoopRepo):
         git(self.root, "commit", "-qam", "budget")
         with open(os.path.join(self.change, "activity.log"), "a", encoding="utf-8") as fh:
             fh.write("event=usage at=2026-10-10T10:00:00Z session=x agent=main model=%s usd=0.50\n" % OPUS)
-        git(self.root, "commit", "-qam", "spend")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "spend")
         res = self.loop_sh()
         self.assertIn("001-demo: stopped: budget for 001-demo reached", res.stdout)
         self.assertEqual([c for c in self.fake_calls()], [])

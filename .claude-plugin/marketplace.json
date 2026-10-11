@@ -1,9 +1,11 @@
 {
   "name": "tripod",
-  "owner": { "name": "HarmonyX" },
+  "owner": {
+    "name": "HarmonyX"
+  },
   "metadata": {
-    "description": "SuperBiz x SuperDev: two-person agentic delivery pod for the ADLC workshop",
-    "version": "0.9.0"
+    "description": "SuperBiz x SuperDev x SuperCEO: the agentic delivery pod (Pod mode and Autonomous mode)",
+    "version": "1.0.0"
   },
   "plugins": [
     {
@@ -15,6 +17,11 @@
       "name": "superdev",
       "source": "./plugins/superdev",
       "description": "SA, Dev, QA, Deploy and maintenance skills for the SuperDev seat: plan, build, test-first, review, bug-fix, arena, merge, release, incident. Guards tests, gates and kill switch."
+    },
+    {
+      "name": "superceo",
+      "source": "./plugins/superceo",
+      "description": "SuperCEO seat: ranks open changes and the backlog for the sponsor, and briefs people on medium and high risk decisions. Read-only; signs nothing."
     }
   ]
 }

@@ -114,6 +114,50 @@ scripts/digest.sh --write      # also save docs/digest/YYYY-MM-DD.md (UTC date)
 
 It lists spend (total, per change, per model, unknown), agent signatures, refused checks, auto-merges, reverts, resumes, stops in force and the limits, from the same records the stops use. Sending it to Slack, email or an issue is left to the team, for example with a scheduled CI job.
 
+## The loop
+
+`scripts/loop.sh` does one loop run. Run it by hand, from cron, or on a schedule in CI: copy `docs/templates/loop.yml` to `.github/workflows/`, add an `ANTHROPIC_API_KEY` secret, and use a token that can push branches and open pull requests, never an admin token.
+
+```yaml
+loop: on                    # default off; Autonomous mode only
+loop_pace_low: step         # step: one step per change per run | until-blocked
+loop_max_steps: 10          # steps in one run, over all changes
+superceo_model: claude-opus-5-5
+```
+
+Each run takes the open changes, which are branches named `change/NNN-slug`. It uses today's SuperCEO order when `docs/superceo/YYYY-MM-DD.md` exists, else the change number. For each change it takes the next step from the change's state:
+
+| State | Next step | Who |
+|---|---|---|
+| gate 1 not complete | stop: people sign gate 1 | people |
+| no spec.md | draft spec.md and ux-brief.md | SuperBiz agent |
+| gate 2 not complete | sign it with agent-sign; after a refusal, revise spec.md from `refusals.md` first | agents (low) or people |
+| no plan.md | draft plan.md | SuperDev agent |
+| gate 3 not complete | sign it, or revise plan.md after a refusal | agents (low) or people |
+| no tests on the branch | write failing tests, then lock them | SuperDev agent |
+| no code on the branch | build until `make test` passes | SuperDev agent |
+| no current review.md | review | SuperDev agent |
+| medium or high risk | stop: people merge | people |
+| no auto-merge record | `auto-merge-check --record` | the loop |
+| no acceptance.md | draft acceptance.md | SuperBiz agent |
+| gate 4 not complete | sign it with agent-sign (after the auto record) | agents |
+| PR not opened | push, open the PR with auto-merge on (needs `gh`) | the loop |
+| otherwise | done | nobody |
+
+- **Limited agent sessions.** Every agent step runs on the leg's seat model with its plugin. It may edit only the files that step needs. Shell use is limited to `make test`, `make check` and read-only git.
+- **One commit per step.** The loop commits each step on the change's branch as `Tripod loop <loop@tripod.invalid>` and records `event=loop` in activity.log. A failed step commits nothing. `make test` must pass before a build is committed.
+- **Pace.** Low risk takes one step per change per run, or keeps going until a stop with `until-blocked`. Medium and high risk take at most one step per run.
+- **Checks before every step:** the kill switch, every sponsor limit, and agent-sign's risk-path and governance rules.
+- **What the loop never does:** run people's commands, sign gate 1, or sign or merge medium or high risk.
+- **Briefs.** When a high-risk change waits for people at gate 2 or 4, the loop asks SuperCEO for a brief.
+- **Commands.** `scripts/loop.sh --dry-run` shows the next step of every change and changes nothing; `--change NNN` runs one change.
+
+## SuperCEO
+
+The third leg is a read-only agent in the `superceo` plugin. It advises and signs nothing.
+- `scripts/superceo.sh priorities` writes `docs/superceo/YYYY-MM-DD.md`, which ranks the open changes and `docs/backlog.md`. Each line gives the state, the next step, the blocker, the spend and a reason.
+- `scripts/superceo.sh brief <change-dir>` writes `brief.md` for a medium or high change waiting at a gate. The sections are Decision, Options, Risks, Evidence and Recommendation. It refuses for low risk.
+
 ## Limits you accept
 
 - **Forgery.** An agent that can edit files could write a signature line and a matching usage line by hand. Defenses:
@@ -124,7 +168,13 @@ It lists spend (total, per change, per model, unknown), agent signatures, refuse
 
   There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
-- **Cost.** Every agent signature is one `claude -p` run. Its cost lands in activity.log.
+- **Cost.** Every agent signature and every loop step is one `claude -p` run. Its cost lands in activity.log.
+- **The loop writes code with no person starting the step.** Its safety net:
+  - merges for low risk only;
+  - risk paths, governance files and locked tests;
+  - `make test` before a build is committed;
+  - review with a second model, and auto-merge-check;
+  - budgets, the kill switch, and revert.
 - **Limits are checked before a run, not during it.**
   - Several agent-sign runs started at the same moment all pass the same check, so spend can overshoot by one estimate per run.
   - Branches that are not merged do not see each other's spend or merges.

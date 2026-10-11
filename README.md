@@ -52,7 +52,7 @@ The loop and the four gates are the same in both modes. What changes is who sign
 
 | | Pod mode | Autonomous mode |
 |---|---|---|
-| Status | **Available** | **Low risk available in 0.8.0** ([docs/autonomous.md](docs/autonomous.md)); medium and high stay with people, sponsor controls are planned |
+| Status | **Available** | **Available in 1.0.0 for low risk** ([docs/autonomous.md](docs/autonomous.md)): agent seats, sponsor limits, a loop on a schedule and SuperCEO. Medium and high risk stay with people |
 | The legs | Agents, each paired with a person | Agents only, each on a different model |
 | Who signs a gate | The person in the leg (HITL at every gate) | A person signs gate 1 and sets the risk; then the owner leg's agent signs and another leg's agent, on a different model, cross-checks (`scripts/agent-sign.sh`) |
 | Where the person is | In every leg | One **sponsor**, on the loop (HOTL) |
@@ -246,6 +246,8 @@ Use `/superdev:bug-fix` for defects, `/superdev:arena` to compare two designs, a
 | `scripts/activity.sh <dir>` | What the agents did in a change and what it cost ([docs/activity-log.md](docs/activity-log.md)) |
 | `scripts/agent-sign.sh <dir> <2-4>` | Autonomous mode only: an agent seat signs a low-risk gate on its own model ([docs/autonomous.md](docs/autonomous.md)) |
 | `scripts/digest.sh [--hours N] [--write]` | The sponsor's digest: spend, agent signatures, refusals, merges, reverts, stops in force |
+| `scripts/loop.sh [--dry-run] [--change NNN]` | One loop run: each open change takes its next step, up to the sponsor's limits |
+| `scripts/superceo.sh priorities \| brief <dir>` | SuperCEO ranks the work, or briefs people on a medium or high decision |
 | `scripts/resume.sh <dir> "<reason>"` | People only: let agent checks run again after repeated refusals |
 
 **Merge and release**
@@ -312,7 +314,7 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
 
 **Covered by tests, not yet run with real teams:** pods with several SuperDevs (peer review at gate 4) and revert handling on GitHub.
 
-**Planned: Autonomous mode, built with Tripod itself, one change at a time:**
+**Autonomous mode, built with Tripod itself, one change at a time (all four steps done in 1.0.0):**
 1. An agent activity log and cost per change, so the sponsor can see what the agents did and what it cost. **Done in 0.7.0** ([docs/activity-log.md](docs/activity-log.md)), built as Tripod's change 001.
 2. Agent identities and agent signatures, with cross-checks on a different model. **Done in 0.8.0** for low risk ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 002.
 3. Sponsor controls. **Done in 0.9.0** ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 003:
@@ -320,7 +322,7 @@ Current release: see [Releases](https://github.com/feronera/tripod/releases).
    - a risk ceiling
    - automatic stops on budget, repeated refusals and reverts (stops on repeated CI failures are left for later)
    - a daily digest
-4. A loop driver that runs the legs on a schedule, and the `superceo` agent for priorities and high-risk briefs.
+4. A loop driver that runs the legs on a schedule, and the `superceo` agent for priorities and high-risk briefs. **Done in 1.0.0** ([docs/autonomous.md](docs/autonomous.md)), built as Tripod's change 004.
 
 ## Contributing
 
