@@ -233,7 +233,8 @@ def run_agent(step_name, change_dir, cfg, timeout):
 def changed_paths():
     rc, out = git("status", "--porcelain", "--untracked-files=all")
     paths = [l[3:] for l in out.splitlines() if l.strip()] if rc == 0 else []
-    return [p for p in paths if not p.startswith(".pod/")]  # .pod/ is local state (lock, kill switch, cursors)
+    # .pod/ is local state; docs/superceo/ and docs/digest/ are written by the sponsor's tools before a run
+    return [p for p in paths if not p.startswith((".pod/", "docs/superceo/", "docs/digest/"))]
 
 
 def discard(paths):

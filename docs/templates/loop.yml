@@ -33,7 +33,6 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           scripts/superceo.sh priorities || true
-          git stash --include-untracked || true
           scripts/loop.sh
           git push origin 'refs/heads/change/*:refs/heads/change/*' || true
       - name: Digest
