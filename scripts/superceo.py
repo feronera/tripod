@@ -97,8 +97,11 @@ def change_summary(cfg):
             rec = sponsor.parse_line(l)
             if rec and rec.get("event") == "usage":
                 cost += sponsor.usd_of(sponsor.Event(None, name, "usage", rec))[0]
-        lines.append("- %s (branch %s): Risk %s, gates with signatures %s, spend US$%.2f; files: git show %s:docs/"
-                     "changes/%s/" % (name, branch, risk, ",".join(map(str, gates)) or "none", cost, branch, name))
+        sections = lib.md_sections(intent)
+        gist = " ".join(" ".join(l.strip() for l in sections.get(k, []) if l.strip())
+                        for k in ("Problem", "Success measure"))[:600]
+        lines.append("- %s (branch %s, not checked out): Risk %s, gates with signatures %s, spend US$%.2f. "
+                     "Intent: %s" % (name, branch, risk, ",".join(map(str, gates)) or "none", cost, gist or "-"))
     return lines
 
 
