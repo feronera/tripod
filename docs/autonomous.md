@@ -1,6 +1,6 @@
 # Autonomous mode (low risk)
 
-In Pod mode, every gate is signed by people. In Autonomous mode, a low-risk change needs one person, at gate 1. After that, two agent seats on different models sign gates 2 to 4, and the change merges through the normal auto-merge checks. A **sponsor** watches from outside the loop and can stop or revert any change.
+In Pod mode, every gate is signed by people. In Autonomous mode, a low-risk change needs one person, at gate 1. After that, two agent seats on different models may sign gates 2 to 4 with `scripts/agent-sign.sh`, and the change merges through the normal auto-merge checks. The loop (below) does the document part on its own: spec, gate 2, plan and gate 3; people build. A **sponsor** watches from outside the loop and can stop or revert any change.
 
 Autonomous mode is off by default. Medium and high risk always need people, in either mode.
 
@@ -160,6 +160,7 @@ The third leg is a read-only agent in the `superceo` plugin. It advises and sign
   There are no cryptographic signatures. The same holds for `TRIPOD_CLAUDE`, which tests use to replace `claude`: whoever can set it can also edit the files.
 - **Agreeable reviewers.** A checking agent can approve too easily. The prompt makes it answer each gate question with evidence. Measure it on your own work, for example with a planted mistake, before you rely on it.
 - **Cost.** Every agent signature and every loop step is one `claude -p` run. Its cost lands in activity.log.
+- **Agents can read what the person running them can read.** Loop and SuperCEO sessions have no shell, no settings and no secrets in their environment, but their Read tool is not limited to the repository. Run the loop as a user that holds no other secrets on disk, for example a dedicated account or container.
 - **The loop writes documents with no person starting the step.** A spec or plan could still mislead later steps. The defenses are the gate checks on two models, and people starting every build.
 - **Limits are checked before a run, not during it.**
   - Several agent-sign runs started at the same moment all pass the same check, so spend can overshoot by one estimate per run.

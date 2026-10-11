@@ -134,3 +134,30 @@ class SecretTests(LoopRepo):
         self.assertEqual(args[args.index("--setting-sources") + 1], "")
         self.assertIn("--strict-mcp-config", args)
         self.assertIsNone(call["gh_token"])
+
+
+class EdgeTests(LoopRepo):
+    def test_links_in_the_change_folder_stop_the_loop(self):
+        os.symlink("/etc/hosts", os.path.join(self.change, "spec.md"))
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "link")
+        res = self.loop_sh(FAKE_ACTION=SPEC)
+        self.assertIn("the change folder holds links or other non-regular files (docs/changes/001-demo/spec.md)",
+                      res.stdout)
+        self.assertEqual(self.calls(), [])
+
+    def test_odd_max_steps_is_reported_not_crashed(self):
+        for value, message in (("\u00b2", "is not a number"), ("0", "must be 1 or more"), ("-1", "must be 1 or more")):
+            cfg = {"loop": "on", "loop_max_steps": value}
+            import loop
+            _, problems = loop.read_loop_config(cfg)
+            self.assertTrue(problems and message in problems[0], (value, problems))
+
+    def test_dry_run_shows_the_same_stops(self):
+        with open(os.path.join(self.root, "docs", "notes.md"), "w", encoding="utf-8") as fh:
+            fh.write("x\n")
+        git(self.root, "add", "-A")
+        git(self.root, "commit", "-qm", "outside")
+        res = self.loop_sh("--dry-run")
+        self.assertIn("001-demo (low): would stop: the branch changes files outside docs/changes/001-demo/", res.stdout)
+

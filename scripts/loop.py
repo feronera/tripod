@@ -41,11 +41,16 @@ def read_loop_config(cfg):
     raw = str(cfg.get("loop_max_steps", "") or "").strip()
     max_steps = 10
     if raw:
-        if raw.isdigit() and int(raw) >= 1:
-            max_steps = int(raw)
+        try:
+            value = int(raw) if re.fullmatch(r"-?[0-9]+", raw) else None
+        except ValueError:
+            value = None
+        if value is None:
+            problems.append("pod.yml: loop_max_steps: %s is not a number" % raw)
+        elif value < 1:
+            problems.append("pod.yml: loop_max_steps: %s must be 1 or more" % raw)
         else:
-            problems.append("pod.yml: loop_max_steps: %s is not a number of 1 or more" % raw
-                            if raw.isdigit() else "pod.yml: loop_max_steps: %s is not a number" % raw)
+            max_steps = value
     return LoopCfg(on == "on", max_steps, cfg.get("superceo_model", "")), problems
 
 
@@ -138,6 +143,13 @@ def branch_stop(name, base, globs, limits):
     if banned:
         return "the branch touches %s, which agents may not change (agent_forbidden_paths)" % ", ".join(banned[:3])
     own = "docs/changes/%s/" % name
+    _, staged = git("ls-files", "-s", "--", own)
+    links = [l.split("\t", 1)[-1] for l in staged.splitlines() if not l.startswith("100")]
+    links += [os.path.join(own, f) for f in os.listdir(os.path.join(lib.ROOT, own))
+              if os.path.islink(os.path.join(lib.ROOT, own, f))] if os.path.isdir(os.path.join(lib.ROOT, own)) else []
+    if links:
+        return "the change folder holds links or other non-regular files (%s); people take this change" % ", ".join(
+            sorted(set(links))[:3])
     outside = [f for f in files if not f.startswith(own)]
     if outside:
         return "the branch changes files outside %s (%s); people take this change" % (own, ", ".join(outside[:3]))
@@ -337,7 +349,11 @@ def main(args):
     _, home = git("rev-parse", "--abbrev-ref", "HEAD")
     if home == "HEAD":
         _, home = git("rev-parse", "HEAD")  # detached: come back to the same commit
-    base, globs = base_rules(cfg)  # read once, before any change branch is checked out
+    try:
+        base, globs = base_rules(cfg)  # read once, before any change branch is checked out
+    except Exception:
+        os.remove(lock)
+        raise
     plain = base[len("origin/"):] if base.startswith("origin/") else base
     if plain.startswith("change/"):
         os.remove(lock)
@@ -371,6 +387,11 @@ def main(args):
             state = read_state(change_dir, cfg)  # cfg is the home pod.yml, read before any checkout
             step = next_step(state)
             if dry:
+                held = ("kill switch is on (.pod/kill-switch)" if os.path.exists(kill) else None) or \
+                    branch_stop(name, base, globs, limits)
+                if held:
+                    print("%s (%s): would stop: %s" % (name, state.risk, held))
+                    continue
                 actor = "agent:%s" % step.actor if step.actor in ("superbiz", "superdev") else step.actor
                 if step.kind == "sign":
                     n = int(step.name.split()[-1])
