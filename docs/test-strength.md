@@ -1,7 +1,6 @@
 # Test strength
 
-A passing test does not mean the code is correct. Some tests pass even when the code does nothing at all. This document describes 5 kinds of weak test,
-how `scripts/test-strength.sh` detects them in Python, and how to add a check for other stacks.
+A passing test does not mean the code is correct: some tests pass even when the code does nothing. `scripts/test-strength.sh` (`make strength`) finds them.
 
 ## 5 kinds of weak test
 
@@ -44,21 +43,12 @@ Limitation: only `unittest.TestCase` tests and module-level functions are checke
 
 ## Adding a check for other stacks (`strength: cmd`)
 
-Teams on other stacks can add their own check: write a command that exits 1 when it finds a weak test, then configure it in pod.yml.
-
-```
-strength: cmd
-strength_cmd: node scripts/strength.js
-```
-
-Guidelines for the check command:
+Write a command that exits 1 when it finds a weak test, and set `strength: cmd` with `strength_cmd: node scripts/strength.js` (for example). Guidelines:
 1. Use the same principle as the Python check: make the code return empty values and see which tests still pass.
    For example, use the stack's mutation testing tool (Stryker for JavaScript or TypeScript, go-mutesting for Go)
    and set a threshold for how many surviving mutants count as a failure.
-2. Print one line per test in the form `WEAK <test id>`, so auto-merge-check can name the tests in its reasons.
-3. Exit 0 when no weak test is found, and exit 1 when one is.
-4. The command must not use the network and must run in CI.
-5. When the command is ready, change `strength: off` to `strength: cmd` through a change with escalation,
-   because pod.yml is in `docs/risk-paths`.
+2. Print one line per weak test, `WEAK <test id>`, so auto-merge-check can name them. Exit 0 when none is found, 1 when one is.
+3. Use no network, and run in CI.
+4. Switch `strength: off` to `cmd` through a change with escalation, because pod.yml is in `docs/risk-paths`.
 
 Until a check command exists, use `strength: off` and have the reviewer check for the 5 kinds above in review.md.
