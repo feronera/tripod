@@ -13,6 +13,7 @@ Used as a library and as a CLI:
 """
 import collections
 import hashlib
+import json
 import os
 import re
 import shlex
@@ -228,9 +229,30 @@ def blob_hash(path):
 def read_log(change_dir):
     """Return gates.log entries as a list of dicts, in file order."""
     path = os.path.join(change_dir, "gates.log")
-    entries = []
     if not os.path.exists(path):
-        return entries
+        return []
+    with open(path, encoding="utf-8") as fh:
+        return parse_log(fh.read())
+
+
+def parse_log(text):
+    entries = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            parts = shlex.split(line)
+        except ValueError:
+            parts = line.split()
+        entry = dict(part.split("=", 1) for part in parts if "=" in part)
+        try:
+            entry["gate"] = int(entry.get("gate", "0"))
+        except ValueError:
+            entry["gate"] = 0
+        entry["by"] = entry.get("by", "").lower()
+        entries.append(entry)
+    return entries
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
@@ -782,11 +804,27 @@ def mode_record_on_base(change_dir, cfg, root=ROOT):
     return None
 
 
+def ci_base_ref():
+    """The pull request's base branch as GitHub reports it, which the pull request cannot change: the event
+    payload (pull_request and pull_request_review events), else GITHUB_BASE_REF. Empty outside CI."""
+    try:
+        with open(os.environ["GITHUB_EVENT_PATH"], encoding="utf-8") as fh:
+            ref = json.load(fh).get("pull_request", {}).get("base", {}).get("ref")
+        if ref:
+            return ref
+    except (KeyError, OSError, ValueError, AttributeError):
+        pass
+    return os.environ.get("GITHUB_BASE_REF", "")
+
+
 def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
     """True when the base branch already holds this plan.md (same blob) and, for every role, its latest gate 3
     signature for that blob. Such a plan passed CI when it merged, so plan rules added by a later kit do not fail
     it (change 007). Anything only on a branch or in the working tree is still checked."""
-    base = resolve_base(cfg["base_branch"], root)
+    name = cfg["base_branch"]
+    if name.startswith("change/") or (ci_base_ref() or name) != name:
+        return False  # a change cannot name its own branch as the base (CI knows the real one)
+    base = resolve_base(name, root)
     folder = os.path.relpath(change_dir, root)
     try:
         plan = subprocess.run(["git", "show", "%s:%s/plan.md" % (base, folder)], cwd=root, capture_output=True)
@@ -797,11 +835,8 @@ def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
         return False
     if hashlib.sha1(b"blob %d\0" % len(plan.stdout) + plan.stdout).hexdigest() != blob:
         return False
-    latest = {}
-    for line in log.stdout.decode("utf-8", "replace").splitlines():
-        fields = dict(p.split("=", 1) for p in line.split() if "=" in p)
-        if fields.get("gate") == "3" and "role" in fields:
-            latest[fields["role"]] = fields.get("blob")
+    latest = {e["role"]: e.get("blob") for e in parse_log(log.stdout.decode("utf-8", "replace"))
+              if e["gate"] == 3 and "role" in e}
     return all(latest.get(role) == blob for role in roles)
 
 
