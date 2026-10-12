@@ -49,19 +49,36 @@ class NumberingTests(BranchRepo):
         self.assertEqual(self.start("x").stdout.strip(), "docs/changes/010-x")
 
     def test_existing_duplicates_count_and_numbering_continues(self):
-        self.on_branch("a")
-        self.git("branch", "-m", "change/001-a", "change/001-a-copy")  # keep a's commit under another name
-        self.git("checkout", "-q", "change/001-a-copy")
-        self.git("checkout", "-q", "-b", "change/001-b")
-        os.rename(os.path.join(self.root, "docs/changes/001-a"), os.path.join(self.root, "docs/changes/001-b"))
+        self.on_branch("a")  # 001-a
+        self.git("checkout", "-q", "-b", "change/001-b")  # an old collision: a second 001, made by hand
+        path = os.path.join(self.root, "docs/changes/001-b")
+        os.makedirs(path)
+        shutil.copy(os.path.join(self.root, "docs/templates/intent.md"), os.path.join(path, "intent.md"))
+        self.pass_gate(path, 1)
         self.git("add", "-A")
         self.git("commit", "-qm", "dup")
         self.git("checkout", "-q", "main")
-        self.git("branch", "-D", "change/001-a-copy")
-        self.on_branch("c")  # 002-c, so 001-b and 002-c are open
-        res = self.start("d")
+        res = self.start("c")
         self.assertEqual(res.returncode, 1)
-        self.assertIn("001-b", res.stderr)
+        self.assertIn("  - 001-a (branch change/001-a)", res.stderr)
+        self.assertIn("  - 001-b (branch change/001-b)", res.stderr)
+        self.git("checkout", "-q", "change/001-a")
+        for gate in (2, 3, 4):
+            self.pass_gate(os.path.join(self.root, "docs/changes/001-a"), gate)
+        self.git("add", "-A")
+        self.git("commit", "-qm", "finish a")
+        self.git("checkout", "-q", "main")
+        res = self.start("c")
+        self.assertEqual((res.returncode, res.stdout.strip()), (0, "docs/changes/002-c"))
+
+    def test_branch_without_gates_log_is_not_open(self):
+        a = self.on_branch("a")
+        self.on_branch("b")
+        self.git("checkout", "-q", "change/" + a)
+        self.git("rm", "-q", "docs/changes/%s/gates.log" % a)
+        self.git("commit", "-qm", "drop log")
+        self.git("checkout", "-q", "main")
+        self.assertEqual(self.start("c").returncode, 0)
 
 
 class WipTests(BranchRepo):
@@ -87,12 +104,16 @@ class WipTests(BranchRepo):
         self.assertEqual(self.start("c").returncode, 0)
 
     def test_working_tree_wins_over_its_own_branch(self):
-        self.on_branch("a")
+        a = self.on_branch("a")  # its branch has gate 1 only
         self.on_branch("b")
-        self.git("checkout", "-q", "change/001-a")
-        for gate in (2, 3, 4):  # signed but not committed
-            self.pass_gate(os.path.join(self.root, "docs/changes/001-a"), gate)
-        self.assertEqual(self.start("c").returncode, 0)
+        path = os.path.join(self.root, "docs/changes", a)  # on main: a finished copy, not committed
+        os.makedirs(path)
+        with open(os.path.join(path, "intent.md"), "w", encoding="utf-8") as fh:
+            fh.write(self.git("show", "change/%s:docs/changes/%s/intent.md" % (a, a)))
+        for gate in (1, 2, 3, 4):
+            self.pass_gate(path, gate)
+        res = self.start("c")
+        self.assertEqual((res.returncode, res.stdout.strip()), (0, "docs/changes/003-c"), res.stderr)
 
     def test_working_tree_change_is_named_as_such(self):
         self.on_branch("a")
@@ -141,6 +162,14 @@ class RemoteTests(BranchRepo):
         self.git("checkout", "-q", "main")
         self.on_branch("b")
         self.assertEqual(self.start("c").returncode, 0)  # local a is finished; origin's copy is older
+
+
+    def test_pushed_current_branch_keeps_its_number(self):
+        self.on_branch("a", gates=())
+        self.git("checkout", "-q", "-b", "change/002-x")
+        self.git("push", "-q", "origin", "change/002-x")
+        self.git("fetch", "-q", "origin")
+        self.assertEqual(self.start("x").stdout.strip(), "docs/changes/002-x")
 
 
 class FallbackTests(BranchRepo):
