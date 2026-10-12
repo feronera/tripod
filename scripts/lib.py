@@ -19,6 +19,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -986,6 +987,48 @@ def open_changes(cfg, root=ROOT):
             if gate_complete(d, 1, cfg) and not gate_complete(d, 4, cfg)]
 
 
+CHANGE_BRANCH = re.compile(r"^refs/(?:heads|remotes/([^/]+))/change/(\d{3}-[^/]+)$")
+
+
+def known_changes(root, scratch):
+    """Every change this machine knows of, as {name: (where, folder)}: the working tree first, then local
+    `change/NNN-slug` branches, then remote-tracking ones as last fetched. A branch's gates.log and intent.md
+    are copied from its tip into `scratch`, without a checkout. folder is None when the branch has no folder."""
+    known = {os.path.basename(d): ("working tree", d) for d in change_dirs(root)}
+    try:
+        out = subprocess.run(["git", "for-each-ref", "--format=%(refname)", "refs/heads/change/", "refs/remotes/"],
+                             cwd=root, capture_output=True, text=True).stdout
+        head = subprocess.run(["git", "symbolic-ref", "-q", "HEAD"], cwd=root, capture_output=True,
+                              text=True).stdout.strip()
+    except OSError:  # no git: the working tree only, as before
+        out, head = "", ""
+    # the current branch is the working tree, so `git checkout -b change/007-x` then new-change.sh gives 007
+    current = CHANGE_BRANCH.match(head)
+    refs = [(m.group(1), m.group(2), ref) for ref in out.split() for m in [CHANGE_BRANCH.match(ref)]
+            if m and not (current and m.group(2) == current.group(2))]
+    for remote, name, ref in sorted(refs, key=lambda r: r[0] is not None):  # local branches first
+        if name in known:
+            continue
+        where = "branch %schange/%s" % (remote + "/" if remote else "", name)
+        folder = os.path.join(scratch, str(len(known)), name)
+        found = False
+        for fname in ("gates.log", "intent.md"):
+            res = subprocess.run(["git", "show", "%s:docs/changes/%s/%s" % (ref, name, fname)],
+                                 cwd=root, capture_output=True)
+            if res.returncode == 0:
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, fname), "wb") as fh:
+                    fh.write(res.stdout)
+                found = True
+        known[name] = (where, folder if found else None)
+    return known
+
+
+def open_known(cfg, known):
+    return [(name, where) for name, (where, folder) in sorted(known.items())
+            if folder and gate_complete(folder, 1, cfg) and not gate_complete(folder, 4, cfg)]
+
+
 def rel(path):
     return os.path.relpath(os.path.abspath(path), os.getcwd())
 
@@ -1141,15 +1184,23 @@ def cmd_new_change(args):
         print("usage: scripts/new-change.sh <slug>   (a-z, 0-9, -)", file=sys.stderr)
         return 2
     cfg = read_pod_yml()
-    current = open_changes(cfg)
+    scratch = tempfile.mkdtemp(prefix="tripod-changes-")
+    try:
+        known = known_changes(ROOT, scratch)
+        current = open_known(cfg, known)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
     if len(current) >= cfg["wip_limit"]:
         print("Refused: %d open changes reach the WIP limit (%d). Take a change through gate 4 first:"
               % (len(current), cfg["wip_limit"]), file=sys.stderr)
-        for d in current:
-            print("  - " + os.path.basename(d), file=sys.stderr)
+        for name, where in current:
+            print("  - %s (%s)" % (name, where), file=sys.stderr)
+        if any(where.startswith("branch ") and where.count("/") > 1 for _, where in current):
+            print("Remote branches are as of the last git fetch.", file=sys.stderr)
+        print("An abandoned change still counts: delete its branch (git branch -d, git push origin --delete) "
+              "to free the slot.", file=sys.stderr)
         return 1
-    numbers = [int(os.path.basename(d)[:3]) for d in change_dirs()]
-    number = max(numbers, default=0) + 1
+    number = max((int(name[:3]) for name in known), default=0) + 1
     target = os.path.join(CHANGES_DIR, "%03d-%s" % (number, args[0]))
     os.makedirs(target)
     shutil.copy(os.path.join(TEMPLATES_DIR, "intent.md"), os.path.join(target, "intent.md"))
