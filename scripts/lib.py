@@ -782,6 +782,29 @@ def mode_record_on_base(change_dir, cfg, root=ROOT):
     return None
 
 
+def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
+    """True when the base branch already holds this plan.md (same blob) and, for every role, its latest gate 3
+    signature for that blob. Such a plan passed CI when it merged, so plan rules added by a later kit do not fail
+    it (change 007). Anything only on a branch or in the working tree is still checked."""
+    base = resolve_base(cfg["base_branch"], root)
+    folder = os.path.relpath(change_dir, root)
+    try:
+        plan = subprocess.run(["git", "show", "%s:%s/plan.md" % (base, folder)], cwd=root, capture_output=True)
+        log = subprocess.run(["git", "show", "%s:%s/gates.log" % (base, folder)], cwd=root, capture_output=True)
+    except OSError:
+        return False
+    if plan.returncode != 0 or log.returncode != 0:
+        return False
+    if hashlib.sha1(b"blob %d\0" % len(plan.stdout) + plan.stdout).hexdigest() != blob:
+        return False
+    latest = {}
+    for line in log.stdout.decode("utf-8", "replace").splitlines():
+        fields = dict(p.split("=", 1) for p in line.split() if "=" in p)
+        if fields.get("gate") == "3" and "role" in fields:
+            latest[fields["role"]] = fields.get("blob")
+    return all(latest.get(role) == blob for role in roles)
+
+
 def change_mode(entries, cfg, change_dir=None):
     """Autonomous when pod.yml says so. In `mode: pod`, a change keeps Autonomous mode only when its
     `event=mode` record is already on the base branch (C2 of change 002), so a line forged on a branch
@@ -868,7 +891,7 @@ def check_gate(change_dir, gate, cfg, entries=None, risk=None, release=False):
     current = blob_hash(artifact) if os.path.exists(artifact) else None
     if current is None:
         problems.append("gate %d: %s not found (artifact missing)" % (gate, ARTIFACTS[gate]))
-    elif gate == 3:
+    elif gate == 3 and not plan_merged_as_is(change_dir, cfg, roles, current):
         problems.extend(check_plan(artifact, cfg))
     indexed = [(i, e) for i, e in enumerate(entries) if e["gate"] == gate]
     mode, usage = change_mode(entries, cfg, change_dir), None
