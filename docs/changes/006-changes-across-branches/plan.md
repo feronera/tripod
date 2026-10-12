@@ -15,11 +15,7 @@ References: intent.md, spec.md, ux-brief.md
 - Blocking first steps: failing tests for R1 to R7 and E1 to E6 in a new `tests/test_changes_across_branches.py`, then lock.
 - Independent workstreams: none. One function and one command.
 - Shared mutable state: `scripts/lib.py` (`cmd_new_change`, plus two new helpers next to `open_changes`).
-- Smallest safe decomposition:
-  1. `known_changes` (R1, R2, E1, E2, E4);
-  2. numbering (R3, E3);
-  3. WIP (R4 to R6, E5, E6, the copy);
-  4. docs.
+- Smallest safe decomposition: four steps, each ending with `make check`: (1) `known_changes` (R1, R2, E1, E2, E4); (2) numbering (R3, E3); (3) WIP (R4 to R6, E5, E6, the copy); (4) docs
 
 ## Parallel parts
 none: one function in one file
