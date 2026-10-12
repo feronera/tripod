@@ -3,3 +3,5 @@ gate=1 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-1
 gate=2 role=owner by=1945996+feronera@users.noreply.github.com at=2026-10-13T00:08:01+07:00 blob=29b2ee9cef95fde833337f1147fa9adcaa26eca8
 gate=2 role=escalation by=1945996+feronera@users.noreply.github.com at=2026-10-13T00:08:01+07:00 blob=29b2ee9cef95fde833337f1147fa9adcaa26eca8 note=bootstrap
 gate=2 role=cross by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-13T00:08:01+07:00 blob=29b2ee9cef95fde833337f1147fa9adcaa26eca8
+gate=3 role=owner by=64177747+hx-natthawat@users.noreply.github.com at=2026-10-13T00:09:08+07:00 blob=39bb469e9e0a9353e3c8bc6e440d162a9070e5df
+gate=3 role=cross by=1945996+feronera@users.noreply.github.com at=2026-10-13T00:09:08+07:00 blob=39bb469e9e0a9353e3c8bc6e440d162a9070e5df
