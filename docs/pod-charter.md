@@ -29,7 +29,7 @@ A role can have several people: add one row per person (pod.yml lists them comma
 
 ## WIP limit
 - Number of changes that may be open at once: 2 (matches `wip_limit` in pod.yml). The limit is pod-wide; start with 2 per SuperDev, capped by what SuperBiz can review
-- An open change is one that has passed gate 1 but not yet gate 4. `scripts/new-change.sh` refuses a new change at the limit.
+- An open change is one that has passed gate 1 but not yet gate 4. `scripts/new-change.sh` counts open changes on every `change/NNN-slug` branch (remote ones as of the last fetch), refuses a new change at the limit, and numbers it above every branch.
 
 ## What the pod may not do alone (must be Risk: high with escalation)
 - Change how personal data is stored or displayed
