@@ -15,7 +15,7 @@ A role can have several people: add one row per person (pod.yml lists them comma
 - SuperBiz cross-checks SuperDev's gates (3 and 4), and SuperDev cross-checks SuperBiz's gates (1 and 2). Any member of the role may sign.
 - With 2 or more SuperDevs: the gate 4 owner, and the SuperDev who approves the PR, is a SuperDev who did not write the code. Default reviewer pairs: <e.g. Dan reviews Eve, Eve reviews Dan>
 - With more than one SuperBiz: who signs gates 1 and 2 for which product area: <...>
-- Keep to about 3 SuperDevs per SuperBiz. Review this section when members change (see `docs/scaling.md`).
+- Review this section when members change ([scaling.md](scaling.md) has the limits per role).
 
 ## Working hours
 - Hours when both people are reachable:
@@ -29,7 +29,7 @@ A role can have several people: add one row per person (pod.yml lists them comma
 
 ## WIP limit
 - Number of changes that may be open at once: 2 (matches `wip_limit` in pod.yml). The limit is pod-wide; start with 2 per SuperDev, capped by what SuperBiz can review
-- An open change is one that has passed gate 1 but not yet gate 4.
+- An open change is one that has passed gate 1 but not yet gate 4. `scripts/new-change.sh` refuses a new change at the limit.
 
 ## What the pod may not do alone (must be Risk: high with escalation)
 - Change how personal data is stored or displayed
@@ -46,7 +46,7 @@ A role can have several people: add one row per person (pod.yml lists them comma
 | Step | `auto_merge` in pod.yml | Condition |
 |---|---|---|
 | 1 | `off` | Default. Every change needs a human signature before merge |
-| 2 | `low` | The pod has closed `auto_merge_min_track` consecutive changes without a revert, and both people agree to enable it |
+| 2 | `low` | The pod has closed `auto_merge_min_track` (default 10) consecutive changes without a revert, and both people agree to enable it |
 | Back to step 1 | (automatic) | A revert within the last `auto_merge_min_track` changes makes auto-merge-check DENY until a new track record is built |
 
 - Medium and high changes are never merged automatically, at any step.

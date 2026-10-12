@@ -2,7 +2,9 @@
 
 Gate 4 is split into two checks:
 - **merge-ready** (`scripts/gate-check.sh <change-dir> 4`): can the change merge into main? The gate-guard hook and CI use this check.
-- **release-ready** (`scripts/release-check.sh <change-dir>`): can the change be released to production?
+- **release-ready** (`scripts/release-check.sh <change-dir>`): can the change be released to production? It also requires no `event=revert` record.
+
+![Who merges at each risk tier: the agent for low, the agent after SuperDev signs for medium, a person for high](images/risk-lanes.svg)
 
 ## Who does what at each tier
 
@@ -12,81 +14,46 @@ Gate 4 is split into two checks:
 | medium | owner (SuperDev) | SuperDev, or an agent after SuperDev signs | SuperDev | owner + cross |
 | high | owner + cross + escalation | a human | SuperDev, SuperBiz and escalation | owner + cross + escalation |
 
-- Effective risk is the Risk in intent.md, except that a diff touching any path in `docs/risk-paths` is always high.
-- Each column names a role. Any member of that role may approve, as long as they are not the PR author.
-- The GitHub approver must not be the PR author. If the agent opens PRs with SuperDev's account, low and medium changes use SuperBiz's approval instead (the same cross-check as cross-gating). High changes need approval from every role, by someone who is not the PR author.
-
-## Approvals with 2 or more SuperDevs
-
-pr-check treats each role as a set of people and adds peer review. A peer SuperDev is a SuperDev who is not the PR author and did not author any code commit in the PR (a commit that touches a file outside `docs/`).
-
-| Effective risk | Required GitHub approvals |
-|---|---|
-| low (no valid auto record), medium | A peer SuperDev. If there is none, the one-SuperDev rule: a SuperDev, or SuperBiz when a SuperDev opened the PR |
-| high | A SuperBiz member, an escalation member, and a peer SuperDev (if there is none, a SuperDev other than the PR author) |
-| low with a valid auto record | Unchanged: no human approval |
-
-- There is no peer when the pod has one SuperDev, or when every SuperDev wrote code in the change. Keep one SuperDev as the reviewer when you can.
-- The same rule applies to the gate 4 owner signature: `scripts/gate.sh` refuses a SuperDev who wrote code in the change (see `docs/gates.md`).
-- Low-risk auto-merge does not change. It relies on the agent reviewers, the second-model opinion and CI, not on a human peer.
-  The peer rule applies to the gate 4 owner signature and to pr-check approvals when no valid auto record is used.
-- A PR with no change folder follows the medium rules.
-- Release-ready requires no `event=revert` record.
+- Effective risk is the Risk in intent.md, except that a diff touching any path in `docs/risk-paths` is always high. A PR with no change folder follows the medium rules.
+- Any member of the named role may approve, but never the PR author. If the agent opens PRs with SuperDev's account, low and medium use SuperBiz's approval instead.
+- With 2 or more SuperDevs, the SuperDev approval must come from a **peer**: a SuperDev who neither opened the PR nor authored a code commit in it (one touching a file outside `docs/`). With no peer, low and medium fall back to the one-SuperDev rule (a SuperDev, or SuperBiz when a SuperDev opened the PR), and high to a SuperDev other than the author. A valid auto record still needs no human approval ([scaling.md](scaling.md#peer-review-at-gate-4)).
 
 ## The 9 auto-merge conditions (`scripts/auto-merge-check.sh <change-dir> [--base main] [--record]`)
 
-Prints `ALLOW` when every condition passes. Otherwise prints `DENY` with one reason per line.
+Prints `ALLOW` when every condition passes, otherwise `DENY` with one reason per line.
 
 1. `pod.yml` sets `auto_merge: low`.
 2. The Risk in intent.md is `low`, and the gate 1 approval is not stale (the Risk was not lowered after approval).
 3. No file in `git diff --name-only <base>...HEAD` matches `docs/risk-paths`.
 4. Gates 1 to 3 are complete and not stale.
-5. `review.md` has `blockers: 0`, `second_opinion: agree`, and a `reviewed_head` that matches HEAD.
-   (Commits after reviewed_head that only touch files in this change's folder, such as review.md, do not count as code changes.)
-6. `test_cmd` in pod.yml and `scripts/test-strength.sh` pass. If pod.yml sets `strength: off`, the result is always DENY,
-   because an automated merge requires a test-strength result (see `docs/test-strength.md`).
+5. `review.md` has `blockers: 0`, `second_opinion: agree`, and a `reviewed_head` that matches HEAD. Commits after it that only touch this change's folder do not count.
+6. `test_cmd` and `scripts/test-strength.sh` pass. `strength: off` always gives DENY ([test-strength.md](test-strength.md)).
 7. No lines are deleted in `tests_dir` (default `tests/`). Tests may only be added.
 8. Lines changed outside `docs/` and `tests_dir` total no more than `auto_merge_max_lines`.
 9. At least `auto_merge_min_track` changes have passed gate 4, and none of the most recent `auto_merge_min_track` was reverted.
 
-With `--record`, an ALLOW result appends this line to gates.log:
+It also refuses a change that edits agent instructions or gate rules (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`): people merge those, so a change cannot weaken its own checks. With `--record`, ALLOW appends:
 
 ```
 gate=4 role=auto by=auto-merge at=<ISO> blob=<hash of acceptance.md or -> head=<sha>
 ```
 
-An agent may run `auto-merge-check.sh --record` followed by `gh pr merge --auto --squash` only when it prints ALLOW.
-Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`.
-
-Auto-merge also refuses a change that edits agent instructions or gate rules (`AGENTS.md`, `CLAUDE.md`, `.claude/`, `.mcp.json`, `docs/gates.md`, `docs/risk-paths`): people merge it, so a change cannot weaken its own checks.
+An agent may run `auto-merge-check.sh --record` and then `gh pr merge --auto --squash` only after ALLOW. Agents never run `scripts/gate.sh` or `scripts/mark-revert.sh`. When to turn `auto_merge: low` on is the trust ladder in [pod-charter.md](pod-charter.md#auto-merge-trust-ladder). In Autonomous mode, agents may sign gates 2 and 3 of low-risk changes, so they can merge with no person after gate 1 ([autonomous.md](autonomous.md)).
 
 ## Acceptance after merge
 
-- After an auto record, SuperBiz may sign gate 4 (cross) before SuperDev. SuperDev then signs as owner against the same acceptance.md.
-- If `acceptance_hours` passes and SuperBiz has not signed, release-check reports that the change must not be released to production until SuperBiz accepts it.
-- The post-merge acceptance (acceptance.md and the gate 4 signatures) goes to `main` in its own pull request. That pull request changes only `docs/`, so the auto record does not apply to it: it needs an approval from a pod member who did not open it.
-
-## Autonomous mode
-
-In `mode: autonomous`, gates 2 and 3 of a low-risk change may be signed by agents (`docs/autonomous.md`). Auto-merge checks them like people's signatures, so a low-risk change can merge with no person after gate 1. Gate 4 is then signed by the agents after the merge (post-merge acceptance). Medium and high risk need people in either mode.
+- After an auto record, SuperBiz may sign gate 4 (cross) before SuperDev, who then signs as owner against the same acceptance.md.
+- If `acceptance_hours` passes without SuperBiz's signature, release-check says the change must not be released until SuperBiz accepts it.
+- The acceptance and gate 4 signatures reach `main` in their own PR. It changes only `docs/`, so the auto record does not apply: a pod member who did not open it must approve.
 
 ## Revert
 
-1. Revert the code: `git revert <commit>`, then open a PR as usual.
-2. A person on the team (any SuperBiz, SuperDev or escalation member) records it:
-   `scripts/mark-revert.sh docs/changes/NNN-slug "<reason>"`
-   which appends the line `event=revert by=<email> at=<ISO> reason="..."`.
-3. Result: release-check fails for that change, and auto-merge is disabled until `auto_merge_min_track` later changes have passed without a revert.
+1. `git revert <commit>`, then open a PR as usual.
+2. A person on the team records it: `scripts/mark-revert.sh docs/changes/NNN-slug "<reason>"`, which appends `event=revert by=<email> at=<ISO> reason="..."`.
+3. release-check then fails for that change, and auto-merge stays off until `auto_merge_min_track` later changes pass without a revert.
 
 ## GitHub setup
 
-1. Add the GitHub logins to `pod.yml` (`superbiz_github`, `superdev_github`, `escalation_github`). Each may be a comma-separated list, in the same order as the emails.
-2. Run `scripts/sync-codeowners.sh` to generate `.github/CODEOWNERS` from `docs/risk-paths`, then commit it (`make check` verifies that they match).
-   Each risk path lists every SuperDev and escalation login.
-3. Run `scripts/setup-github.sh <owner/repo>` to see what will be configured, then run it again with `--yes`.
-   Branch protection needs a public repository or a paid GitHub plan for private ones; on a free plan the
-   script stops with that message and `main` stays unprotected.
-   - Enables auto-merge for the repository.
-   - Protects main: the `pod-gates` check must pass, code owner review is required, stale reviews are dismissed on new commits, and force pushes are blocked.
-4. CI (`.github/workflows/pod-gates.yml`) runs `make -f pod.mk pod-check` and `scripts/pr-check.sh`, which reads the PR author and approvers with `gh api`.
-   GitHub approvals are tied to the signed-in account, so they are harder to fake than an email in git config.
+1. Add the GitHub logins to `pod.yml` (lists in the same order as the emails), run `scripts/sync-codeowners.sh` and commit `.github/CODEOWNERS` (`make check` verifies it matches `docs/risk-paths`).
+2. `scripts/setup-github.sh <owner/repo>` shows the plan; `--yes` applies it: auto-merge on, and main protected (the `pod-gates` check must pass, code-owner review required, stale reviews dismissed on new commits, force pushes blocked). Branch protection needs a public repository or a paid plan; otherwise the script stops and says so.
+3. CI runs `make -f pod.mk pod-check` and `scripts/pr-check.sh`, which reads the PR author and approvers with `gh api`. GitHub approvals are tied to the signed-in account, so they are harder to fake than a git email.

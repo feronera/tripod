@@ -1,99 +1,59 @@
 # Growing the pod
 
-A pod starts with one SuperBiz and one SuperDev. It can grow by giving a role more than one person. This page covers what changes when it does, where the work starts to queue, and when to split into two pods instead. Pods that share the kit and an escalation form a **tribe**.
+A pod starts with one SuperBiz and one SuperDev. It grows by giving a role more than one person. Pods that share the kit and an escalation form a **tribe**. Pods with several SuperDevs are covered by tests but not yet run with real teams.
+
+![Pod of two: one SuperBiz and one SuperDev share one repo; each owns two gates and cross-checks the other two](images/setup-2.svg)
 
 ## More than one person per role
 
-Every role key in `pod.yml` accepts a comma-separated list. The name, email and GitHub lists are aligned by position:
+Every role key in `pod.yml` accepts a comma-separated list, aligned by position. A single value works as before.
 
 ```yaml
-superbiz_name: Bee
-superbiz_email: bee@pod.example
-superbiz_github: bee-gh
 superdev_name: Dan, Eve
 superdev_email: dan@pod.example, eve@pod.example
 superdev_github: dan-gh, eve-gh
-escalation_name: Lee
-escalation_email: lee@pod.example
-escalation_github: lee-gh
 ```
 
-- A single value works exactly as before.
-- Any member of a role acts for that role. Any SuperDev can sign gates 3 and 4 as owner and gates 1 and 2 as cross; any SuperBiz likewise.
-- One person holds one role. `scripts/gate-check.sh --all` (and so `make check` and CI) fails when an email or GitHub login appears in two roles, or when a role's lists have different lengths. A role's `_github` list may be left out. The one exception is bootstrap mode, below.
+- Any member of a role acts for that role, as owner or cross.
+- One person holds one role. `gate-check --all` (and so CI) fails when an email or login appears in two roles, or a role's lists differ in length. A `_github` list may be left out. The one exception is bootstrap, below.
 - `.github/CODEOWNERS` lists every SuperDev and escalation login for each risk path. Run `scripts/sync-codeowners.sh` after changing `pod.yml`.
 
 ![Pod of three: one SuperBiz and two SuperDevs build parallel parts; the gate 4 owner is the SuperDev who did not write the code](images/setup-3.svg)
 
 ## Starting with fewer people than roles (bootstrap)
 
-A pod needs three seats (SuperBiz, SuperDev, escalation) but sometimes starts with two people. `bootstrap: on` in `pod.yml` covers that period:
-
-```yaml
-bootstrap: on
-superbiz_email: bee@pod.example
-superbiz_github: bee-gh
-superdev_email: dan@pod.example
-superdev_github: dan-gh
-escalation_email: bee@pod.example
-escalation_github: bee-gh
-```
-
-- Escalation may share a person with one other role. SuperBiz and SuperDev must still be different people: the cross-check between them is what bootstrap keeps.
-- When that person signs a gate that needs escalation (gates 2 and 4 at Risk: high), `scripts/gate.sh` records the escalation signature in the same step, marked `note=bootstrap` in gates.log.
-- In CI, one GitHub approval from that person counts for both SuperBiz and escalation, and `pr-check` prints a note saying so.
-- `gate-check --all` prints a warning while bootstrap is on, naming the person who holds two seats, and another if bootstrap is on but nobody does.
-- Bootstrap is a starting state, not a setting to keep. Turn it off when a third person joins (or, later, when agent seats arrive).
+A pod needs three seats (SuperBiz, SuperDev, escalation) but may start with two people. `bootstrap: on` covers that period:
+- Escalation may share a person with one other role. SuperBiz and SuperDev must still be different people.
+- When that person signs a gate that needs escalation (gates 2 and 4 at Risk: high), `scripts/gate.sh` records the escalation signature in the same step, marked `note=bootstrap`.
+- In CI, one GitHub approval from that person counts for both roles, and `pr-check` prints a note saying so.
+- `gate-check --all` warns while bootstrap is on, naming the person with two seats, and also if nobody holds two.
+- It is a starting state. Turn it off when a third person joins.
 
 ## Peer review at gate 4
 
-With two or more SuperDevs, the person who wrote the code should not be the one who approves it. So:
-
-- The SuperDev who signs gate 4 as owner must not be the author of any code commit in the change. A code commit is a commit between the merge base with `origin/<base_branch>` (or `<base_branch>`) and HEAD that touches a file outside `docs/`. `base_branch` is set in `pod.yml` (default `main`).
-- `scripts/gate.sh` refuses the signature and names the code authors and the SuperDevs who may sign instead. When there is no merge base or no code commit (for example after the change has merged), the rule is skipped with a one-line note.
-- `scripts/pr-check.sh` checks the same rule on GitHub approvals in CI: for low (without a valid auto record), medium and high risk, the SuperDev approval must come from a SuperDev who neither opened the PR nor wrote code in it.
-- If every SuperDev wrote code in the change, the rule falls back to the two-person rule: SuperBiz's cross-check is the second pair of eyes, as in a one-SuperDev pod. Keep one SuperDev as the reviewer when you can.
-- With one SuperDev the rule does not apply: there is nobody else to review, and the SuperBiz cross-check already separates writer and approver.
-- Low-risk auto-merge is unchanged. It relies on the agent reviewers, the second-model opinion and CI, not on a human peer (see `docs/merge-by-risk.md`).
+With two or more SuperDevs, the writer of the code does not approve it:
+- The SuperDev who signs gate 4 as owner must not have authored any code commit in the change: a commit between the merge base with `origin/<base_branch>` (or `<base_branch>`, default `main`) and HEAD that touches a file outside `docs/`.
+- `scripts/gate.sh` refuses the signature and names the code authors and who may sign instead. With no merge base or no code commit (for example after merge), the rule is skipped with a note.
+- `scripts/pr-check.sh` checks the same rule on GitHub approvals ([merge-by-risk.md](merge-by-risk.md)).
+- If every SuperDev wrote code, it falls back to the two-person rule: SuperBiz's cross-check is the second pair of eyes. Keep one SuperDev as the reviewer when you can.
+- With one SuperDev the rule does not apply. Low-risk auto-merge relies on the agent reviewers, the second-model opinion and CI.
 
 ## SuperBiz is the bottleneck
 
-![Many pods install the same versioned kit, share an escalation for high-risk work, and feed lessons back into the kit](images/setup-n.svg)
+SuperBiz owns or cross-checks every gate, so adding SuperDevs alone moves the queue to SuperBiz. Keep to 3 SuperDevs per SuperBiz; above that, `gate-check --all` warns. Add a second SuperBiz before a fourth SuperDev.
 
-SuperBiz owns gates 1 and 2 and cross-checks gates 3 and 4, so every change passes through SuperBiz four times. Adding SuperDevs without adding SuperBiz moves the queue to SuperBiz.
-
-- Guideline: no more than 3 SuperDevs per SuperBiz. Above that, `gate-check --all` prints a warning (the exit code is not affected).
-- Add a second SuperBiz before a fourth SuperDev.
-
-## WIP limit
-
-`wip_limit` stays pod-wide. A sensible starting point is 2 per SuperDev, capped by how many open changes SuperBiz can review at once. If changes often wait at gate 3 or 4 for SuperBiz, lower it.
+`wip_limit` stays pod-wide. Start with 2 per SuperDev, capped by what SuperBiz can review at once. If changes often wait at gate 3 or 4 for SuperBiz, lower it.
 
 ## Parallel parts across SuperDevs
 
-A part in `## Parallel parts` of plan.md may name its owner:
-
-```markdown
-### A
-files: app/history.py
-tests: tests/test_history.py
-owner: dan@pod.example
-```
-
-- Gate 3 checks that every listed owner is a SuperDev in `pod.yml`. `scripts/parallel-check.sh` prints each part's owner next to its result.
-- Each SuperDev builds their part in their own clone or worktree. Merge the parts in the order `parallel-check --run` reports.
-- The gate 4 owner must be a SuperDev who did not write code in the change. If both SuperDevs of a two-SuperDev pod built parts, peer review falls back as described above, so keep one SuperDev as the reviewer when possible.
+A part in `## Parallel parts` of plan.md may name an `owner:` (a SuperDev email). Gate 3 checks the owner is a SuperDev, and `scripts/parallel-check.sh` prints it next to each part's result. Each SuperDev builds in their own clone or worktree; merge in the order `parallel-check --run` reports ([parallel-agents.md](parallel-agents.md)).
 
 ## When to split into two pods
 
-Split when you see any of these:
+![Many pods install the same versioned kit, share an escalation for high-risk work, and feed lessons back into the kit](images/setup-n.svg)
 
-- SuperBiz cross-checks regularly wait more than a day.
-- WIP is always at the limit, and changes wait at the gates rather than in the build.
-- The work covers unrelated product areas that need different business decisions.
+Split when SuperBiz cross-checks regularly wait more than a day, WIP is always at the limit while changes wait at gates rather than in the build, or the work covers unrelated product areas. Tripod reads one `pod.yml` per repository, so each pod has its own repository, members, WIP limit and `docs/changes/`.
 
-Tripod reads one `pod.yml` per repository, so each pod works in its own repository with its own members, WIP limit and `docs/changes/`.
+## Escalation and SuperCEO across a tribe
 
-## SuperCEO
-
-The `escalation` role can be a list too, so a high-risk approval can come from any of several leads. SuperCEO, a role for direction, priorities and high-risk approvals across a tribe, remains planned; escalation stands in for it today. To share escalation across the pods of a tribe, list the same people as `escalation` in each pod's `pod.yml`.
+`escalation` can be a list, so a high-risk approval can come from any of several leads. To share escalation across a tribe, list the same people in each pod's `pod.yml`. The SuperCEO agent ([autonomous.md](autonomous.md#superceo)) ranks the work and writes briefs for them; people still sign.
