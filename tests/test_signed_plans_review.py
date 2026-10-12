@@ -3,14 +3,16 @@ a change cannot name its own branch as the base to skip the plan check, and the 
 import os
 
 from tests.test_pod_scripts import BIZ, DEV, run
-from tests.test_signed_plans import RULE, SignedPlanTests
+from tests import test_signed_plans as signed
+
+RULE = signed.RULE
 
 
-class ReviewBase(SignedPlanTests):
+class ReviewBase(signed.SignedPlanTests):
     """SignedPlanTests' helpers without re-running its tests here."""
 
 
-for _name in [n for n in dir(SignedPlanTests) if n.startswith("test_")]:
+for _name in [n for n in dir(signed.SignedPlanTests) if n.startswith("test_")]:
     setattr(ReviewBase, _name, None)
 
 
