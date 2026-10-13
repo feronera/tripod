@@ -188,6 +188,9 @@ def pod_config_problems(cfg):
     bizs, devs = len(role_emails(cfg, "superbiz")), len(role_emails(cfg, "superdev"))
     if bizs and devs > 3 * bizs:
         warnings.append(SCALING_WARNING)
+    problem = base_problem(cfg)
+    if problem:
+        errors.append(problem)
     return errors, warnings
 
 
@@ -708,8 +711,24 @@ def expected_emails(cfg, gate, role):
     return role_emails(cfg, {"owner": owner, "cross": cross, "escalation": "escalation"}[role])
 
 
+def base_problem(cfg):
+    """Why base_branch cannot be trusted, or None. The one place for this rule (change 008): a change branch is
+    never the base, and in CI base_branch must be the branch the pull request merges into."""
+    name = cfg["base_branch"]
+    plain = name[len("origin/"):] if name.startswith("origin/") else name
+    if plain.startswith("change/"):
+        return ("base_branch: %s is a change branch; the base must be the shared branch changes merge into "
+                "(pod.yml base_branch, default main)" % name)
+    ci = ci_base_ref()
+    if ci and ci != plain:
+        return "base_branch: %s does not match the pull request's base branch %s" % (name, ci)
+    return None
+
+
 def resolve_base(base, root=ROOT):
-    """origin/<base> when that ref exists, else <base>."""
+    """origin/<base> when that ref exists, else <base>. In CI the pull request's real base wins over pod.yml,
+    so a change cannot point the base at itself (change 008)."""
+    base = ci_base_ref() or base
     if not base.startswith("origin/") and git_out(["rev-parse", "--verify", "--quiet",
                                                    "origin/%s^{commit}" % base], root)[0] == 0:
         return "origin/" + base
@@ -743,6 +762,9 @@ def peer_review_problem(cfg, email, root=ROOT):
     devs = role_emails(cfg, "superdev")
     if len(devs) < 2:
         return None, None
+    problem = base_problem(cfg)
+    if problem:
+        return "Refused: peer review cannot be checked: " + problem, None
     ref = resolve_base(cfg["base_branch"], root)
     authors, note = code_authors(ref, root)
     if authors is None:
@@ -791,6 +813,8 @@ def mode_record_on_base(change_dir, cfg, root=ROOT):
     """The `event=mode` record of this change as it is on the base branch, or None.
     Only a record that is already on the base branch (a finished, merged change) can outlive a switch back to
     `mode: pod`; a record written on a branch cannot turn Autonomous mode on by itself."""
+    if base_problem(cfg):
+        return None
     rel = os.path.relpath(os.path.join(change_dir, "gates.log"), root)
     rc, text, _ = git_out(["show", "%s:%s" % (resolve_base(cfg["base_branch"], root), rel)], root)
     if rc != 0:
@@ -821,10 +845,9 @@ def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
     """True when the base branch already holds this plan.md (same blob) and, for every role, its latest gate 3
     signature for that blob. Such a plan passed CI when it merged, so plan rules added by a later kit do not fail
     it (change 007). Anything only on a branch or in the working tree is still checked."""
-    name = cfg["base_branch"]
-    if name.startswith("change/") or (ci_base_ref() or name) != name:
-        return False  # a change cannot name its own branch as the base (CI knows the real one)
-    base = resolve_base(name, root)
+    if base_problem(cfg):
+        return False
+    base = resolve_base(cfg["base_branch"], root)
     folder = os.path.relpath(change_dir, root)
     try:
         plan = subprocess.run(["git", "show", "%s:%s/plan.md" % (base, folder)], cwd=root, capture_output=True)
