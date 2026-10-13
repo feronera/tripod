@@ -1,7 +1,7 @@
 {
   "name": "superceo",
   "license": "MIT",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "SuperCEO seat of the agentic pod: ranks open changes and the backlog for the sponsor, and writes briefs for decisions people must make on medium and high risk work. Read-only; signs nothing.",
   "author": { "name": "HarmonyX" }
 }

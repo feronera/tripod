@@ -13,7 +13,7 @@ Goal: code in `app/` that makes the locked tests pass, with every commit in a ch
 3. Read plan.md: Data shape, Throughput checkpoint, Parallel parts and Order of work.
 4. If Parallel parts has more than one part, run `scripts/parallel-check.sh docs/changes/NNN-slug` first, then follow
    `docs/parallel-agents.md` (one agent per worktree, each editing only the files in its own part's `files:` line).
-   After the parts are built and before merging them, run it again with `--run --base main` and merge in the order it reports.
+   After the parts are built and before merging them, run it again with `--run` and merge in the order it reports.
 5. Check that the starting point is green: `make test` must pass every test except the new locked ones.
 
 ## What a unit is

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Risk-based merge rules (Python 3 stdlib only).
 
-    python3 scripts/merge_rules.py auto-merge-check <change-dir> [--base main] [--record]
+    python3 scripts/merge_rules.py auto-merge-check <change-dir> [--base <ref>] [--record]
     python3 scripts/merge_rules.py pr-check [--author <login> --approvals <a,b> --base <ref>]
     python3 scripts/merge_rules.py sync-codeowners [--check]
 """
