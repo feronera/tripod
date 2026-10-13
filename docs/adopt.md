@@ -103,6 +103,7 @@ git status && git diff
 - Matching files do not change. The pod section in `AGENTS.md` is replaced.
 - Files your team edited are skipped and listed. Compare each with `diff ~/tripod/<file> <file>`, then merge by hand or use `--force`. After `--force`, review every `.pod-bak` file and delete them before committing.
 - `pod.yml` is not changed. A new key uses its default until you add it.
+- Run `scripts/gate-check.sh --all`. If it refuses one person in two roles, set `bootstrap: on` ([scaling.md](scaling.md)) or fix pod.yml. Changes already merged keep passing when a newer kit adds plan rules.
 - An update touches `scripts/**` and `.github/**`, so it is a high-risk change.
 
 ## Checklist
