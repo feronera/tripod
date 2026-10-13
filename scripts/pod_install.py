@@ -22,7 +22,7 @@ DOCS = ["gates.md", "risk-tiers.md", "risk-paths", "merge-by-risk.md", "parallel
         "test-strength.md", "pod-charter.md", "credits.md", "activity-log.md", "model-prices", "autonomous.md"]
 SAMPLE_TESTS = ["__init__.py", "test_orders.py"]  # the kit's own tests stay in the kit
 BEGIN, END = "<!-- pod:begin -->", "<!-- pod:end -->"
-GITIGNORE_LINES = [".pod/", "!**/skills/build/", "!docs/changes/*/gates.log", "!docs/changes/*/activity.log"]
+GITIGNORE_LINES = [".pod/", "__pycache__/", "!**/skills/build/", "!docs/changes/*/gates.log", "!docs/changes/*/activity.log"]
 STACK_KEYS = ("test_cmd", "code_dirs", "tests_dir", "strength", "strength_cmd")
 PY_DEFAULT_CMD = "python3 -m unittest discover -s %s -t . -v"
 NOT_CODE = {"tests", "test", "docs", "scripts", "plugins", "build", "dist", "node_modules",
