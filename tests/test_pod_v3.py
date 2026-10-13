@@ -410,13 +410,13 @@ class ConfigTests(unittest.TestCase):
         for plugin in ("superbiz", "superdev", "superceo"):
             with open(os.path.join(POD, "plugins", plugin, ".claude-plugin", "plugin.json")) as fh:
                 versions.add(json.load(fh)["version"])
-        self.assertEqual(versions, {"1.0.0"})
+        self.assertEqual(versions, {"1.0.1"})
         bases = [(POD, "./plugins/")]
         for base, prefix in bases:
             with open(os.path.join(base, ".claude-plugin", "marketplace.json")) as fh:
                 market = json.load(fh)
             self.assertEqual(market["name"], "tripod")
-            self.assertEqual(market["metadata"]["version"], "1.0.0")
+            self.assertEqual(market["metadata"]["version"], "1.0.1")
             for entry in market["plugins"]:
                 self.assertEqual(entry["source"], prefix + entry["name"])
                 self.assertTrue(os.path.isdir(os.path.join(base, entry["source"])), entry["source"])

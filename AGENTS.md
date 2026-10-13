@@ -32,7 +32,7 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 3. When `.pod/kill-switch` exists, stop work immediately. Never delete this file.
 4. Do not merge or push to main until `scripts/gate-check.sh --all` passes and the latest change is merge-ready at gate 4.
    The only exception for agents: run `scripts/auto-merge-check.sh <dir> --record`, then `gh pr merge --auto --squash`,
-   and only when the command prints `ALLOW` (for medium risk, SuperDev signs gate 4 first; for high risk, a human merges).
+   and only when the command prints `ALLOW`. The rules for each risk are in `docs/merge-by-risk.md`.
 5. Never invent numbers. If you do not know, put it under Open questions.
 6. Never copy personal data from logs into documents or code.
 7. Never edit an artifact that has passed a gate without saying so, because the approval becomes stale.
@@ -54,9 +54,11 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 ## Commands
 - `make setup`: check tools and prepare the `.pod/` folder.
 - `make test`: run `test_cmd` from `pod.yml` (all unit tests).
-- `make strength`: `scripts/test-strength.sh` finds tests that still pass when every function in app/ returns None (see `docs/test-strength.md`).
+- `make strength`: `scripts/test-strength.sh` finds tests that still pass when every function in the code folders returns None (see `docs/test-strength.md`).
 - `make check`: tests, strength, the CODEOWNERS check and `scripts/gate-check.sh --all` (CI runs this).
-- `scripts/auto-merge-check.sh <dir> [--base main] [--record]`: ALLOW or DENY for an automated merge.
+- `scripts/auto-merge-check.sh <dir> [--record]`: ALLOW or DENY for an automated merge, against the base branch in pod.yml.
 - `scripts/release-check.sh <dir>`: whether the change is ready to release to production.
 - `make metrics CHANGE=docs/changes/NNN-slug`: time from intent to each gate, agent time and agent cost.
-- `scripts/activity.sh <dir>`: what the agents did in a change and what it cost.
+- `scripts/activity.sh <dir>`: what the agents did in a change and what it cost (docs/activity-log.md).
+- `scripts/agent-sign.sh <dir> <2-4>`: Autonomous mode only, an agent seat signs a low-risk gate (docs/autonomous.md).
+- `scripts/digest.sh [--hours N] [--write]`: the sponsor's digest of agent work and spend.

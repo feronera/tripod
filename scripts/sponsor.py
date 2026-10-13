@@ -133,17 +133,17 @@ def change_logs(root, cfg, include_base=True):
             pair.append(open(path, encoding="utf-8").read().splitlines() if os.path.exists(path) else [])
         logs[change] = pair
     if include_base:
-        base = lib.resolve_base(cfg["base_branch"], root)
-        rc, out, _ = lib.git_out(["ls-tree", "--name-only", "%s:docs/changes" % base], root)
+        base, _ = lib.trusted_base(cfg, root)  # an untrusted base adds nothing; agent-sign refuses it anyway
+        rc, out, _ = lib.git_out(["ls-tree", "--name-only", "%s:docs/changes" % base], root) if base else (1, "", "")
         for change in (out.splitlines() if rc == 0 else []):
             if not change[:3].isdigit():
                 continue
             pair = logs.setdefault(change, [[], []])
             for i, name in enumerate((activity.LOG, "gates.log")):
-                rc, text, _ = lib.git_out(["show", "%s:docs/changes/%s/%s" % (base, change, name)], root)
-                if rc == 0:
+                data = lib.show(base, "docs/changes/%s/%s" % (change, name), root)
+                if data is not None:
                     seen = set(pair[i])
-                    pair[i] = pair[i] + [l for l in text.splitlines() if l not in seen]
+                    pair[i] = pair[i] + [l for l in data.decode("utf-8", "replace").splitlines() if l not in seen]
     return logs
 
 

@@ -18,9 +18,9 @@ Gate 4 is split into two checks:
 - Any member of the named role may approve, but never the PR author. If the agent opens PRs with SuperDev's account, low and medium use SuperBiz's approval instead.
 - With 2 or more SuperDevs, the SuperDev approval must come from a **peer**: a SuperDev who neither opened the PR nor authored a code commit in it (one touching a file outside `docs/`). With no peer, low and medium fall back to the one-SuperDev rule (a SuperDev, or SuperBiz when a SuperDev opened the PR), and high to a SuperDev other than the author. A valid auto record still needs no human approval ([scaling.md](scaling.md#peer-review-at-gate-4)).
 
-## The 9 auto-merge conditions (`scripts/auto-merge-check.sh <change-dir> [--base main] [--record]`)
+## The 9 auto-merge conditions (`scripts/auto-merge-check.sh <change-dir> [--base <ref>] [--record]`)
 
-Prints `ALLOW` when every condition passes, otherwise `DENY` with one reason per line.
+Prints `ALLOW` when every condition passes, otherwise `DENY` with one reason per line. Without `--base`, it compares with the base branch in pod.yml.
 
 1. `pod.yml` sets `auto_merge: low`.
 2. The Risk in intent.md is `low`, and the gate 1 approval is not stale (the Risk was not lowered after approval).

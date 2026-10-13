@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse (Bash): block merge/push to main unless every change passes gate-check
-# and the newest change is merge-ready at gate 4 (per risk, see docs/merge-by-risk.md):
-#   low: owner + cross, or a `role=auto` record from scripts/auto-merge-check.sh --record
-#   medium: owner (SuperDev)   high: owner + cross + escalation
+# and the newest change is merge-ready at gate 4 (the rules per risk are in docs/merge-by-risk.md).
 # In a project without pod.yml or scripts/gate-check.sh (no pod kit) it allows with a note.
 set -euo pipefail
 INPUT="$(cat)"

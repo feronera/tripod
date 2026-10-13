@@ -61,9 +61,8 @@ def run_ceo(prompt, cfg):
 
 
 def branch_file(branch, path):
-    out = subprocess.run(["git", "show", "%s:%s" % (branch, path)], cwd=lib.ROOT, capture_output=True, text=True,
-                         check=False)
-    return out.stdout if out.returncode == 0 else None
+    data = lib.show(branch, path)
+    return data.decode("utf-8", "replace") if data is not None else None
 
 
 def change_summary(cfg):
@@ -72,9 +71,8 @@ def change_summary(cfg):
     at = sponsor.now()
     events, _ = sponsor.ledger(lib.ROOT, at, cfg)
     lines, seen = [], set()
-    out = subprocess.run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/change/"], cwd=lib.ROOT,
-                         capture_output=True, text=True, check=False)
-    branched = {b[len("change/"):] for b in out.stdout.split()}
+    out = lib.git_out(["for-each-ref", "--format=%(refname:short)", "refs/heads/change/"])[1]
+    branched = {b[len("change/"):] for b in out.split()}
     for change_dir in lib.change_dirs():
         if os.path.basename(change_dir) in branched:
             continue  # its own branch is the current version: listed below
@@ -88,7 +86,7 @@ def change_summary(cfg):
             passed = n
         spent, _ = sponsor.spend(events, name)
         lines.append("- %s (on this branch): Risk %s, passed gate %d, spend US$%.2f" % (name, risk, passed, spent))
-    for branch in sorted(out.stdout.split()):
+    for branch in sorted(out.split()):
         name = branch[len("change/"):]
         if name in seen:
             continue
