@@ -590,7 +590,7 @@ def run_parallel_isolated(change_dir, parts, base, owners=None):
 
 
 def cmd_parallel_check(args):
-    run, base = False, "main"
+    run, base = False, None
     rest = []
     i = 0
     while i < len(args):
@@ -651,6 +651,11 @@ def cmd_parallel_check(args):
     print("OK: each part's tests import only its own files (%s)"
           % ", ".join(part_label(n, owners) for n in parts))
     if run:
+        if base is None:  # default: the trusted base from pod.yml (change 009)
+            base, problem = trusted_base(read_pod_yml())
+            if problem:
+                print("Refused: " + problem, file=sys.stderr)
+                return 1
         return run_parallel_isolated(change_dir, parts, base, owners)
     return 0
 

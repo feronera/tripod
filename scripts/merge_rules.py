@@ -200,7 +200,7 @@ def auto_merge_reasons(change_dir, base, cfg):
 
 
 def cmd_auto_merge_check(args):
-    base, record, rest = "main", False, []
+    base, record, rest = None, False, []
     i = 0
     while i < len(args):
         if args[i] == "--base" and i + 1 < len(args):
@@ -212,7 +212,7 @@ def cmd_auto_merge_check(args):
             rest.append(args[i])
         i += 1
     if len(rest) != 1:
-        print("usage: scripts/auto-merge-check.sh <change-dir> [--base main] [--record]",
+        print("usage: scripts/auto-merge-check.sh <change-dir> [--base <ref>] [--record]",
               file=sys.stderr)
         return 2
     change_dir = os.path.abspath(rest[0])
@@ -220,7 +220,10 @@ def cmd_auto_merge_check(args):
         print("change folder not found: %s" % rest[0], file=sys.stderr)
         return 1
     cfg = lib.read_pod_yml(ROOT)
-    reasons = auto_merge_reasons(change_dir, base, cfg)
+    problem = None
+    if base is None:  # default: the trusted base from pod.yml (change 009), never a hard-coded main
+        base, problem = lib.trusted_base(cfg, ROOT)
+    reasons = [problem] if problem else auto_merge_reasons(change_dir, base, cfg)
     if reasons:
         print("DENY")
         for r in reasons:
