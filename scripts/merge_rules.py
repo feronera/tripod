@@ -47,21 +47,6 @@ def numstat(base, *paths):
     return rows
 
 
-def read_review(change_dir):
-    """Header keys of review.md: blockers, majors_open, second_opinion, reviewed_head."""
-    path = os.path.join(change_dir, "review.md")
-    if not os.path.exists(path):
-        return None
-    header = {}
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            m = re.match(r"^\s*(blockers|majors_open|second_opinion|reviewed_head)\s*:\s*(\S*)",
-                         line)
-            if m and m.group(1) not in header:
-                header[m.group(1)] = m.group(2).strip().lower()
-    return header
-
-
 def review_matches_head(change_dir, reviewed):
     """reviewed_head is HEAD, or an ancestor of HEAD where later commits only touch
     this change's own folder (e.g. committing review.md or gates.log)."""
@@ -144,7 +129,7 @@ def auto_merge_reasons(change_dir, base, cfg):
     for p in lib.check_change(change_dir, cfg, 3):
         reasons.append("gates 1-3 not complete: %s" % p)
     # 5. review header
-    review = read_review(change_dir)
+    review = lib.read_review(change_dir)
     if review is None:
         reasons.append("review.md not found. Run /superdev:review first")
     else:

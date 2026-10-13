@@ -1157,6 +1157,11 @@ def cmd_gate(args):
             for p in plan_problems:
                 print("  - " + p, file=sys.stderr)
             return 1
+    if gate == 4 and not_ready(change_dir):
+        print("Refused: gate 4 cannot be signed while the change's own artifacts say it is not ready:", file=sys.stderr)
+        for reason in not_ready(change_dir):
+            print("  - " + reason, file=sys.stderr)
+        return 1
     if gate == 4 and role == "owner":
         refusal, note = peer_review_problem(cfg, email)
         if refusal:
@@ -1362,6 +1367,37 @@ def cmd_metrics(args):
     return 0
 
 
+def read_review(change_dir):
+    """Header keys of review.md: blockers, majors_open, second_opinion, reviewed_head."""
+    path = os.path.join(change_dir, "review.md")
+    if not os.path.exists(path):
+        return None
+    header = {}
+    with open(path, encoding="utf-8") as fh:
+        for line in fh:
+            m = re.match(r"^\s*(blockers|majors_open|second_opinion|reviewed_head)\s*:\s*(\S*)",
+                         line)
+            if m and m.group(1) not in header:
+                header[m.group(1)] = m.group(2).strip().lower()
+    return header
+
+
+def not_ready(change_dir):
+    """Reasons the change's own review.md and acceptance.md say it is not ready (change 011); empty when ready."""
+    reasons = []
+    review = read_review(change_dir) or {}
+    if review.get("blockers") not in (None, "0"):
+        reasons.append("review.md has blockers: %s" % review["blockers"])
+    path = os.path.join(change_dir, "acceptance.md")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as fh:  # the last Decision line is the final one; **bold** is allowed
+            found = re.findall(r"^[\s*_]*Decision[*_]*\s*:[*_\s]*(.*)$", fh.read(), re.M | re.I)
+        words = found[-1].split() if found else []
+        if words and words[0].strip("*_`.,;:").lower() == "reject":  # "reject (proposed …)" counts
+            reasons.append("acceptance.md decides reject")
+    return reasons
+
+
 def release_problems(change_dir, cfg, now=None):
     """Release-ready: gates 1-4 complete with owner + cross (+ escalation for high),
     all fresh, and no revert. Returns (problems, overdue_message_or_None)."""
@@ -1369,6 +1405,7 @@ def release_problems(change_dir, cfg, now=None):
     risk = risk_of(change_dir)
     problems = check_change(change_dir, cfg, 3)
     problems.extend(check_gate(change_dir, 4, cfg, entries, risk, release=True))
+    problems.extend(not_ready(change_dir))
     for e in reverts(entries):
         problems.append("this change was reverted (%s): %s" % (e.get("at", "-"), e.get("reason", "-")))
     overdue = None
