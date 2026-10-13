@@ -711,12 +711,25 @@ def expected_emails(cfg, gate, role):
     return role_emails(cfg, {"owner": owner, "cross": cross, "escalation": "escalation"}[role])
 
 
+BASE_PREFIXES = ("refs/heads/", "refs/remotes/origin/", "remotes/origin/", "heads/", "origin/", "./")
+PLAIN_BRANCH = re.compile(r"^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$")
+
+
 def base_problem(cfg):
-    """Why base_branch cannot be trusted, or None. The one place for this rule (change 008): a change branch is
-    never the base, and in CI base_branch must be the branch the pull request merges into."""
+    """Why base_branch cannot be trusted, or None. The one place for this rule (change 008): it must be a plain
+    branch name, never a change branch in any spelling, and in CI it must be the branch the pull request
+    merges into. A branch made at HEAD under another name is caught only in CI (spec 008, Out of scope)."""
     name = cfg["base_branch"]
-    plain = name[len("origin/"):] if name.startswith("origin/") else name
-    if plain.startswith("change/"):
+    plain = name
+    stripped = True
+    while stripped:
+        stripped = False
+        for prefix in BASE_PREFIXES:
+            if plain.startswith(prefix):
+                plain, stripped = plain[len(prefix):], True
+    if not PLAIN_BRANCH.match(plain) or ".." in plain or plain.startswith("-") or plain in ("HEAD", "@"):
+        return "base_branch: %s is not a plain branch name" % name
+    if plain.lower().startswith("change/"):
         return ("base_branch: %s is a change branch; the base must be the shared branch changes merge into "
                 "(pod.yml base_branch, default main)" % name)
     ci = ci_base_ref()
