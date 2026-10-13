@@ -23,6 +23,8 @@ none: call sites in two files that must agree on one helper
 | `scripts/lib.py` | `base_problem`; `resolve_base` prefers the CI base; `pod_config_problems`, `peer_review`, `mode_record_on_base`, `plan_merged_as_is` use it | R1–R6 |
 | `scripts/loop.py` | the start check uses `lib.base_problem` | R6 |
 | `tests/test_trusted_base.py` | new | R1–R5, E1, E2, E4, E5 |
+| `tests/test_trusted_base_review.py` | new at review (PO approved): spelling variants and CI isolation | R1, R7, E2 |
+| `tests/__init__.py` | clears the two CI variables for the kit's own tests | R7 |
 
 ## Order of work
 1. Write the failing tests, commit, `touch .pod/lock-tests`.
