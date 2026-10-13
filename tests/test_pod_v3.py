@@ -97,7 +97,7 @@ class InstallerTests(TempRepo):
         block = self.read("AGENTS.md").split("<!-- pod:begin -->", 1)[1]
         self.assertEqual(len(re.findall(r"^## ", block, re.M)), 5, block)
         self.assertEqual(self.read("CLAUDE.md"), "@AGENTS.md\n")
-        self.assertEqual(self.read(".gitignore").splitlines()[-4:], [".pod/", "!**/skills/build/", "!docs/changes/*/gates.log", "!docs/changes/*/activity.log"])
+        self.assertEqual(self.read(".gitignore").splitlines()[-5:], [".pod/", "__pycache__/", "!**/skills/build/", "!docs/changes/*/gates.log", "!docs/changes/*/activity.log"])
         self.assertIn("make -f pod.mk pod-check", self.read(".github/workflows/pod-gates.yml"))
         self.assertIn("Warning: ", res.stdout)
         self.assertIn("Next steps", res.stdout)
@@ -122,7 +122,7 @@ class InstallerTests(TempRepo):
         self.assertEqual(text.count("<!-- pod:begin -->"), 1)
         self.assertTrue(text.rstrip().endswith("<!-- pod:end -->"))
         self.assertEqual(self.read("CLAUDE.md"), "# Claude\nUse tabs.\n\n@AGENTS.md\n")
-        self.assertEqual(self.read(".gitignore"), "node_modules/\n.pod/\n# pod kit\n!**/skills/build/\n!docs/changes/*/gates.log\n!docs/changes/*/activity.log\n")
+        self.assertEqual(self.read(".gitignore"), "node_modules/\n.pod/\n# pod kit\n__pycache__/\n!**/skills/build/\n!docs/changes/*/gates.log\n!docs/changes/*/activity.log\n")
         before = self.snapshot()
         res = self.install()
         self.assertIn("No changes", res.stdout)
