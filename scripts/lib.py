@@ -1392,7 +1392,7 @@ def not_ready(change_dir):
     if os.path.exists(path):
         with open(path, encoding="utf-8") as fh:
             m = re.search(r"^\s*Decision\s*:\s*(.*)$", fh.read(), re.M | re.I)
-        if m and m.group(1).strip().lower() == "reject":
+        if m and (m.group(1).split() or [""])[0].lower() == "reject":  # "reject (proposed …)" counts
             reasons.append("acceptance.md decides reject")
     return reasons
 

@@ -5,7 +5,7 @@ References: intent.md, ux-brief.md
 ## Requirements
 - R1: `lib.not_ready(change_dir)` must return the reasons a change's own artifacts say it is not ready (empty when ready):
   - `review.md has blockers: <N>`, when review.md exists and its `blockers:` header is not `0`;
-  - `acceptance.md decides reject`, when acceptance.md has a line `Decision: reject` (any letter case).
+  - `acceptance.md decides reject`, when the first word after `Decision:` in acceptance.md is `reject`, in any letter case. Agents write `Decision: reject (proposed; …)`, which counts. (Amended 2026-10-13 after the real Claude Code rehearsal showed this form.)
 
   (verified by: test)
 - R2: `scripts/gate.sh <dir> 4` must refuse any role, before writing, when `not_ready` is not empty. The message is `Refused: gate 4 cannot be signed while the change's own artifacts say it is not ready:`, then one line per reason. (verified by: test)
