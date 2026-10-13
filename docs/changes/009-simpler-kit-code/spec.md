@@ -17,7 +17,7 @@ The one behavior change
 - R7: `scripts/auto-merge-check.sh` and `scripts/parallel-check.sh --run` must default `--base` to the trusted base (R4) instead of `main`. An explicit `--base` still wins. `pr-check.sh` already reads the base from the pull request and is unchanged. (verified by: test)
 
 Text
-- R8: The per-risk merge rules must be written only in docs/merge-by-risk.md. AGENTS.md, the gate-guard hook comment and the merge skill point to it. The merge skill drops its manual `git fetch` and `--base origin/main` steps and its manual risk-path check, which auto-merge-check already does and reports. (verified by: review)
+- R8: The per-risk merge rules must be written only in docs/merge-by-risk.md. AGENTS.md, the gate-guard hook comment and the merge skill point to it. The merge skill drops its `--base origin/main` arguments and its manual risk-path check, which auto-merge-check already does and reports. It keeps `git fetch origin` first, so `origin/<base>` is current. (verified by: review)
 - R9: The edited merge skill bumps every plugin's `version`, and the marketplace's `metadata.version`, from 1.0.0 to 1.0.1. (verified by: `claude plugin validate --strict`; the version test)
 
 Size
