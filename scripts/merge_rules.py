@@ -19,8 +19,7 @@ RISK_ORDER = {"low": 0, "medium": 1, "high": 2}
 
 
 def git(*args):
-    res = subprocess.run(["git"] + list(args), cwd=ROOT, capture_output=True, text=True)
-    return res.returncode, res.stdout
+    return lib.git_out(args, ROOT)[:2]
 
 
 def head_sha():

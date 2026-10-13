@@ -81,18 +81,16 @@ def next_step(state):
 # ---------- git and state ----------
 
 def git(*args):
-    out = subprocess.run(["git", "-c", "core.quotePath=false"] + list(args), cwd=lib.ROOT, capture_output=True,
-                         text=True, check=False)
-    return out.returncode, out.stdout.strip()
+    return lib.git_out(["-c", "core.quotePath=false"] + list(args))[:2]
 
 
 def changed_paths(sponsor_outputs=False):
     """Uncommitted and new files (git status read unstripped: its first column matters). .pod/ is local state.
     docs/superceo/ and docs/digest/ are written by the sponsor's tools before a run, so they do not make the tree
     dirty; inside a step they count like any other file (sponsor_outputs=True)."""
-    out = subprocess.run(["git", "-c", "core.quotePath=false", "status", "--porcelain", "--untracked-files=all"],
-                         cwd=lib.ROOT, capture_output=True, text=True, check=False)
-    paths = [l[3:] for l in out.stdout.splitlines() if l.strip()] if out.returncode == 0 else []
+    rc, out, _ = lib.git_out(["-c", "core.quotePath=false", "status", "--porcelain", "--untracked-files=all"],
+                             text=False)
+    paths = [l[3:] for l in out.decode("utf-8", "replace").splitlines() if l.strip()] if rc == 0 else []
     skip = (".pod/",) if sponsor_outputs else (".pod/", "docs/superceo/", "docs/digest/")
     return [p for p in paths if not p.startswith(skip)]
 
@@ -260,10 +258,9 @@ def sign(change_dir, gate):
 def commit(message, paths):
     env = dict(os.environ, GIT_AUTHOR_NAME=LOOP_AUTHOR[0], GIT_AUTHOR_EMAIL=LOOP_AUTHOR[1],
                GIT_COMMITTER_NAME=LOOP_AUTHOR[0], GIT_COMMITTER_EMAIL=LOOP_AUTHOR[1])
-    subprocess.run(["git", "add", "-A", "--"] + list(paths), cwd=lib.ROOT, capture_output=True, check=False)
-    out = subprocess.run(["git", "-c", "core.hooksPath=/dev/null", "commit", "-q", "-m", message], cwd=lib.ROOT,
-                         env=env, capture_output=True, text=True, check=False)
-    return out.returncode == 0 or "nothing to commit" in out.stdout + out.stderr
+    lib.git_out(["add", "-A", "--"] + list(paths))
+    rc, out, err = lib.git_out(["-c", "core.hooksPath=/dev/null", "commit", "-q", "-m", message], env=env)
+    return rc == 0 or "nothing to commit" in out + err
 
 
 def record(change_dir, run_id, step, result, reason=""):

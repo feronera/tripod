@@ -519,9 +519,21 @@ def python_imports(path):
     return names
 
 
-def git_out(args, cwd):
-    res = subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True, check=False)
+def git_out(args, cwd=ROOT, text=True, env=None):
+    """The one place the kit runs git: (returncode, stdout, stderr), stripped when text. No git: returncode 127."""
+    try:
+        res = subprocess.run(["git"] + list(args), cwd=cwd, capture_output=True, text=text, env=env, check=False)
+    except OSError as exc:
+        return 127, "" if text else b"", str(exc)
+    if not text:
+        return res.returncode, res.stdout, res.stderr
     return res.returncode, res.stdout.strip(), res.stderr.strip()
+
+
+def show(ref, path, root=ROOT):
+    """The bytes of `path` at `ref`, or None when the ref or the file does not exist."""
+    rc, out, _ = git_out(["show", "%s:%s" % (ref, path)], root, text=False)
+    return out if rc == 0 else None
 
 
 def run_parallel_isolated(change_dir, parts, base, owners=None):
@@ -644,12 +656,7 @@ def cmd_parallel_check(args):
 
 
 def git_email(root=ROOT):
-    try:
-        out = subprocess.run(["git", "config", "user.email"], cwd=root,
-                             capture_output=True, text=True, check=False)
-        return out.stdout.strip().lower()
-    except OSError:
-        return ""
+    return git_out(["config", "user.email"], root)[1].lower()
 
 
 def role_for(cfg, gate, email):
@@ -845,16 +852,12 @@ def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
         return False
     base = resolve_base(cfg["base_branch"], root)
     folder = os.path.relpath(change_dir, root)
-    try:
-        plan = subprocess.run(["git", "show", "%s:%s/plan.md" % (base, folder)], cwd=root, capture_output=True)
-        log = subprocess.run(["git", "show", "%s:%s/gates.log" % (base, folder)], cwd=root, capture_output=True)
-    except OSError:
+    plan, log = show(base, folder + "/plan.md", root), show(base, folder + "/gates.log", root)
+    if plan is None or log is None:
         return False
-    if plan.returncode != 0 or log.returncode != 0:
+    if hashlib.sha1(b"blob %d\0" % len(plan) + plan).hexdigest() != blob:
         return False
-    if hashlib.sha1(b"blob %d\0" % len(plan.stdout) + plan.stdout).hexdigest() != blob:
-        return False
-    latest = {e["role"]: e.get("blob") for e in parse_log(log.stdout.decode("utf-8", "replace"))
+    latest = {e["role"]: e.get("blob") for e in parse_log(log.decode("utf-8", "replace"))
               if e["gate"] == 3 and "role" in e}
     return all(latest.get(role) == blob for role in roles)
 
@@ -1006,12 +1009,7 @@ def log_ignored(change_dir, name="gates.log"):
     """True when git would ignore this change's `name` (gates.log by default, or activity.log), e.g. through a
     global *.log rule. Ignored approvals never reach the other person or CI, so the cross-gate silently fails."""
     path = os.path.join(change_dir, name)
-    try:
-        res = subprocess.run(["git", "check-ignore", "-q", path], cwd=ROOT,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except OSError:
-        return False
-    return res.returncode == 0
+    return git_out(["check-ignore", "-q", path])[0] == 0
 
 
 ACTIVITY_IGNORED_HINT = ("activity.log is ignored by git (often a global *.log rule), so it would never be shared. "
@@ -1072,13 +1070,8 @@ def known_changes(root, scratch):
     `change/NNN-slug` branches, then remote-tracking ones as last fetched. A branch's gates.log and intent.md
     are copied from its tip into `scratch`, without a checkout. folder is None when the branch has no folder."""
     known = {os.path.basename(d): ("working tree", d) for d in change_dirs(root)}
-    try:
-        out = subprocess.run(["git", "for-each-ref", "--format=%(refname)", "refs/heads/change/", "refs/remotes/"],
-                             cwd=root, capture_output=True, text=True).stdout
-        head = subprocess.run(["git", "symbolic-ref", "-q", "HEAD"], cwd=root, capture_output=True,
-                              text=True).stdout.strip()
-    except OSError:  # no git: the working tree only, as before
-        out, head = "", ""
+    out = git_out(["for-each-ref", "--format=%(refname)", "refs/heads/change/", "refs/remotes/"], root)[1]
+    head = git_out(["symbolic-ref", "-q", "HEAD"], root)[1]  # no git: both empty, the working tree only
     # the current branch is the working tree, so `git checkout -b change/007-x` then new-change.sh gives 007
     current = CHANGE_BRANCH.match(head)
     refs = [(m.group(1), m.group(2), ref) for ref in out.split() for m in [CHANGE_BRANCH.match(ref)]
@@ -1090,12 +1083,11 @@ def known_changes(root, scratch):
         folder = os.path.join(scratch, str(len(known)), name)
         found = False
         for fname in ("gates.log", "intent.md"):
-            res = subprocess.run(["git", "show", "%s:docs/changes/%s/%s" % (ref, name, fname)],
-                                 cwd=root, capture_output=True)
-            if res.returncode == 0:
+            data = show(ref, "docs/changes/%s/%s" % (name, fname), root)
+            if data is not None:
                 os.makedirs(folder, exist_ok=True)
                 with open(os.path.join(folder, fname), "wb") as fh:
-                    fh.write(res.stdout)
+                    fh.write(data)
                 found = True
         known[name] = (where, folder if found else None)
     return known
@@ -1306,9 +1298,7 @@ def cmd_metrics(args):
     if not os.path.exists(intent):
         print("intent.md not found in %s" % args[0], file=sys.stderr)
         return 1
-    out = subprocess.run(["git", "log", "--follow", "--format=%cI", "--", intent],
-                         cwd=change_dir, capture_output=True, text=True, check=False)
-    stamps = [s for s in out.stdout.split() if s]
+    stamps = git_out(["log", "--follow", "--format=%cI", "--", intent], change_dir)[1].split()
     if not stamps:
         print("intent.md is not committed yet, so times cannot be computed", file=sys.stderr)
         return 1

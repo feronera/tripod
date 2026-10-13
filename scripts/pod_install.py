@@ -12,7 +12,8 @@ usage: scripts/pod-install.sh <target-repo> [--with-sample] [--vendor-plugins] [
 import os
 import re
 import shutil
-import subprocess
+
+import lib  # the one git helper (scripts/ is on sys.path when this file runs)
 import sys
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -241,13 +242,12 @@ def main(argv):
     if not os.path.isdir(target):
         print("folder not found: %s" % target, file=sys.stderr)
         return 1
-    res = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=target,
-                         capture_output=True, text=True)
-    if res.returncode != 0:
+    rc, top, _ = lib.git_out(["rev-parse", "--show-toplevel"], target)
+    if rc != 0:
         print("Refused: %s is not a git repo (run git init first)" % target, file=sys.stderr)
         return 1
-    if os.path.realpath(res.stdout.strip()) != target:
-        print("Refused: give the top-level folder of the git repo (%s)" % res.stdout.strip(), file=sys.stderr)
+    if os.path.realpath(top) != target:
+        print("Refused: give the top-level folder of the git repo (%s)" % top, file=sys.stderr)
         return 1
     if os.path.realpath(KIT) == target:
         print("Refused: the target is the pod kit itself", file=sys.stderr)
