@@ -81,8 +81,8 @@ def read_verdict(result):
 def changed_files(cfg):
     """Files this branch changes against the base branch, including edits not committed yet and new files,
     so an edit cannot hide until after the signature."""
-    base = lib.resolve_base(cfg["base_branch"])
-    rc, merge_base, _ = lib.git_out(["merge-base", "HEAD", base], lib.ROOT)
+    base, _ = lib.trusted_base(cfg)  # main() refuses an untrusted base (pod_config_problems) before this runs
+    rc, merge_base, _ = lib.git_out(["merge-base", "HEAD", base], lib.ROOT) if base else (1, "", "")
     files = set()
     # --no-renames: a file moved out of a forbidden or risky path shows both its old and its new path
     for args in (["diff", "--no-renames", "--name-only", merge_base] if rc == 0 and merge_base

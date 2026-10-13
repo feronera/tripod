@@ -116,10 +116,9 @@ def read_state(change_dir, cfg):
 def base_rules(cfg):
     """(base ref, risk globs) read once from the home checkout and the base branch, before any change branch is
     checked out, so no branch can change them for itself."""
-    base = lib.resolve_base(cfg["base_branch"])
-    rc, text = git("show", "%s:docs/risk-paths" % base)
-    globs = [l.split("#", 1)[0].strip() for l in (text.splitlines() if rc == 0 else []) if l.split("#", 1)[0].strip()]
-    return base, globs
+    base, _ = lib.trusted_base(cfg)  # main() refuses an untrusted base before it gets here
+    data = lib.show(base, "docs/risk-paths") if base else None
+    return base, lib.parse_risk_paths(data.decode("utf-8", "replace")) if data is not None else []
 
 
 def branch_stop(name, base, globs, limits):
@@ -351,7 +350,7 @@ def main(args):
     except Exception:
         os.remove(lock)
         raise
-    problem = lib.base_problem(cfg)
+    _, problem = lib.trusted_base(cfg)
     if problem:
         os.remove(lock)
         return refuse(problem)

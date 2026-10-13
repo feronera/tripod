@@ -269,17 +269,17 @@ def risk_of(change_dir):
     return "low"
 
 
+def parse_risk_paths(text):
+    """Globs from the text of docs/risk-paths (one per line, # comments)."""
+    return [g for g in (line.split("#", 1)[0].strip() for line in text.splitlines()) if g]
+
+
 def read_risk_paths(root=ROOT):
-    """Globs from docs/risk-paths (one per line, # comments)."""
     path = os.path.join(root, "docs", "risk-paths")
-    globs = []
-    if os.path.exists(path):
-        with open(path, encoding="utf-8") as fh:
-            for line in fh:
-                line = line.split("#", 1)[0].strip()
-                if line:
-                    globs.append(line)
-    return globs
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as fh:
+        return parse_risk_paths(fh.read())
 
 
 def _glob_regex(pattern):
@@ -728,6 +728,12 @@ def base_problem(cfg):
     return None
 
 
+def trusted_base(cfg, root=ROOT):
+    """(base ref, None), or (None, problem) when base_branch cannot be trusted (change 008)."""
+    problem = base_problem(cfg)
+    return (None, problem) if problem else (resolve_base(cfg["base_branch"], root), None)
+
+
 def resolve_base(base, root=ROOT):
     """origin/<base> when that ref exists, else <base>. In CI the pull request's real base wins over pod.yml,
     so a change cannot point the base at itself (change 008)."""
@@ -765,10 +771,9 @@ def peer_review_problem(cfg, email, root=ROOT):
     devs = role_emails(cfg, "superdev")
     if len(devs) < 2:
         return None, None
-    problem = base_problem(cfg)
+    ref, problem = trusted_base(cfg, root)
     if problem:
         return "Refused: peer review cannot be checked: " + problem, None
-    ref = resolve_base(cfg["base_branch"], root)
     authors, note = code_authors(ref, root)
     if authors is None:
         return None, note
@@ -816,13 +821,11 @@ def mode_record_on_base(change_dir, cfg, root=ROOT):
     """The `event=mode` record of this change as it is on the base branch, or None.
     Only a record that is already on the base branch (a finished, merged change) can outlive a switch back to
     `mode: pod`; a record written on a branch cannot turn Autonomous mode on by itself."""
-    if base_problem(cfg):
+    base, problem = trusted_base(cfg, root)
+    data = None if problem else show(base, os.path.relpath(os.path.join(change_dir, "gates.log"), root), root)
+    if data is None:
         return None
-    rel = os.path.relpath(os.path.join(change_dir, "gates.log"), root)
-    rc, text, _ = git_out(["show", "%s:%s" % (resolve_base(cfg["base_branch"], root), rel)], root)
-    if rc != 0:
-        return None
-    for line in text.splitlines():
+    for line in data.decode("utf-8", "replace").splitlines():
         if line.startswith("event=mode "):
             try:
                 return dict(p.split("=", 1) for p in shlex.split(line) if "=" in p)
@@ -848,9 +851,9 @@ def plan_merged_as_is(change_dir, cfg, roles, blob, root=ROOT):
     """True when the base branch already holds this plan.md (same blob) and, for every role, its latest gate 3
     signature for that blob. Such a plan passed CI when it merged, so plan rules added by a later kit do not fail
     it (change 007). Anything only on a branch or in the working tree is still checked."""
-    if base_problem(cfg):
+    base, problem = trusted_base(cfg, root)
+    if problem:
         return False
-    base = resolve_base(cfg["base_branch"], root)
     folder = os.path.relpath(change_dir, root)
     plan, log = show(base, folder + "/plan.md", root), show(base, folder + "/gates.log", root)
     if plan is None or log is None:
