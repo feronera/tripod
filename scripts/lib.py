@@ -256,23 +256,6 @@ def parse_log(text):
         entry["by"] = entry.get("by", "").lower()
         entries.append(entry)
     return entries
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            try:
-                parts = shlex.split(line)
-            except ValueError:
-                parts = line.split()
-            entry = dict(part.split("=", 1) for part in parts if "=" in part)
-            try:
-                entry["gate"] = int(entry.get("gate", "0"))
-            except ValueError:
-                entry["gate"] = 0
-            entry["by"] = entry.get("by", "").lower()
-            entries.append(entry)
-    return entries
 
 
 def risk_of(change_dir):
