@@ -1165,6 +1165,11 @@ def cmd_gate(args):
         if note:
             print("note: " + note)
     blob = blob_hash(artifact)
+    mine = [e for e in entries if e["gate"] == gate and e.get("role") == role and e.get("by") == email]
+    if mine and mine[-1].get("blob") == blob:
+        print("Refused: you already signed gate %d as %s for the current %s. The other role must be signed by "
+              "someone else (see docs/gates.md)" % (gate, role, ARTIFACTS[gate]), file=sys.stderr)
+        return 1
     if role != "owner":
         owner_ok = any(e["gate"] == gate and e.get("role") == "owner" and e.get("blob") == blob
                        for e in entries)
@@ -1201,6 +1206,8 @@ def cmd_gate(args):
             print("  - " + p)
     else:
         print("gate %d is complete" % gate)
+    print('Next: share the signature: git add %s/gates.log && git commit -m "gate %d" && git push'
+          % (args[0].rstrip("/"), gate))
     return 0
 
 
