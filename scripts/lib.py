@@ -1390,9 +1390,10 @@ def not_ready(change_dir):
         reasons.append("review.md has blockers: %s" % review["blockers"])
     path = os.path.join(change_dir, "acceptance.md")
     if os.path.exists(path):
-        with open(path, encoding="utf-8") as fh:
-            m = re.search(r"^\s*Decision\s*:\s*(.*)$", fh.read(), re.M | re.I)
-        if m and (m.group(1).split() or [""])[0].lower() == "reject":  # "reject (proposed …)" counts
+        with open(path, encoding="utf-8") as fh:  # the last Decision line is the final one; **bold** is allowed
+            found = re.findall(r"^[\s*_]*Decision[*_]*\s*:[*_\s]*(.*)$", fh.read(), re.M | re.I)
+        words = found[-1].split() if found else []
+        if words and words[0].strip("*_`.,;:").lower() == "reject":  # "reject (proposed …)" counts
             reasons.append("acceptance.md decides reject")
     return reasons
 
