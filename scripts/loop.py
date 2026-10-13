@@ -354,11 +354,10 @@ def main(args):
     except Exception:
         os.remove(lock)
         raise
-    plain = base[len("origin/"):] if base.startswith("origin/") else base
-    if plain.startswith("change/"):
+    problem = lib.base_problem(cfg)
+    if problem:
         os.remove(lock)
-        return refuse("base_branch: %s is a change branch; the base must be the shared branch changes merge into "
-                      "(pod.yml base_branch, default main)" % plain)
+        return refuse(problem)
     run_id = sponsor.now().strftime("%Y%m%dT%H%M%S")
     steps = stops = 0
     try:
