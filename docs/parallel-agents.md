@@ -32,7 +32,7 @@ tests: tests/test_detail.py
 - Parts may not share files or test files; gate 3 fails and names them. A part may add `owner: <email>` ([scaling.md](scaling.md#parallel-parts-across-superdevs)).
 - Shared mutable state is split into files owned by each part first. If that is not possible, do those parts one at a time.
 - After the tests are written, run `scripts/parallel-check.sh docs/changes/NNN-slug`. It fails when a part's tests import a file another part builds; build that shared interface first. It sees only direct imports, so name every interface between parts in the plan.
-- After the build, run `scripts/parallel-check.sh docs/changes/NNN-slug --run --base main`. It runs each part's tests in a throwaway worktree where the other parts' files are as at the merge base. A part that fails depends on another: merge that one first. (In tripod-example change 003 it found that the server part needed the page part.)
+- After the build, run `scripts/parallel-check.sh docs/changes/NNN-slug --run`. It runs each part's tests in a throwaway worktree where the other parts' files are as at the merge base. A part that fails depends on another: merge that one first. (In tripod-example change 003 it found that the server part needed the page part.)
 - Build each part with `/superdev:build`, one unit at a time, committing every unit whose tests pass.
 
 ## SuperBiz: fan out in one session

@@ -12,9 +12,9 @@ usage: scripts/pod-install.sh <target-repo> [--with-sample] [--vendor-plugins] [
 import os
 import re
 import shutil
+import sys
 
 import lib  # the one git helper (scripts/ is on sys.path when this file runs)
-import sys
 
 KIT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 INSTALLER_FILES = {"pod-install.sh", "pod_install.py"}

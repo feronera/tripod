@@ -2,6 +2,8 @@
 
 References: intent.md, ux-brief.md
 
+Amended on 2026-10-13 after the build, with the PO's decision. R10's line target came from the survey's estimate, which was too high. The shared helpers carry the docstrings and error handling that each copy used to repeat, so removing six copies saved fewer lines than estimated. R10 now records the measured result. The intent's line measure (4,350 or fewer) is reported as not met in acceptance.md. Its other measures (one place per job) are met.
+
 ## Requirements
 Removals with no behavior change
 - R1: The unreachable code after `return entries` in `lib.parse_log` must be removed. (verified by: review; `make check`)
@@ -19,7 +21,7 @@ Text
 - R9: The edited merge skill bumps every plugin's `version`, and the marketplace's `metadata.version`, from 1.0.0 to 1.0.1. (verified by: `claude plugin validate --strict`; the version test)
 
 Size
-- R10: scripts/*.py must total 4,350 lines or fewer, from 4,478. (verified by: `wc -l`)
+- R10: scripts/*.py must total fewer lines than before the change (4,478), with no duplication added. Measured: 4,447. (verified by: `wc -l`)
 
 ## Edge cases
 - E1: No `origin/<base>`: the default base is the local branch, as `resolve_base` does today.

@@ -54,7 +54,7 @@ Rules for every agent in this repository (Claude Code reads them through CLAUDE.
 ## Commands
 - `make setup`: check tools and prepare the `.pod/` folder.
 - `make test`: run `test_cmd` from `pod.yml` (all unit tests).
-- `make strength`: `scripts/test-strength.sh` finds tests that still pass when every function in app/ returns None (see `docs/test-strength.md`).
+- `make strength`: `scripts/test-strength.sh` finds tests that still pass when every function in the code folders returns None (see `docs/test-strength.md`).
 - `make check`: tests, strength, the CODEOWNERS check and `scripts/gate-check.sh --all` (CI runs this).
 - `scripts/auto-merge-check.sh <dir> [--record]`: ALLOW or DENY for an automated merge, against the base branch in pod.yml.
 - `scripts/release-check.sh <dir>`: whether the change is ready to release to production.

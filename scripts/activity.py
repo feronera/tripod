@@ -149,7 +149,6 @@ def to_int(value):
 
 def branch_change(root):
     """docs/changes/NNN-slug for branch change/NNN-slug when that folder exists, else None."""
-    import lib  # the one git helper; imported here so the hook stays fast when no branch is read
     m = re.match(r"^change/(\d{3}-[A-Za-z0-9._-]+)$", lib.git_out(["rev-parse", "--abbrev-ref", "HEAD"], root)[1])
     if not m:
         return None
