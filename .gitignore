@@ -1,12 +1,35 @@
+# --- Pod local state (kill-switch, lock-tests, loop.lock): never commit ---
 .pod/
+
+# --- Python ---
 __pycache__/
-*.pyc
-# skill folder named build/ must be committed even when a global gitignore ignores build/
+*.py[cod]
+.venv/
+venv/
+.coverage
+htmlcov/
+
+# --- Secrets and personal settings ---
+.env
+.env.*
+.claude/settings.local.json
+
+# --- OS and editor files ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# --- Keep: rules below re-include paths that a global gitignore may drop ---
+# skill folder named build/ must be committed even when build/ is ignored
 !plugins/superdev/skills/build/
-!logs/
-!logs/sample-app.log
-# approvals must be committed even when a global gitignore ignores *.log
+# approvals must be committed even when *.log is ignored
 !docs/changes/*/gates.log
 # the agent activity log is committed with the change too
 !docs/changes/*/activity.log
-!examples/**/gates.log
+# only the invented sample log is committed; real app logs may hold personal data
+!logs/
+logs/*
+!logs/sample-app.log
